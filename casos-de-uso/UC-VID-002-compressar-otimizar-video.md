@@ -34,7 +34,7 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 
 | **Secção** | **Detalhes** |
 |------------|--------------|
-| **ID do Caso de Uso** | UC-VID-2 |
+| **ID do Caso de Uso** | UC-VID-002 |
 | **Nome** | Comprimir/Otimizar vídeo |
 | **Versão** | v1.0 |
 | **Autor** | Bruno Sousa  |
@@ -43,7 +43,7 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 | **Âmbito** | Módulo de processamento de vídeo do PictuRAS |
 | **Ator Principal** | Utilizador registado ou premium |
 | **Stakeholders e Interesses** | - **Utilizador**: pretende reduzir o tamanho do vídeo mantendo um nível de qualidade adequado e obter um ficheiro utilizável após o processamento.<br>- **PictuRAS**: pretende garantir que apenas ficheiros válidos são processados, respeitando os limites definidos e evitando resultados incompletos ou inválidos |
-| **Pré-condições** | -O utilizador encontra-se autenticado.<br>-O utilizador possui acesso à funcionalidade de otimização de vídeo.<br>- O sistema encontra-se disponível para receber e processar ficheiros de vídeo. |
+| **Pré-condições** | - O utilizador encontra-se autenticado.<br>-O utilizador possui acesso à funcionalidade de otimização de vídeo.<br>- O sistema encontra-se disponível para receber e processar ficheiros de vídeo. |
 | **Trigger** | O utilizador seleciona a opção de comprimir/otimizar vídeo |
 
 ### 2.2 Fluxo Principal
@@ -57,7 +57,7 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 | 5 | Seleciona o nível de qualidade pretendido | Apresenta a opção selecionada e os parâmetros associados |
 | 6 | Confirma a operação | Valida o vídeo, o perfil do utilizador e os parâmetros escolhidos |
 | 7 | — | Inicia o processamento do vídeo |
-| 8 | — | Geras uma nova versão otimizada do vídeo de acordo com a qualidade escolhida |
+| 8 | — | Gera uma nova versão otimizada do vídeo de acordo com a qualidade escolhida |
 | 9 | — | Guarda o resultado do processamento e informa o utilizador de que a operação foi concluída |
 | 10 | Solicita o acesso ao resultado | Disponibiliza o vídeo otimizado ao utilizador |
 
@@ -84,7 +84,7 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 | **Tipo** | **Resultado** |
 |----------|---------------|
 | Garantia de Sucesso | É criada uma nova versão otimizada do vídeo de acordo com o nível de qualidade escolhido. O ficheiro resultante fica disponível ao utilizador e o vídeo original permanece inalterado. |
-| Garantia Mínima |Em caso de falha, o vídeo original permanece inalterado e nenhum ficheiro incompleto ou inválido é disponibilizado como resultado da operação |
+| Garantia Mínima | Em caso de falha, o vídeo original permanece inalterado e nenhum ficheiro incompleto ou inválido é disponibilizado como resultado da operação |
 
 ### 2.6 Regras de Negócio e Restrições
 
