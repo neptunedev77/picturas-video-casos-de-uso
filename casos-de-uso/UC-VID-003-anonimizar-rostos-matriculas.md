@@ -7,7 +7,7 @@
 |-----------|-----------|
 | **Grupo / Equipa** | 25 |
 | **Autores** | António Sousa (pg63923), Bruno Vale (pg63926), Bruno Sousa (pg63927), Diogo Macedo (pg63947) |
-| **Data** | 2026-10-06 |
+| **Data** | 2026-10-05 |
 | **Versão do documento** | v1.0 |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |
 
@@ -31,11 +31,11 @@ A conformidade com a privacidade e o RGPD na partilha de conteúdos multimédia 
 
 | **Secção** | **Detalhes** |
 |------------|--------------|
-| **ID do Caso de Uso** | UC-VID-002 |
+| **ID do Caso de Uso** | UC-VID-003 |
 | **Nome** | Anonimizar Rostos e Matrículas em Vídeo |
 | **Versão** | v1.0 |
 | **Autor** | Diogo Henrique Freitas Macedo |
-| **Data** | 2026-10-06 |
+| **Data** | 2026-10-05 |
 | **Objetivo** | Permitir ao utilizador detetar automaticamente elementos sensíveis (rostos de pessoas e matrículas de veículos) ao longo de todo o vídeo e aplicar uma máscara de desfocagem (*blur*) ou mosaico (*pixelate*), obtendo uma versão anonimizada em conformidade com normas de privacidade. |
 | **Âmbito** | Módulo de processamento avançado de vídeo do PictuRAS — serviços de visão por computador (IA), mensageria assíncrona e gestão de projetos. |
 | **Ator Principal** | Utilizador Registado |
