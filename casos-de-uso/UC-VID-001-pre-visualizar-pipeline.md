@@ -9,7 +9,7 @@
 | **Campo** | **Valor** |
 |-----------|-----------|
 | **Grupo / Equipa** | 25 |
-| **Autores** | António Sousa (PG63923)  |
+| **Autores** | António Sousa (PG63923), Bruno Sousa (63927), Bruno Vale (63926), Diogo Macedo (PG63947) |
 | **Data** | 2026-10-05 |
 | **Versão do documento** | v1.0 |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |
