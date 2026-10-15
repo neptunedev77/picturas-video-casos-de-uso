@@ -18,19 +18,28 @@ const queues = {
     'people_ai': 'people_ai_queue',
     'expand_ai': 'expand_ai_queue',
     'watermark': 'watermark_queue',
+    'privacy_blur': 'privacy_blur_queue',
+    'high_priority': 'high_priority_queue',
     'project': 'project_queue',
     'ws': 'ws_queue'
 }
 
-function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params) {
-    const queue = queues[tool];
+function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params, runnerId, userType) {
+    let queue = queues[tool];
+    if (userType === "premium" && tool === "privacy_blur") {
+        queue = queues['high_priority'] || queue;
+    }
     const msg = {
         "messageId": msg_id,
         "timestamp": timestamp,
         "procedure": tool,
+        "runnerId": runnerId,
+        "userType": userType,
         "parameters": {
             "inputImageURI": og_img_uri,
             "outputImageURI": new_img_uri,
+            "runnerId": runnerId,
+            "userType": userType,
             ... params
         }
     };

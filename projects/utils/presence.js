@@ -98,4 +98,4 @@ async function releaseEditorSlot({ ownerId, projectId, callerId }) {
   await Presence.deleteOne({ ownerId, projectId, userId: callerId });
 }
 
-module.exports = { ensureEditorSlot, releaseEditorSlot };
+module.exports = { ensureEditorSlot, releaseEditorSlot, getUserType };

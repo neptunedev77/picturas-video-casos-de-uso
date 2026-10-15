@@ -84,6 +84,7 @@ const httpsAgent = new https.Agent({
 const users_ms = "https://users:10001/";
 
 const enforcePresenceLimit = require("../middleware/enforcePresenceLimit");
+const { getUserType } = require("../utils/presence");
 
 const advanced_tools = [
   "cut_ai",
@@ -93,6 +94,7 @@ const advanced_tools = [
   "obj_ai",
   "people_ai",
   "expand_ai",
+  "privacy_blur",
 ];
 
 // Conta quantas ferramentas avançadas existem neste projeto (independente de imagens)
@@ -436,6 +438,29 @@ if (/preview/.test(msg_id) && (type == "text" || next_pos >= project.tools.lengt
 
             console.log(`[COMMIT] project=${process.project_id} committedToken=${process.token || 0}`);
 
+            // FA2 / REQ-VID-BLUR-009: 0 detections refund and warning
+            if (msg_content.output && msg_content.output.detections === 0) {
+              try {
+                await axios.post(
+                  `${users_ms}${runnerId}/process/refund/1`,
+                  {},
+                  { httpsAgent, timeout: 5000 }
+                );
+                console.log(`[ZERO-DETECTIONS-REFUND] Refunded 1 op to ${runnerId}`);
+              } catch (err) {
+                console.error("Error refunding zero detections:", err);
+              }
+
+              const { send_rabbit_msg } = require("../utils/rabbit_mq");
+              send_rabbit_msg({
+                messageId: `video-warning-${uuidv4()}`,
+                timestamp: new Date().toISOString(),
+                user: runnerId,
+                type: "video-warning",
+                warning: "Nenhum rosto ou matrícula detetado no vídeo; o ficheiro resultante é idêntico ao original"
+              }, "ws_queue");
+            }
+
           } else {
             console.log(
               `[COMMIT-SKIP] project=${process.project_id} token=${process.token} activeToken=${freshProject.activeToken}`
@@ -476,13 +501,16 @@ if (/preview/.test(msg_id) && (type == "text" || next_pos >= project.tools.lengt
 
       // Making sure database entry is created before sending message to avoid conflicts
       await Process.create(new_process);
+      const userType = await getUserType(runnerId || project.user_id);
       send_msg_tool(
         new_msg_id,
         timestamp,
         new_process.og_img_uri,
         new_process.new_img_uri,
         tool_name,
-        params
+        params,
+        runnerId,
+        userType
       );
     } catch (err) {
 
@@ -1163,6 +1191,7 @@ router.post("/:user/:project/preview/:img", checkSharePermission, requireEditPer
         token: project.activeToken || 0,
       };
 
+      const userType = await getUserType(runnerUserId || ownerId);
       Process.create(process)
         .then(() => {
           send_msg_tool(
@@ -1171,7 +1200,9 @@ router.post("/:user/:project/preview/:img", checkSharePermission, requireEditPer
             og_img_uri,
             new_img_uri,
             tool_name,
-            params
+            params,
+            runnerUserId,
+            userType
           );
           res.sendStatus(201);
         })
@@ -1235,6 +1266,10 @@ router.post(
               new_uri: new_uri,
               og_img_key: og_key,
               og_sha256: sha,
+              duration: req.body.duration ? Number(req.body.duration) : undefined,
+              width: req.body.width ? Number(req.body.width) : undefined,
+              height: req.body.height ? Number(req.body.height) : undefined,
+              mime_type: req.file.mimetype,
             });
 
             const updated = await Project.updateIfVersion(
@@ -1253,6 +1288,21 @@ router.post(
             }
 
             res.set("X-Project-Version", String(updated.version));
+
+            // Notificar WebSocket para sincronização em tempo real (evita refresh manual)
+            send_msg_project_op({
+              projectId: req.params.project,
+              ownerId: req.params.user,
+              op: {
+                opId: req.headers["x-op-id"] || null,
+                type: "IMAGE_ADDED",
+                actorId: getCallerId(req),
+                baseVersion: req.expectedVersion,
+                newVersion: updated.version,
+                payload: {},
+              },
+            });
+
             return res.sendStatus(204);
 
           } catch (_) {
@@ -1416,6 +1466,47 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
         return;
       }
 
+      const userType = await getUserType(runnerUserId || ownerId);
+
+      // Validação REQ-VID-BLUR-002: limites de perfil para vídeo
+      const hasPrivacyBlur = (project.tools || []).some((t) => t.procedure === "privacy_blur");
+      if (hasPrivacyBlur) {
+        if (userType === "anonymous") {
+          res.status(403).jsonp("Ferramentas avançadas de vídeo não estão disponíveis para utilizadores anónimos");
+          return;
+        }
+
+        const videoMeta = req.body?.videoMeta;
+        for (const img of (project.imgs || [])) {
+          const isVideo = (img.og_uri && img.og_uri.toLowerCase().endsWith(".mp4")) || img.mime_type === "video/mp4";
+          if (isVideo) {
+            const dur = videoMeta?.duration ?? img.duration;
+            const w = videoMeta?.width ?? img.width;
+            const h = videoMeta?.height ?? img.height;
+
+            if (userType === "free") {
+              if (dur && dur > 60) {
+                res.status(400).jsonp("A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite");
+                return;
+              }
+              if ((w && w > 1920) || (h && h > 1080)) {
+                res.status(400).jsonp("A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite");
+                return;
+              }
+            } else if (userType === "premium") {
+              if (dur && dur > 300) {
+                res.status(400).jsonp("A ferramenta de anonimização está limitada a vídeos de até 300 segundos. O vídeo atual excede este limite");
+                return;
+              }
+              if ((w && w > 3840) || (h && h > 2160)) {
+                res.status(400).jsonp("A resolução do vídeo excede o limite máximo permitido de 4K");
+                return;
+              }
+            }
+          }
+        }
+      }
+
       const { adv_ops, totalAdv, charged, newTools } = advanced_tool_num(project);
 
       console.log(
@@ -1508,7 +1599,9 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
                 og_img_uri,
                 new_img_uri,
                 tool_name,
-                params
+                params,
+                runnerUserId,
+                userType
               );
             })
             .catch(() => (error = true));
@@ -1867,6 +1960,21 @@ router.delete("/:user/:project/img/:img", checkSharePermission, requireEditPermi
         }
 
         res.set("X-Project-Version", String(updated.version));
+
+        // Notificar WebSocket para sincronização em tempo real
+        send_msg_project_op({
+          projectId: req.params.project,
+          ownerId: req.params.user,
+          op: {
+            opId: req.headers["x-op-id"] || null,
+            type: "IMAGE_REMOVED",
+            actorId: getCallerId(req),
+            baseVersion: req.expectedVersion,
+            newVersion: updated.version,
+            payload: {},
+          },
+        });
+
         return res.sendStatus(204);
 
       } catch (_) {

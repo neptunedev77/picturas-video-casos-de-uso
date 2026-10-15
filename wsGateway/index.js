@@ -97,7 +97,17 @@ function process_msg() {
             if (projectId && op) {
                 io.to(`project:${projectId}`).emit("project-op", { projectId, op });
             }
+        }
+
+        else if (msg_content.type === "video-progress") {
+            const user = msg_content.user;
+            const progress = msg_content.progress;
+            const status = msg_content.status;
+
+            if (user) {
+                io.to(user).emit("video-progress", { progress, status, messageId: msg_id });
             }
+        }
 
         //  project updated
         else if (/project-updated/.test(msg_id) || msg_content.type === "project-updated") {

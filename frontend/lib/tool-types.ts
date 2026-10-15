@@ -62,6 +62,27 @@ export type ExpandAiParams = {
   guidance?: number;
 };
 
+export type PrivacyBlurMode = "auto" | "manual" | "hybrid";
+export type PrivacyBlurTargets = "faces" | "plates" | "both";
+export type PrivacyBlurStyle = "gaussian" | "pixelate";
+export type PrivacyBlurIntensity = "low" | "medium" | "high";
+
+export interface ManualBoundingBox {
+  x: number; // 0-100 %
+  y: number; // 0-100 %
+  width: number; // 0-100 %
+  height: number; // 0-100 %
+}
+
+export interface PrivacyBlurParams {
+  mode?: PrivacyBlurMode;
+  targets?: PrivacyBlurTargets;
+  blurType?: PrivacyBlurStyle;
+  intensity?: PrivacyBlurIntensity;
+  confidenceThreshold?: number;
+  manualBox?: ManualBoundingBox;
+}
+
 export type ToolParams =
   | BinarizationToolParams
   | BorderToolParams
@@ -72,6 +93,7 @@ export type ToolParams =
   | RotateToolParams
   | SaturationToolParams
   | ExpandAiParams
+  | PrivacyBlurParams
   | object;
 
 export type ToolNames =
@@ -92,4 +114,6 @@ export type ToolNames =
   | "obj_ai"
   | "people_ai"
   | "expand_ai"
+  | "privacy_blur"
   | "project";
+

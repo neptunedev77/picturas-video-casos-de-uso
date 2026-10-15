@@ -165,6 +165,20 @@
             "durable": true,
             "auto_delete": false,
             "arguments": {}
+        },
+        {
+            "name": "privacy_blur_queue",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "high_priority_queue",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
         }
     ],
     "exchanges": [
@@ -329,6 +343,22 @@
             "destination": "ws_queue",
             "destination_type": "queue",
             "routing_key": "ws_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "privacy_blur_queue",
+            "destination_type": "queue",
+            "routing_key": "privacy_blur_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "high_priority_queue",
+            "destination_type": "queue",
+            "routing_key": "high_priority_queue",
             "arguments": {}
         }
     ]

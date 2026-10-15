@@ -14,6 +14,8 @@ import ObjectAITool from "./object-ai-tool";
 import PeopleAITool from "./people-ai-tool";
 import TextAITool from "./text-ai-tool";
 import UpgradeAITool from "./upgrade-ai-tool";
+import ExpandAITool from "./expand-ai-tool";
+import PrivacyBlurTool from "./privacy-blur-tool";
 import { useClearProjectTools } from "@/lib/mutations/projects";
 import { useSession } from "@/providers/session-provider";
 import { useProjectInfo } from "@/providers/project-provider";
@@ -30,7 +32,6 @@ import {
 } from "../ui/dialog";
 import { Eraser, Film } from "lucide-react";
 import { useState } from "react";
-import ExpandAITool from "./expand-ai-tool";
 import { useCurrentImage } from "@/providers/project-provider";
 
 export function Toolbar() {
@@ -65,18 +66,44 @@ export function Toolbar() {
   if (isVideo && view !== "grid") {
     return (
       <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
-        <div className="flex flex-col gap-3 items-center pt-2">
-          <span className="text-sm font-medium text-gray-500">Tools</span>
-          <div className="flex flex-col items-center justify-center gap-2 p-2 rounded-lg bg-muted/40 text-center text-muted-foreground w-full">
-            <Film className="size-6 text-primary/70" />
-            <span className="text-[11px] font-medium leading-tight text-foreground/80">
-              Vídeo
-            </span>
-            <span className="text-[10px] leading-tight text-muted-foreground">
-              Sem ferramentas nesta fase
-            </span>
-          </div>
+        <div className="flex flex-col gap-2 items-center">
+          <span className="text-sm text-gray-500">Vídeo</span>
+          <PrivacyBlurTool disabled={disabled} />
+          <AppliedToolsList />
         </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="text-red-400 size-8"
+              disabled={project.tools.length === 0}
+            >
+              <Eraser />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Clear Tools?</DialogTitle>
+              <DialogDescription>
+                This will remove <b>all</b> edits from the current project.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  clearTools.mutate({
+                    toolIds: project.tools.map((t) => t._id),
+                    projectVersion: project.version,
+                  });
+                  setOpen(false);
+                }}
+              >
+                Clear
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

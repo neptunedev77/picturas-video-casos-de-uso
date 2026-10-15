@@ -2,6 +2,7 @@ import { LoaderCircle, Sparkle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/providers/session-provider";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,11 +42,12 @@ interface ToolbarButtonProps {
   tool: Omit<ProjectTool, "position">;
   children?: React.ReactNode;
   noParams?: boolean;
+  noPreview?: boolean;
+  contentClassName?: string;
   onDefault?: () => void;
 }
 
 export function ToolbarButton({
-  
   open = false,
   setOpen = () => {},
   icon: Icon,
@@ -56,6 +58,8 @@ export function ToolbarButton({
   tool,
   children,
   noParams = false,
+  noPreview = false,
+  contentClassName,
   onDefault = () => {},
 }: ToolbarButtonProps) {
   const router = useRouter();
@@ -339,10 +343,13 @@ export function ToolbarButton({
 
       {!locked && (
         <DropdownMenuContent
-          className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-lg"
+          className={cn(
+            "w-auto min-w-[340px] max-w-sm rounded-lg shadow-xl p-2 z-50",
+            contentClassName,
+          )}
           side="right"
-          align="end"
-          sideOffset={4}
+          align="start"
+          sideOffset={14}
         >
 
         <DropdownMenuLabel className="text-sm p-1">{label}</DropdownMenuLabel>
@@ -363,14 +370,16 @@ export function ToolbarButton({
             Default
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => handleAddTool(true)}
-            className="h-6 text-xs"
-            disabled={isDefault}
-          >
-            Preview
-          </Button>
+          {!noPreview && (
+            <Button
+              variant="outline"
+              onClick={() => handleAddTool(true)}
+              className="h-6 text-xs"
+              disabled={isDefault}
+            >
+              Preview
+            </Button>
+          )}
 
           <Button
             onClick={() => handleAddTool(false)}

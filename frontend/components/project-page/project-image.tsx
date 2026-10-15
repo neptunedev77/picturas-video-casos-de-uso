@@ -74,7 +74,16 @@ export function ProjectImage({
     if (!isVideo || !videoRef.current) return;
 
     if (view === "carousel" && isActive) {
-      videoRef.current.play().catch(() => {});
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Fallback if browser blocks unmuted autoplay
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            videoRef.current.play().catch(() => {});
+          }
+        });
+      }
     } else {
       videoRef.current.pause();
       if (view === "grid") {
@@ -96,7 +105,7 @@ export function ProjectImage({
                     ref={videoRef}
                     src={image.url}
                     controls={view === "carousel"}
-                    muted={true}
+                    muted={view === "grid"}
                     loop
                     playsInline
                     preload="auto"

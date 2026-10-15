@@ -1,4 +1,5 @@
 import json
+import datetime
 
 from .rabbit_mq import Rabbit_MQ
 
@@ -26,7 +27,10 @@ class ToolMSG:
         'obj_ai': 'obj_ai_queue',
         'people_ai': 'people_ai_queue',
         'expand_ai': 'expand_ai_queue',
-        'project': 'project_queue'
+        'privacy_blur': 'privacy_blur_queue',
+        'high_priority': 'high_priority_queue',
+        'project': 'project_queue',
+        'ws': 'ws_queue'
     }
     
     def __init__(self, microservice_name, tool_name, rabbit_host, rabbit_port, username, password):
@@ -38,7 +42,20 @@ class ToolMSG:
     def read_msg(self, callback):
         self._rabbit_mq.read_rabbit_msg(self._queue, callback)
 
-    def send_msg(self, msg_id, resp_msg_id, timestamp, status, processingTime, new_img_uri, type="image", err_code=None, err_msg=None, og_img_uri=None):
+    def send_ws_progress(self, msg_id, user, progress, status="processing"):
+        if not user:
+            return
+        msg = {
+            "messageId": f"video-progress-{msg_id}",
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            "user": user,
+            "type": "video-progress",
+            "progress": progress,
+            "status": status
+        }
+        self._rabbit_mq.send_rabbit_msg(json.dumps(msg), self.queues['ws'])
+
+    def send_msg(self, msg_id, resp_msg_id, timestamp, status, processingTime, new_img_uri, type="image", err_code=None, err_msg=None, og_img_uri=None, detections=None):
 
         msg = {}
         
@@ -58,6 +75,8 @@ class ToolMSG:
                         "microservice": self._microservice_name
                     }
                 }
+                if detections is not None:
+                    msg["output"]["detections"] = detections
             case "error":
                 if err_code is None or err_msg is None or og_img_uri is None:
                     raise Exception("Make sure, in case of error status, err_code, err_msg and og_img_uri are not None")

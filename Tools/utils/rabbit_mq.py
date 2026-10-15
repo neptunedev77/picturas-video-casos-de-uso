@@ -33,6 +33,7 @@ class Rabbit_MQ:
             self._queue = queue
 
         self._channel.queue_declare(queue=self._queue, durable=True)
+        self._channel.queue_bind(exchange="picturas", queue=self._queue, routing_key=self._queue)
         
         self._channel.basic_consume(
             queue=self._queue,

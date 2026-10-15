@@ -886,6 +886,7 @@ export const processProject = async ({
   shareId,
   projectVersion,
   runnerUserId,
+  videoMeta,
 }: {
   uid: string;
   pid: string;
@@ -894,13 +895,14 @@ export const processProject = async ({
   shareId?: string;
   projectVersion: number;
   runnerUserId: string;  
+  videoMeta?: { duration?: number; width?: number; height?: number };
 }) => {
   try {
     const query = buildQuery({ ownerId, shareId });
     const pathUid = pathUidFor(uid, ownerId, shareId);
     const response = await api.post<string>(
       `/projects/${pathUid}/${pid}/process${query}`,
-      { runnerUserId },   // importante
+      { runnerUserId, videoMeta },   // importante
       { 
         headers: {
           Authorization: `Bearer ${token}`,

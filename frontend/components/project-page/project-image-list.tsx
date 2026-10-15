@@ -143,19 +143,20 @@ useEffect(() => {
 
     setCount(api.scrollSnapList().length);
     setCurrent(api.selectedScrollSnap() + 1);
-    if (project.imgs) setCurrentImageId(project.imgs[api.selectedScrollSnap()]);
+    const activeImgs = mode === "results" ? results?.imgs : project.imgs;
+    if (activeImgs && activeImgs[api.selectedScrollSnap()]) {
+      setCurrentImageId(activeImgs[api.selectedScrollSnap()]);
+    }
 
     const handleSelect = () => {
       setCurrent(api.selectedScrollSnap() + 1);
-      if (project.imgs)
-        setCurrentImageId(project.imgs[api.selectedScrollSnap()]);
+      const currentList = mode === "results" ? results?.imgs : project.imgs;
+      if (currentList && currentList[api.selectedScrollSnap()]) {
+        setCurrentImageId(currentList[api.selectedScrollSnap()]);
+      }
     };
 
-    api.on("select", () => {
-      setCurrent(api.selectedScrollSnap() + 1);
-      if (project.imgs)
-        setCurrentImageId(project.imgs[api.selectedScrollSnap()]);
-    });
+    api.on("select", handleSelect);
 
     if (jumpTo !== null && jumpTo !== api.selectedScrollSnap()) {
       api.scrollTo(jumpTo, true);
@@ -192,7 +193,7 @@ useEffect(() => {
                   {(mode === "results" ? results.imgs : project.imgs).map(
                     (image, index) => (
                       <button
-                        key={image._id}
+                        key={image._id || image.name || index}
                         className="aspect-square"
                         onClick={() => {
                           setJumpTo(index);
@@ -284,7 +285,7 @@ useEffect(() => {
                 {mode === "results" &&
                   results.imgs.length > 0 &&
                   results.imgs.map((image, index) => (
-                    <CarouselItem key={image._id}>
+                    <CarouselItem key={image._id || image.name || index}>
                       <ProjectImage
                         image={image}
                         animation={false}

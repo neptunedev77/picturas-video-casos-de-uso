@@ -459,6 +459,24 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  privacy_blur_tool:
+    build:
+      context: ./Tools
+      dockerfile: privacy_blur/Dockerfile
+    restart: on-failure
+    networks:
+      - elk
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - image_data:/app/images
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=user
+      - RABBITMQ_PASSWORD=password
+
   frontend:
     build: ./frontend
     networks:

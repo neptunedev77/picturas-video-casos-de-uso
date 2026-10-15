@@ -257,9 +257,14 @@ export function ProjectProvider({
             break;
           }
 
+          case "IMAGE_ADDED":
+          case "IMAGE_REMOVED":
           default: {
-            // evento desconhecido -> resync
+            // evento desconhecido ou alteracao de imagens -> resync
             qc.invalidateQueries({ queryKey: ["project", ownerId ?? session.user._id, project._id, session.token, ownerId, shareId] });
+            qc.invalidateQueries({ queryKey: ["project"] });
+            qc.invalidateQueries({ queryKey: ["projectImages"] });
+            break;
           }
         }
 

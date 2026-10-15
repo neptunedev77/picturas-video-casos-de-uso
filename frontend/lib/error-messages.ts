@@ -230,6 +230,28 @@ export function getAiErrorMessage(
             "Não foi possível detetar objetos na imagem. Tenta novamente ou usa outra imagem com mais contraste.",
         };
 
+      case 2300: // privacy_blur wrong_procedure
+      case 2301: // privacy_blur corrupted
+        return {
+          title: "Erro no vídeo",
+          description:
+            "Erro ao ler os fotogramas do vídeo. Certifique-se de que o ficheiro não está corrompido e utiliza um formato válido (MP4/H.264).",
+        };
+
+      case 2302: // privacy_blur limit exceeded
+        return {
+          title: "Limite de vídeo excedido",
+          description:
+            "A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite.",
+        };
+
+      case 2303: // privacy_blur error processing
+        return {
+          title: "Erro na anonimização de vídeo",
+          description:
+            "Ocorreu um erro ao processar o vídeo de anonimização. Tenta novamente.",
+        };
+
       // Se tiveres códigos extra dos outros serviços (people_ai, text_ai), vais só acrescentando aqui.
     }
   }

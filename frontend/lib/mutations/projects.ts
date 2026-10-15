@@ -144,6 +144,10 @@ export const useAddProjectImages = (uid: string, pid: string, token: string, own
     onSuccess: (newVersionHeader) => {
       bumpProjectVersion(qc, projectKey, newVersionHeader);
       qc.invalidateQueries({ queryKey: projectKey, refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["project", uid, pid], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["project"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["projectImages"], refetchType: "all" });
       qc.invalidateQueries({ queryKey: ["projectImages", uid, pid, token, ownerId, shareId], refetchType: "all" });
     },
   });
@@ -174,8 +178,15 @@ export const useDeleteProjectImages = (
     onSuccess: (newVersionHeader) => {
       bumpProjectVersion(qc, projectKey, newVersionHeader);
       qc.invalidateQueries({ queryKey: projectKey, refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["project", uid, pid], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["project"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["projects"], refetchType: "all" });
       qc.invalidateQueries({
         queryKey: ["projectImages", uid, pid, token, ownerId, shareId],
+        refetchType: "all",
+      });
+      qc.invalidateQueries({
+        queryKey: ["projectImages"],
         refetchType: "all",
       });
     },
@@ -229,7 +240,7 @@ export const useProcessProject = (
   const resultsKey = ["projectResults", uid, pid, token, ownerId, shareId];
 
   return useMutation({
-    mutationFn: (args: { projectVersion: number }) =>
+    mutationFn: (args: { projectVersion: number; videoMeta?: { duration?: number; width?: number; height?: number } }) =>
       processProject({
         uid: shareId ? (ownerId ?? uid) : uid,  
         pid,
@@ -238,6 +249,7 @@ export const useProcessProject = (
         shareId,
         projectVersion: args.projectVersion,
         runnerUserId: uid,
+        videoMeta: args.videoMeta,
       }),
 
     onSuccess: async (newVersionHeader) => {

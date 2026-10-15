@@ -304,7 +304,11 @@ useEffect(() => {
           processStartTimeRef.current = null;
           processIsAiRef.current = false;
 
-          projectResults.refetch().then(() => {
+          const isCurrentVideo =
+            currentImage?.name?.toLowerCase().endsWith(".mp4") ||
+            currentImage?.url?.toLowerCase().includes(".mp4");
+
+          const finalizeProcessing = () => {
             if (ignoreUpdatesRef.current) return;
 
             setProcessing(false);
@@ -315,9 +319,18 @@ useEffect(() => {
             // avisar o ProjectProvider que o Apply terminou
             setWaitingForPreview("__APPLY_DONE__");
 
+            qc.invalidateQueries({
+              queryKey: ["projectResults", session.user._id, pid, session.token, ownerId, shareId],
+              refetchType: "all",
+            });
+            qc.invalidateQueries({
+              queryKey: ["project", session.user._id, pid, session.token, ownerId, shareId],
+              refetchType: "all",
+            });
+
             const params = new URLSearchParams();
             params.set("mode", "results");
-            params.set("view", "grid");
+            params.set("view", isCurrentVideo ? "carousel" : "grid");
             
             const ownerFromQuery = searchParams.get("owner");
             const shareFromQuery = searchParams.get("share");  
@@ -326,6 +339,15 @@ useEffect(() => {
             if (shareFromQuery) params.set("share", shareFromQuery); 
 
             router.push(`?${params.toString()}`);
+          };
+
+          projectResults
+            .refetch()
+            .then(finalizeProcessing)
+            .catch((err) => {
+              console.error("Error refetching results after process:", err);
+              finalizeProcessing();
+            });
 
             if (startedAt != null) {
               const durationMs = performance.now() - startedAt;
@@ -366,8 +388,7 @@ useEffect(() => {
                 });
               }
             }
-          });
-        }, 2000);
+        }, 500);
       }
 
       return nextSteps;
@@ -401,11 +422,29 @@ useEffect(() => {
     });
   }
 
+  function onVideoProgress(payload: { progress: number; status: string }) {
+    if (ignoreUpdatesRef.current) return;
+    if (typeof payload?.progress === "number") {
+      setProcessingProgress(Math.min(100, Math.max(0, payload.progress)));
+    }
+  }
+
+  function onVideoWarning(payload: { warning: string }) {
+    if (payload?.warning) {
+      toast({
+        title: "Aviso de Processamento",
+        description: payload.warning,
+      });
+    }
+  }
+
   let active = true;
 
   if (active && socket.data) {
     socket.data.on("process-update", onProcessUpdate);
     socket.data.on("process-error", onProcessError);
+    socket.data.on("video-progress", onVideoProgress);
+    socket.data.on("video-warning", onVideoWarning);
   }
 
   return () => {
@@ -413,6 +452,8 @@ useEffect(() => {
     if (socket.data) {
       socket.data.off("process-update", onProcessUpdate);
       socket.data.off("process-error", onProcessError);
+      socket.data.off("video-progress", onVideoProgress);
+      socket.data.off("video-warning", onVideoWarning);
     }
   };
 }, [
@@ -633,9 +674,12 @@ const handleCancel = () => {
                     }
                     className="inline-flex"
                     onClick={() => {
-                      // começa a contar o tempo
+                      // começa a contar o tempo e limpa flag de cancelamento
+                      ignoreUpdatesRef.current = false;
                       processStartTimeRef.current = performance.now();
-                      setProcessing(true);        
+                      setProcessing(true);
+                      setProcessingProgress(0);
+                      setProcessingSteps(0);
                       sidebar.setOpen(false);
                       
                       const aiProcedures = [
@@ -646,6 +690,7 @@ const handleCancel = () => {
                         "text_ai",
                         "upgrade_ai",
                         "expand_ai",
+                        "privacy_blur",
                       ];
 
                       processIsAiRef.current = project.data.tools.some((t) =>

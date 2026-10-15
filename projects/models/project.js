@@ -10,7 +10,11 @@ const imgSchema = new mongoose.Schema({
   og_uri: { type: String, required: true },
   new_uri: { type: String, required: true },
   og_img_key: { type: String, required: true },
-  og_sha256: { type: String, required: true }, 
+  og_sha256: { type: String, required: true },
+  duration: { type: Number, required: false },
+  width: { type: Number, required: false },
+  height: { type: Number, required: false },
+  mime_type: { type: String, required: false },
 });
 
 
