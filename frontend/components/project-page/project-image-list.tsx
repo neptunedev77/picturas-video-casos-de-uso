@@ -196,6 +196,7 @@ useEffect(() => {
                         className="aspect-square"
                         onClick={() => {
                           setJumpTo(index);
+                          setCurrentImageId(image);
 
                           const params = new URLSearchParams();
                           params.set("mode", mode);
@@ -256,20 +257,39 @@ useEffect(() => {
         ) : (
           // Carousel view
           <div className="size-full px-2 sm:px-16 py-2">
-            <Carousel setApi={setApi}>
+            <Carousel
+              setApi={setApi}
+              opts={{
+                watchDrag: (_emblaApi, event) => {
+                  const target = event.target as HTMLElement | null;
+                  if (target?.tagName === "VIDEO" || target?.closest("video")) {
+                    return false;
+                  }
+                  return true;
+                },
+              }}
+            >
               <CarouselContent className="aspect-auto h-[calc(100vh-99px-0.5rem-36px)] xl:h-[calc(100vh-55px-0.5rem-36px)]">
                 {mode === "edit" &&
                   project.imgs.length > 0 &&
-                  project.imgs.map((image) => (
+                  project.imgs.map((image, index) => (
                     <CarouselItem key={image._id}>
-                      <ProjectImage image={image} animation={false} />
+                      <ProjectImage
+                        image={image}
+                        animation={false}
+                        isActive={index === current - 1}
+                      />
                     </CarouselItem>
                   ))}
                 {mode === "results" &&
                   results.imgs.length > 0 &&
-                  results.imgs.map((image) => (
+                  results.imgs.map((image, index) => (
                     <CarouselItem key={image._id}>
-                      <ProjectImage image={image} animation={false} />
+                      <ProjectImage
+                        image={image}
+                        animation={false}
+                        isActive={index === current - 1}
+                      />
                     </CarouselItem>
                   ))}
                 {mode === "results" &&
@@ -294,16 +314,24 @@ useEffect(() => {
           <DialogTitle>Image Preview</DialogTitle>
         </DialogHeader>
         <div className="flex justify-center items-center">
-          {previewImage && (
-            <Image
-              src={previewImage}
-              width={500}
-              height={500}
-              className={`object-contain rounded-md w-full ${previewText ? "max-h-[60vh]" : "max-h-[80vh]"}`}
-              alt="Preview"
-              unoptimized
-            />
-          )}
+          {previewImage &&
+            (previewImage.toLowerCase().includes(".mp4") ? (
+              <video
+                src={previewImage}
+                controls
+                playsInline
+                className={`object-contain rounded-md w-full ${previewText ? "max-h-[60vh]" : "max-h-[80vh]"}`}
+              />
+            ) : (
+              <Image
+                src={previewImage}
+                width={500}
+                height={500}
+                className={`object-contain rounded-md w-full ${previewText ? "max-h-[60vh]" : "max-h-[80vh]"}`}
+                alt="Preview"
+                unoptimized
+              />
+            ))}
         </div>
         {previewText && previewText.length > 0 && (
           <DialogFooter>

@@ -6,7 +6,11 @@ async function uploadImage(userId, projectId, file, stage) {
   const bucketName = `user-${userId}`;
   await createBucket(bucketName);
 
-  const imageKey = `${projectId}/${stage}/${uuidv4()}.${file.mimetype.split("/")[1]}`;
+  let ext = file.mimetype ? file.mimetype.split("/")[1] : "bin";
+  if (file.originalname && file.originalname.includes(".")) {
+    ext = file.originalname.split(".").pop();
+  }
+  const imageKey = `${projectId}/${stage}/${uuidv4()}.${ext}`;
   const params = {
     Bucket: bucketName,
     Key: imageKey,

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { Download, Trash } from "lucide-react";
-import { useState } from "react";
+import { Download, Play, Trash } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,14 +33,21 @@ import { getErrorMessage } from "@/lib/error-messages";
 interface ImageItemProps {
   image: ProjectImage;
   animation?: boolean;
+  isActive?: boolean;
 }
 
-export function ProjectImage({ image, animation = true }: ImageItemProps) {
+export function ProjectImage({
+  image,
+  animation = true,
+  isActive = false,
+}: ImageItemProps) {
   const searchParams = useSearchParams();
+  const view = searchParams.get("view") ?? "grid";
   const mode = searchParams.get("mode") ?? "edit";
 
   const [loaded, setLoaded] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const { _id: pid, version } = useProjectInfo();
   const session = useSession();
@@ -58,39 +65,88 @@ export function ProjectImage({ image, animation = true }: ImageItemProps) {
   const downloadImage = useDownloadProjectImage(mode === "results");
   const { toast } = useToast();
 
+  const isVideo =
+    image.name?.toLowerCase().endsWith(".mp4") ||
+    image.url?.toLowerCase().split("?")[0].endsWith(".mp4") ||
+    image.url?.toLowerCase().includes(".mp4");
+
+  useEffect(() => {
+    if (!isVideo || !videoRef.current) return;
+
+    if (view === "carousel" && isActive) {
+      videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.pause();
+      if (view === "grid") {
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [isVideo, view, isActive]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <ContextMenu>
-        <ContextMenuTrigger>
+        <ContextMenuTrigger disabled={isVideo}>
           <Card className="group relative overflow-hidden size-full">
-            {/* Image */}
+            {/* Media: Video or Image */}
             <div className="size-full relative grid z-0 grid-cols-1 grid-rows-1">
-              <Image
-                src={image.url}
-                unoptimized
-                height={500}
-                width={500}
-                alt={image.name}
-                className={cn(
-                  "size-full object-contain row-start-1 col-start-1 z-30",
-                  animation && "transition-all group-hover:scale-105",
-                )}
-                priority
-                onLoad={() => setLoaded(true)}
-              />
-              <Image
-                src={image.url}
-                unoptimized
-                width={500}
-                height={500}
-                className="object-cover row-start-1 col-start-1 size-full z-10"
-                alt={image.name + " blurred"}
-              />
-              <div className="row-start-1 col-start-1 backdrop-blur-sm size-full bg-black/30 z-20" />
+              {isVideo ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    src={image.url}
+                    controls={view === "carousel"}
+                    muted={true}
+                    loop
+                    playsInline
+                    preload="auto"
+                    className={cn(
+                      "size-full object-contain row-start-1 col-start-1 z-30 relative",
+                      view === "grid" && "pointer-events-none",
+                      animation && "transition-all group-hover:scale-105",
+                    )}
+                    onLoadedData={() => setLoaded(true)}
+                    onCanPlay={() => setLoaded(true)}
+                  />
+                  <div className="row-start-1 col-start-1 size-full bg-black/40 z-10 pointer-events-none" />
+                  {view === "grid" && (
+                    <div className="row-start-1 col-start-1 z-40 flex items-center justify-center pointer-events-none">
+                      <div className="bg-black/60 rounded-full p-2.5 backdrop-blur-sm text-white shadow-md">
+                        <Play className="size-5 fill-white ml-0.5" />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Image
+                    src={image.url}
+                    unoptimized
+                    height={500}
+                    width={500}
+                    alt={image.name}
+                    className={cn(
+                      "size-full object-contain row-start-1 col-start-1 z-30",
+                      animation && "transition-all group-hover:scale-105",
+                    )}
+                    priority
+                    onLoad={() => setLoaded(true)}
+                  />
+                  <Image
+                    src={image.url}
+                    unoptimized
+                    width={500}
+                    height={500}
+                    className="object-cover row-start-1 col-start-1 size-full z-10"
+                    alt={image.name + " blurred"}
+                  />
+                  <div className="row-start-1 col-start-1 backdrop-blur-sm size-full bg-black/30 z-20" />
+                </>
+              )}
               {!loaded && (
                 <>
-                  <div className="row-start-1 col-start-1 z-40 bg-background size-full" />
-                  <Skeleton className="size-full row-start-1 col-start-1 z-50" />
+                  <div className="row-start-1 col-start-1 z-40 bg-background size-full pointer-events-none" />
+                  <Skeleton className="size-full row-start-1 col-start-1 z-50 pointer-events-none" />
                 </>
               )}
             </div>

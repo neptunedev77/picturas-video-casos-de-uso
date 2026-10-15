@@ -52,8 +52,24 @@ const {
 
 const { requireProjectVersion } = require("../middleware/projectVersion");
 
+const ALLOWED_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "video/mp4",
+];
+
 const storage = multer.memoryStorage();
-var upload = multer({ storage: storage });
+var upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  },
+});
 
 const key = fs.readFileSync(__dirname + "/../certs/selfsigned.key");
 const cert = fs.readFileSync(__dirname + "/../certs/selfsigned.crt");
@@ -1173,7 +1189,7 @@ router.post(
   async (req, res) => {
     console.log("PROJECTS-MS /:user/:project/img HIT, file =", !!req.file);
     if (!req.file) {
-      res.status(400).jsonp("No file found");
+      res.status(400).jsonp("No file found or unsupported file type. Allowed types: .png, .jpeg, .jpg, .mp4");
       return;
     }
 
@@ -2396,6 +2412,10 @@ router.post(
         (imgId && project.imgs.find((i) => String(i._id) === String(imgId))) ||
         project.imgs[0];
 
+      const isVideo =
+        img?.og_uri?.toLowerCase().endsWith(".mp4") ||
+        img?.og_img_key?.toLowerCase().endsWith(".mp4");
+
       // 2) obter url do image storage e fazer download para buffer
       const resp = await get_image_internal_url(ownerId, req.params.project, "src", img.og_img_key);
       const url = resp.data.url;
@@ -2403,8 +2423,13 @@ router.post(
       const imgResp = await axios.get(url, { responseType: "arraybuffer" });
       const buffer = Buffer.from(imgResp.data);
 
-      // 3) extrair features
-      const features = await extractImageFeatures(buffer);
+      // 3) extrair features (apenas para imagens estáticas)
+      let features = { width: null, height: null, meanBrightness: null, contrast: null };
+      if (!isVideo) {
+        try {
+          features = await extractImageFeatures(buffer);
+        } catch (_) {}
+      }
 
       // 4) sugestões agora dependem do conteúdo da imagem
       const suggestions = buildSuggestions(message, currentTools, features);
@@ -2414,6 +2439,10 @@ router.post(
       const suggestionsWithPreview = [];
       for (const s of suggestions) {
         try {
+          if (isVideo) {
+            suggestionsWithPreview.push({ ...s, previewUrl: null, previewKey: null });
+            continue;
+          }
           const out = await applyToolsPreview(buffer, s.tools);
           const up = await uploadAssistantPreview(ownerId, req.params.project, out);
           suggestionsWithPreview.push({

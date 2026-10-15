@@ -19,6 +19,24 @@ router.post(
       });
     }
 
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum ficheiro enviado." });
+    }
+
+    const ALLOWED_MIME_TYPES = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "video/mp4",
+      "text/plain",
+    ];
+
+    if (req.file.mimetype && !ALLOWED_MIME_TYPES.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        error: `Tipo de ficheiro não suportado: ${req.file.mimetype}. Tipos permitidos: ${ALLOWED_MIME_TYPES.join(", ")}`,
+      });
+    }
+
 
     try {
       const result = await uploadImage(userId, projectId, req.file, stage);

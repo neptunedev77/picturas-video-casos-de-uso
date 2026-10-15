@@ -20,8 +20,24 @@ const httpsAgent = new https.Agent({
   key: key,
 });
 
+const ALLOWED_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "video/mp4",
+];
+
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  },
+});
 
 const projectsURL = "https://projects:9001/";
 
@@ -411,6 +427,12 @@ router.post(
   upload.single("image"),
   auth.checkToken,
   function (req, res, next) {
+    if (!req.file) {
+      return res
+        .status(400)
+        .jsonp("No file found or unsupported file type. Allowed types: .png, .jpeg, .jpg, .mp4");
+    }
+
     const ownerId = req.query.owner || req.params.user;
     const callerId = req.authUserId || req.params.user;
 

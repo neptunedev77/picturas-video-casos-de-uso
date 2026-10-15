@@ -27,9 +27,11 @@ async function get_image_public_url(user, project, type, img) {
 }
 
 async function post_image(user, project, type, file) {
+  const headers = typeof file?.getHeaders === "function" ? file.getHeaders() : {};
   return await axios.post(
     `${img_storage_ms}/upload/${user}/${project}/${type}`,
-    file /* , { httpsAgent: httpsAgent } */,
+    file,
+    { headers }
   );
 }
 

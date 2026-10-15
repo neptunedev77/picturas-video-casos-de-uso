@@ -14,6 +14,7 @@ export default function Dashboard() {
       "image/png",
       "image/jpeg",
       "image/jpg",
+      "video/mp4",
       "application/zip",
     ];
 
@@ -54,7 +55,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-4 items-center justify-center max-w-[20rem]">
             <ImagePlus size={100} />
             <p className="text-2xl font-medium">
-              Pick a project or drag and drop some images or a .zip to create a
+              Pick a project or drag and drop some images, video (.mp4) or a .zip to create a
               new one
             </p>
           </div>

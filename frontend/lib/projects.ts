@@ -376,8 +376,13 @@ export const downloadProjectImage = async ({
   if (response.status !== 200 || !response.data)
     throw new Error("Failed to download project image");
 
-  const blob = new Blob([response.data], { type: "image/png" });
-  const file = new File([blob], imageName, { type: "image/png" });
+  const lower = imageName.toLowerCase();
+  const isMp4 = lower.endsWith(".mp4");
+  const isJpeg = lower.endsWith(".jpg") || lower.endsWith(".jpeg");
+  const mimeType = isMp4 ? "video/mp4" : isJpeg ? "image/jpeg" : "image/png";
+
+  const blob = new Blob([response.data], { type: mimeType });
+  const file = new File([blob], imageName, { type: mimeType });
 
   return {
     name: imageName,
@@ -614,6 +619,10 @@ export const downloadProjectPdf = async ({
   }
 
   for (const image of images) {
+    if (image.name.toLowerCase().endsWith(".mp4")) {
+      continue;
+    }
+
     const { file } = await downloadProjectImage({
       imageUrl: image.url,
       imageName: image.name,

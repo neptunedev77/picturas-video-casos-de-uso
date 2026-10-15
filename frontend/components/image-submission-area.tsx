@@ -22,6 +22,7 @@ export default function ImageSubmissionArea({
       "image/png",
       "image/jpeg",
       "image/jpg",
+      "video/mp4",
       "application/zip",
     ];
 
@@ -72,7 +73,7 @@ export default function ImageSubmissionArea({
             <div className="flex flex-col gap-4 items-center justify-center max-w-[20rem]">
               <ImagePlus size={64} />
               <p className="font-medium text-lg">
-                Drag and drop images or a .zip
+                Drag and drop images, video (.mp4) or a .zip
               </p>
             </div>
           </AppDropzone>

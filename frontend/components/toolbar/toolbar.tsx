@@ -28,14 +28,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { Eraser } from "lucide-react";
+import { Eraser, Film } from "lucide-react";
 import { useState } from "react";
 import ExpandAITool from "./expand-ai-tool";
+import { useCurrentImage } from "@/providers/project-provider";
 
 export function Toolbar() {
   const searchParams = useSearchParams();
   const view = searchParams.get("view") ?? "grid";
   const mode = searchParams.get("mode") ?? "edit";
+
+  const currentImage = useCurrentImage();
+  const isVideo =
+    currentImage?.name?.toLowerCase().endsWith(".mp4") ||
+    currentImage?.url?.toLowerCase().split("?")[0].endsWith(".mp4") ||
+    currentImage?.url?.toLowerCase().includes(".mp4");
 
   // desativar ferramentas se estiver em grid OU em results
   const disabled = view === "grid" || mode === "results";
@@ -54,6 +61,25 @@ export function Toolbar() {
     ownerParam,
     shareId,
   );
+
+  if (isVideo && view !== "grid") {
+    return (
+      <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
+        <div className="flex flex-col gap-3 items-center pt-2">
+          <span className="text-sm font-medium text-gray-500">Tools</span>
+          <div className="flex flex-col items-center justify-center gap-2 p-2 rounded-lg bg-muted/40 text-center text-muted-foreground w-full">
+            <Film className="size-6 text-primary/70" />
+            <span className="text-[11px] font-medium leading-tight text-foreground/80">
+              Vídeo
+            </span>
+            <span className="text-[10px] leading-tight text-muted-foreground">
+              Sem ferramentas nesta fase
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
