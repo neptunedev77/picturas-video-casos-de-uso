@@ -1,6 +1,6 @@
 # PictuRAS
 
-**Your personal, intuitive and powerful image editor.**
+***Your personal, intuitive and powerful image editor.**
 
 PictuRAS is a web-based image editing platform that combines traditional image processing with AI-powered tools. It is built as a **microservices architecture** orchestrated with Docker Compose, and it is the code base for the group project of the curricular unit _Requisitos e Arquitetura de Software_ (RAS), University of Minho.
 
