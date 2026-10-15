@@ -38,6 +38,9 @@ export interface ProjectImage {
   _id: string;
   name: string;
   url: string;
+  duration?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface ProjectImageText {

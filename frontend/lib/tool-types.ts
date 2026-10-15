@@ -74,6 +74,11 @@ export interface ManualBoundingBox {
   height: number; // 0-100 %
 }
 
+export interface TimeInterval {
+  start: number; // segundos
+  end: number;   // segundos
+}
+
 export interface PrivacyBlurParams {
   mode?: PrivacyBlurMode;
   targets?: PrivacyBlurTargets;
@@ -81,6 +86,8 @@ export interface PrivacyBlurParams {
   intensity?: PrivacyBlurIntensity;
   confidenceThreshold?: number;
   manualBox?: ManualBoundingBox;
+  timeIntervals?: TimeInterval[];
+  timeIntervalsStr?: string;
 }
 
 export type ToolParams =

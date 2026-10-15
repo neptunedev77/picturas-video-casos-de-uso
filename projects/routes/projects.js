@@ -1503,6 +1503,23 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
                 return;
               }
             }
+
+            // Validação de intervalos temporais face à duração do vídeo
+            if (dur) {
+              for (const t of (project.tools || [])) {
+                if (t.procedure === "privacy_blur" && t.params?.timeIntervals) {
+                  const intervals = t.params.timeIntervals;
+                  if (Array.isArray(intervals)) {
+                    for (const iv of intervals) {
+                      if (iv.start >= dur) {
+                        res.status(400).jsonp(`O intervalo de tempo definido (${iv.start}s - ${iv.end}s) excede a duração total do vídeo (${Math.round(dur)}s).`);
+                        return;
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

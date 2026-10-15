@@ -188,7 +188,63 @@ class PrivacyBlur:
             blurred = cv2.GaussianBlur(roi, (kw, kh), sigma)
             frame[y1:y2, x1:x2] = blurred
 
-    def process_video(self, input_path, output_path, targets="both", blur_type="gaussian", intensity="medium", runner_id=None, msg_id="", mode="auto", manual_box=None):
+    def _to_seconds(self, val_str):
+        val_str = str(val_str).strip()
+        if ":" in val_str:
+            parts = [float(p) for p in val_str.split(":")]
+            if len(parts) == 2:
+                return parts[0] * 60 + parts[1]
+            elif len(parts) == 3:
+                return parts[0] * 3600 + parts[1] * 60 + parts[2]
+        return float(val_str)
+
+    def _parse_time_intervals(self, intervals):
+        if not intervals:
+            return []
+        parsed = []
+        if isinstance(intervals, str):
+            parts = [p.strip() for p in intervals.split(",") if p.strip()]
+            for p in parts:
+                if "-" in p:
+                    sub = p.split("-")
+                    try:
+                        s = self._to_seconds(sub[0])
+                        e = self._to_seconds(sub[1])
+                        if s <= e:
+                            parsed.append((s, e))
+                    except Exception:
+                        pass
+        elif isinstance(intervals, list):
+            for item in intervals:
+                if isinstance(item, dict):
+                    try:
+                        s = float(item.get("start", 0))
+                        e = float(item.get("end", 0))
+                        if s <= e:
+                            parsed.append((s, e))
+                    except Exception:
+                        pass
+                elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                    try:
+                        s = float(item[0])
+                        e = float(item[1])
+                        if s <= e:
+                            parsed.append((s, e))
+                    except Exception:
+                        pass
+                elif isinstance(item, str):
+                    if "-" in item:
+                        sub = item.split("-")
+                        try:
+                            s = self._to_seconds(sub[0])
+                            e = self._to_seconds(sub[1])
+                            if s <= e:
+                                parsed.append((s, e))
+                        except Exception:
+                            pass
+        return parsed
+
+    def process_video(self, input_path, output_path, targets="both", blur_type="gaussian", intensity="medium", runner_id=None, msg_id="", mode="auto", manual_box=None, time_intervals=None):
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"Input video not found: {input_path}")
 
@@ -207,6 +263,28 @@ class PrivacyBlur:
         if total_frames <= 0 or width <= 0 or height <= 0:
             cap.release()
             raise ValueError("Invalid video stream dimensions or frame count")
+
+        duration_sec = float(total_frames) / fps
+        parsed_intervals = self._parse_time_intervals(time_intervals)
+
+        # Validar e limitar intervalos à duração real do vídeo
+        validated_intervals = []
+        for (s, e) in parsed_intervals:
+            if s >= duration_sec:
+                print(f"[WARN] Interval {s}s-{e}s starts after video duration {duration_sec:.2f}s. Skipping.", flush=True)
+                continue
+            clamped_e = min(e, duration_sec)
+            validated_intervals.append((s, clamped_e))
+
+        if validated_intervals:
+            print(f"[TIME] Active blur intervals (video duration {duration_sec:.2f}s): {validated_intervals}", flush=True)
+        else:
+            if parsed_intervals:
+                print(f"[TIME] All provided intervals were out of bounds (video duration {duration_sec:.2f}s). No blur applied.", flush=True)
+            else:
+                print(f"[TIME] Applying blur across full video duration ({duration_sec:.2f}s)", flush=True)
+
+        parsed_intervals = validated_intervals
 
         # Ficheiro temporário intermédio sem áudio
         out_dir = os.path.dirname(output_path)
@@ -238,56 +316,65 @@ class PrivacyBlur:
                 if not ret or frame is None:
                     break
 
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                frame_boxes = []
+                current_time = float(frame_idx) / fps
+                in_interval = True
+                if parsed_intervals:
+                    in_interval = any(s <= current_time <= e for (s, e) in parsed_intervals)
 
-                detected_faces = []
-                if mode != "manual":
-                    if targets in ["faces", "both", "all"]:
-                        detected_faces = self._detect_faces(gray, width, height)
+                if in_interval:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    frame_boxes = []
 
-                    if targets in ["plates", "both", "all"]:
-                        frame_boxes.extend(self._detect_plates(gray, width, height))
+                    detected_faces = []
+                    if mode != "manual":
+                        if targets in ["faces", "both", "all"]:
+                            detected_faces = self._detect_faces(gray, width, height)
 
-                # Atualizar rastreio temporal de rostos para estabilidade (evita flicker entre frames)
-                updated_tracked = []
-                used_detected = set()
+                        if targets in ["plates", "both", "all"]:
+                            frame_boxes.extend(self._detect_plates(gray, width, height))
 
-                for (tx, ty, tw, th, ttl) in tracked_faces:
-                    matched = False
+                    # Atualizar rastreio temporal de rostos para estabilidade (evita flicker entre frames)
+                    updated_tracked = []
+                    used_detected = set()
+
+                    for (tx, ty, tw, th, ttl) in tracked_faces:
+                        matched = False
+                        for idx, (dx, dy, dw, dh) in enumerate(detected_faces):
+                            if idx in used_detected:
+                                continue
+                            cx_t, cy_t = tx + tw / 2, ty + th / 2
+                            cx_d, cy_d = dx + dw / 2, dy + dh / 2
+                            dist_sq = (cx_t - cx_d)**2 + (cy_t - cy_d)**2
+                            max_dim = max(tw, th, dw, dh)
+                            if dist_sq < (max_dim * 0.9)**2:
+                                sx = int(0.7 * dx + 0.3 * tx)
+                                sy = int(0.7 * dy + 0.3 * ty)
+                                sw = int(0.7 * dw + 0.3 * tw)
+                                sh = int(0.7 * dh + 0.3 * th)
+                                updated_tracked.append((sx, sy, sw, sh, 5))
+                                used_detected.add(idx)
+                                matched = True
+                                break
+                        if not matched and ttl > 1:
+                            updated_tracked.append((tx, ty, tw, th, ttl - 1))
+
                     for idx, (dx, dy, dw, dh) in enumerate(detected_faces):
-                        if idx in used_detected:
-                            continue
-                        cx_t, cy_t = tx + tw / 2, ty + th / 2
-                        cx_d, cy_d = dx + dw / 2, dy + dh / 2
-                        dist_sq = (cx_t - cx_d)**2 + (cy_t - cy_d)**2
-                        max_dim = max(tw, th, dw, dh)
-                        if dist_sq < (max_dim * 0.9)**2:
-                            sx = int(0.7 * dx + 0.3 * tx)
-                            sy = int(0.7 * dy + 0.3 * ty)
-                            sw = int(0.7 * dw + 0.3 * tw)
-                            sh = int(0.7 * dh + 0.3 * th)
-                            updated_tracked.append((sx, sy, sw, sh, 5))
-                            used_detected.add(idx)
-                            matched = True
-                            break
-                    if not matched and ttl > 1:
-                        updated_tracked.append((tx, ty, tw, th, ttl - 1))
+                        if idx not in used_detected:
+                            updated_tracked.append((dx, dy, dw, dh, 5))
 
-                for idx, (dx, dy, dw, dh) in enumerate(detected_faces):
-                    if idx not in used_detected:
-                        updated_tracked.append((dx, dy, dw, dh, 5))
+                    tracked_faces = updated_tracked
+                    frame_boxes.extend([(x, y, w, h) for (x, y, w, h, _) in tracked_faces])
 
-                tracked_faces = updated_tracked
-                frame_boxes.extend([(x, y, w, h) for (x, y, w, h, _) in tracked_faces])
+                    if (mode in ["manual", "hybrid"]) and manual_rect:
+                        frame_boxes.append(manual_rect)
 
-                if (mode in ["manual", "hybrid"]) and manual_rect:
-                    frame_boxes.append(manual_rect)
+                    total_detections += len(frame_boxes)
 
-                total_detections += len(frame_boxes)
-
-                for (x, y, w, h) in frame_boxes:
-                    self._apply_mask(frame, x, y, w, h, blur_type, intensity)
+                    for (x, y, w, h) in frame_boxes:
+                        self._apply_mask(frame, x, y, w, h, blur_type, intensity)
+                else:
+                    # Fora do intervalo ativo: limpa posições temporais antigas
+                    tracked_faces = []
 
                 writer.write(frame)
                 frame_idx += 1
@@ -360,6 +447,7 @@ class PrivacyBlur:
         intensity = params.get('intensity', 'medium')
         mode = params.get('mode', 'auto')
         manual_box = params.get('manualBox')
+        time_intervals = params.get('timeIntervals') or params.get('timeIntervalsStr')
 
         resp_msg_id = f'privacy-blur-{self._counter}-{msg_id}'
         self._counter += 1
@@ -383,7 +471,7 @@ class PrivacyBlur:
             )
             return
 
-        print(f"[START] Processing privacy_blur for msg={msg_id} input={input_video_path} mode={mode}", flush=True)
+        print(f"[START] Processing privacy_blur for msg={msg_id} input={input_video_path} mode={mode} intervals={time_intervals}", flush=True)
 
         try:
             detections = self.process_video(
@@ -395,7 +483,8 @@ class PrivacyBlur:
                 runner_id=runner_id,
                 msg_id=msg_id,
                 mode=mode,
-                manual_box=manual_box
+                manual_box=manual_box,
+                time_intervals=time_intervals
             )
 
             processing_time = (time.time() - start_time) * 1000
