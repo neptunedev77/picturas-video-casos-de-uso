@@ -51,6 +51,8 @@ const {
 } = require("../middleware/shareAuth");
 
 const { requireProjectVersion } = require("../middleware/projectVersion");
+// UC-VID-001: apagar a revisão de remoção de silêncios quando o vídeo/projeto é apagado
+const { discardForImage, discardForProject } = require("./silence");
 
 const ALLOWED_MIME_TYPES = [
   "image/png",
@@ -1881,6 +1883,7 @@ router.delete( "/:user/:project", checkSharePermission, requireEditPermission, e
       const fresh = await Project.getOne(req.params.user, req.params.project);
       return res.status(409).jsonp({ message: "Project version conflict", serverVersion: fresh?.version ?? null });
     }
+    discardForProject(req.params.project);
     return res.sendStatus(204);
   }
 );
@@ -1895,6 +1898,7 @@ router.delete("/:user", async (req, res, next) => {
 
     for (const p of projects) {
       await deleteProjectAndResources(userId, p._id);
+      await discardForProject(p._id);
     }
 
     return res.sendStatus(204);
@@ -1991,6 +1995,8 @@ router.delete("/:user/:project/img/:img", checkSharePermission, requireEditPermi
             payload: {},
           },
         });
+
+        discardForImage(req.params.project, img._id);
 
         return res.sendStatus(204);
 

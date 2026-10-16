@@ -300,6 +300,7 @@ router.put("/:user/process/:advanced_tools", function (req, res, next) {
       let new_op = {
         day: op.day,
         processed: op.processed + op_num,
+        silence_analyses: op.silence_analyses || 0,
       };
 
       user.operations.push(new_op);
@@ -349,8 +350,8 @@ router.post("/:user/process/refund/:advanced_tools", async function (req, res) {
       (o) => o.day.getTime() !== process_date.getTime(),
     );
 
-    // se ainda sobrar algo processado hoje, voltamos a inserir
-    if (opToday.processed > 0) {
+    // se ainda sobrar algo processado hoje (ou análises de silêncios), voltamos a inserir
+    if (opToday.processed > 0 || (opToday.silence_analyses || 0) > 0) {
       user.operations.push(opToday);
     }
 
@@ -358,6 +359,83 @@ router.post("/:user/process/refund/:advanced_tools", async function (req, res) {
     return res.status(200).jsonp(true);
   } catch (err) {
     console.error("Error refunding operations:", err);
+    return res.status(701).jsonp("Error acquiring user's information.");
+  }
+});
+
+// --- UC-VID-001: análises de remoção de silêncios (RN6 / REQ-VID-SIL-006) ---------
+// As análises não gastam operações, mas no plano free estão limitadas por dia.
+const max_free_daily_silence_analyses = Number(process.env.FREE_DAILY_SILENCE_ANALYSES || 15);
+
+function silenceAnalysesStatus(user) {
+  const { year, month, day } = get_cur_date();
+  const today = new Date(year, month, day);
+  const opToday = user.operations.find((o) => o.day.getTime() === today.getTime());
+  const used = opToday ? opToday.silence_analyses || 0 : 0;
+  const limit = user.type === "premium" ? null : user.type === "free" ? max_free_daily_silence_analyses : 0;
+  return {
+    type: user.type,
+    used,
+    limit,
+    remaining: limit === null ? null : Math.max(0, limit - used),
+  };
+}
+
+async function changeSilenceAnalyses(user, delta) {
+  const { year, month, day } = get_cur_date();
+  const today = new Date(year, month, day);
+  let opToday = user.operations.find((o) => o.day.getTime() === today.getTime());
+  if (!opToday) {
+    user.operations.push({ day: today, processed: 0, silence_analyses: 0 });
+    opToday = user.operations[user.operations.length - 1];
+  }
+  opToday.silence_analyses = Math.max(0, (opToday.silence_analyses || 0) + delta);
+  await User.update(user._id, user);
+}
+
+// Quantas análises restam hoje
+router.get("/:user/silence/analyses", async function (req, res) {
+  try {
+    const user = await User.getOne(req.params.user);
+    if (!user) return res.status(404).jsonp("User not found");
+    return res.status(200).jsonp(silenceAnalysesStatus(user));
+  } catch (err) {
+    console.error("Error in GET /:user/silence/analyses:", err);
+    return res.status(701).jsonp("Error acquiring user's information.");
+  }
+});
+
+// Reservar uma análise (antes de a colocar na fila)
+router.post("/:user/silence/analyses/reserve", async function (req, res) {
+  try {
+    const user = await User.getOne(req.params.user);
+    if (!user) return res.status(404).jsonp("User not found");
+
+    const status = silenceAnalysesStatus(user);
+    if (user.type === "anonymous") {
+      return res.status(403).jsonp({ code: "ANONYMOUS_NOT_ALLOWED", ...status });
+    }
+    if (status.limit !== null && status.remaining <= 0) {
+      return res.status(429).jsonp({ code: "DAILY_ANALYSES_LIMIT", ...status });
+    }
+
+    await changeSilenceAnalyses(user, +1);
+    return res.status(200).jsonp(silenceAnalysesStatus(user));
+  } catch (err) {
+    console.error("Error in POST /:user/silence/analyses/reserve:", err);
+    return res.status(701).jsonp("Error acquiring user's information.");
+  }
+});
+
+// Devolver uma análise que não chegou a ser feita (vídeo recusado, cancelada, falhou)
+router.post("/:user/silence/analyses/refund", async function (req, res) {
+  try {
+    const user = await User.getOne(req.params.user);
+    if (!user) return res.status(404).jsonp("User not found");
+    if (user.type === "free") await changeSilenceAnalyses(user, -1);
+    return res.status(200).jsonp(silenceAnalysesStatus(user));
+  } catch (err) {
+    console.error("Error in POST /:user/silence/analyses/refund:", err);
     return res.status(701).jsonp("Error acquiring user's information.");
   }
 });

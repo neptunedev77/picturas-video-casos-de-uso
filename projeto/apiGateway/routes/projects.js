@@ -101,6 +101,38 @@ Post answer structure in case of success
  */
 
 // listar links de um projeto (só dono) – protegido
+/**
+ * UC-VID-001: remoção de silêncios de um vídeo
+ *   GET  /:user/:project/silence/:img          estado (análise, revisão, progresso, resultado)
+ *   POST /:user/:project/silence/:img/analyze  { options, confirmDiscard }
+ *   PUT  /:user/:project/silence/:img/review   { segments }
+ *   POST /:user/:project/silence/:img/apply    { segments, confirmLargeRemoval }
+ *   POST /:user/:project/silence/:img/cancel
+ */
+function forwardSilence(req, res) {
+  const ownerId = req.query.owner || req.params.user;
+  const callerId = req.authUserId || req.params.user;
+  const action = req.params.action ? `/${req.params.action}` : "";
+
+  axios({
+    method: req.method,
+    url: projectsURL + `${ownerId}/${req.params.project}/silence/${req.params.img}${action}`,
+    data: req.method === "GET" ? undefined : req.body,
+    httpsAgent,
+    params: req.query.share ? { share: req.query.share } : undefined,
+    headers: {
+      Authorization: req.headers["authorization"],
+      "X-Caller-Id": callerId,
+    },
+  })
+    .then((resp) => res.status(resp.status).jsonp(resp.data))
+    .catch((err) => forwardAxiosError(res, err, "Erro no serviço de remoção de silêncios"));
+}
+
+router.get("/:user/:project/silence/:img", auth.checkToken, forwardSilence);
+router.post("/:user/:project/silence/:img/:action(analyze|apply|cancel)", auth.checkToken, forwardSilence);
+router.put("/:user/:project/silence/:img/:action(review)", auth.checkToken, forwardSilence);
+
 router.get("/:user/:project/share", auth.checkToken, (req, res) => {
   axios
     .get(projectsURL + `${req.params.user}/${req.params.project}/share`, {

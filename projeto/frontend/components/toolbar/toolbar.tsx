@@ -16,6 +16,7 @@ import TextAITool from "./text-ai-tool";
 import UpgradeAITool from "./upgrade-ai-tool";
 import ExpandAITool from "./expand-ai-tool";
 import PrivacyBlurTool from "./privacy-blur-tool";
+import SilenceRemovalTool from "./silence-removal-tool";
 import { useClearProjectTools } from "@/lib/mutations/projects";
 import { useSession } from "@/providers/session-provider";
 import { useProjectInfo } from "@/providers/project-provider";
@@ -69,6 +70,7 @@ export function Toolbar() {
         <div className="flex flex-col gap-2 items-center">
           <span className="text-sm text-gray-500">Vídeo</span>
           <PrivacyBlurTool disabled={disabled} />
+          <SilenceRemovalTool disabled={disabled} />
           <AppliedToolsList />
         </div>
         <Dialog open={open} onOpenChange={setOpen}>

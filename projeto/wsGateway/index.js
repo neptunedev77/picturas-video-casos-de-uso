@@ -109,6 +109,21 @@ function process_msg() {
             }
         }
 
+        // UC-VID-001: estado e progresso da remoção de silêncios
+        else if (msg_content.type === "silence-update") {
+            if (user) {
+                io.to(user).emit("silence-update", {
+                    jobId: msg_content.jobId,
+                    projectId: msg_content.projectId,
+                    imgId: msg_content.imgId,
+                    status: msg_content.status,
+                    phase: msg_content.phase,
+                    progress: msg_content.progress,
+                    error: msg_content.error,
+                });
+            }
+        }
+
         //  project updated
         else if (/project-updated/.test(msg_id) || msg_content.type === "project-updated") {
             const projectId = msg_content.projectId;

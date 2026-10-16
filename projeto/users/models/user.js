@@ -4,6 +4,8 @@ const { encrypt, decrypt, hashEmail } = require("../utils/fieldCrypto");
 const daySchema = new mongoose.Schema({
   day: { type: Date, required: true },
   processed: { type: Number, default: 0, required: true },
+  // análises de remoção de silêncios feitas no dia (não contam como operações, RN6)
+  silence_analyses: { type: Number, default: 0 },
 });
 
 const userSchema = new mongoose.Schema({
