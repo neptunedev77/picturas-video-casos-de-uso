@@ -7,10 +7,10 @@
 
 | **Campo** | **Valor** |
 |-----------|-----------|
-| **Grupo / Equipa** | 25 |
+| **Grupo / Equipa** | 6 |
 | **Autores** | Bruno Sousa PG63927, Bruno Vale PG63926, Diogo Macedo PG63947, António Sousa PG63923 |
 | **Data** | 2026-10-05 |
-| **Versão do documento** | v1.0 |
+| **Versão do documento** | v1.1 |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |
 
 ---
@@ -67,7 +67,7 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 |-----------|---------------|
 | FA1 – Alterar nível de qualidade | Antes de confirmar a operação, o utilizador decide escolher outro nível de qualidade. O sistema atualiza a opção selecionada e apresenta os parâmetros correspondentes, regressando depois ao passo de confirmação |
 | FA2 – Cancelar operação | Antes do início do processamento, o utilizador seleciona a opção de cancelar. O sistema termina a operação, não gera nenhum novo vídeo e mantém o ficheiro original inalterado |
-| FA2 – Selecionar outro vídeo | Antes de confirmar o processamento, o utilizador decide substituir o vídeo selecionado. O sistema descarta a seleção atual e permite escolher um novo ficheiro, repetindo posteriormente a respetiva validação |
+| FA3 – Selecionar outro vídeo | Antes de confirmar o processamento, o utilizador decide substituir o vídeo selecionado. O sistema descarta a seleção atual e permite escolher um novo ficheiro, repetindo posteriormente a respetiva validação |
 
 ### 2.4 Exceções
 
@@ -86,39 +86,42 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 | Garantia de Sucesso | É criada uma nova versão otimizada do vídeo de acordo com o nível de qualidade escolhido. O ficheiro resultante fica disponível ao utilizador e o vídeo original permanece inalterado. |
 | Garantia Mínima | Em caso de falha, o vídeo original permanece inalterado e nenhum ficheiro incompleto ou inválido é disponibilizado como resultado da operação |
 
+
 ### 2.6 Regras de Negócio e Restrições
 
 | **ID** | **Regra** |
 |--------|-----------|
-| RN1 | Apenas vídeos em formatos e codecs suportados pelo sistema podem ser processados |
-| RN2 | O vídeo original não deve ser alterado ou substituído durante o processo de otimização |
-| RN3 | O utilizador apenas pode processar vídeos que respeitem os limites associados ao seu perfil |
-| RN4 | O nível de qualidade selecionado deve corresponder a uma configuração de otimização suportada pelo sistema |
-| RN5 | Apenas vídeos cujo processamento tenha sido concluído com sucesso podem ser disponibilizados ao utilizador como resultado final. |
-| RN6 | As opções ou limites da funcionalidade podem variar consoante o perfil do utilizador. |
+| RN1 | Apenas vídeos em formatos e codecs suportados pelo sistema podem ser processados. |
+| RN2 | O vídeo original não deve ser alterado ou substituído durante o processo de otimização. |
+| RN3 | Utilizadores registados podem processar vídeos até 500 MB e 10 minutos; utilizadores premium podem processar vídeos até 2 GB e 60 minutos. |
+| RN4 | No MVP, a funcionalidade suporta vídeos no formato MP4 com codec H.264. |
+| RN5 | Os níveis de qualidade disponíveis são Alta, Equilibrada e Tamanho reduzido. |
+| RN6 | Apenas vídeos cujo processamento tenha sido concluído com sucesso podem ser disponibilizados ao utilizador como resultado final. |
+| RN7 | Cada operação de compressão/otimização iniciada com sucesso conta como uma operação para efeitos da quota diária do utilizador registado. |
 
 ### 2.7 Assunções
 
 | **ID** | **Assunção** |
 |--------|--------------|
-| A1 | Assume-se que o PictuRAS já possui um mecanismo de carregamento de ficheiros de vídeo |
-| A2 | Assume-se que o sistema consegue identificar informação básica do vídeo, nomeadamente o seu formato, duração e tamanho |
-| A3 | Assume-se que o processo de otimização gera um novo ficheiro e não substitui o vídeo original |
-| A4 | Assume-se que existem diferentes níveis de qualidade/otimização disponíveis para escolha do utilizador |
-| A5 | Assume-se que o sistema consegue verificar os limites aplicáveis ao perfil do utilizador antes de iniciar o processamento |
+| A1 | Assume-se que o PictuRAS já possui um mecanismo de carregamento de ficheiros de vídeo. |
+| A2 | Assume-se que o sistema consegue identificar informação básica do vídeo, nomeadamente o seu formato, codec, duração e tamanho. |
+| A3 | Assume-se que o processo de otimização gera um novo ficheiro e não substitui o vídeo original. |
+| A4 | Assume-se que existem três níveis de qualidade disponíveis para escolha do utilizador: Alta, Equilibrada e Tamanho reduzido. |
+| A5 | Assume-se que o sistema consegue verificar os limites aplicáveis ao perfil do utilizador antes de iniciar o processamento. |
+| A6 | Assume-se, para o MVP, que o processamento de vídeo será realizado de forma assíncrona, permitindo ao utilizador continuar a utilizar a aplicação. |
+| A7 | Assume-se que os estados mínimos de uma operação de processamento são: em fila, em processamento, concluído e falhado. |
+| A8 | Assume-se que, no MVP, a indicação de progresso será atualizada pelo menos a cada 5 segundos. |
+| A9 | Assume-se que apenas o proprietário do vídeo pode aceder ao ficheiro original e ao respetivo resultado otimizado. |
+| A10 | Assume-se que o vídeo otimizado permanece disponível durante, pelo menos, 24 horas após a conclusão do processamento. |
 
 ### 2.8 Questões em Aberto
 
 | **ID** | **Questão** |
 |--------|-------------|
-| Q1 | Quais são os formatos e codecs de vídeo suportados pelo PictuRAS? |
-| Q2 | Qual é o tamanho máximo permitido para um ficheiro de vídeo? |
-| Q3 | Existe uma duração máxima permitida para os vídeos? |
-| Q4 | Os limites de tamanho e duração variam entre utilizadores registados e premium? |
-| Q5 | Quais serão os níveis de qualidade disponibilizados ao utilizador? |
-| Q6 | O sistema deve apresentar uma estimativa do tamanho final do vídeo antes do processamento? |
-| Q7 | Durante quanto tempo será armazenado o vídeo otimizado? |
-| Q8 | O processamento do vídeo será realizado de forma síncrona ou em segundo plano? |
+| Q1 | O sistema deverá apresentar ao utilizador uma estimativa do tamanho final do vídeo antes de iniciar o processamento? |
+| Q2 | Em produção, qual deverá ser o período de retenção dos vídeos otimizados para cada perfil de utilizador? |
+| Q3 | Em produção, que tipos de falha deverão permitir retoma ou repetição automática do processamento? |
+| Q4 | Numa evolução futura, a compressão/otimização de vídeo deverá integrar o encadeamento de ferramentas e o processamento em lote existentes no PictuRAS? |
 
 ---
 
@@ -126,7 +129,10 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 
 | **Ferramenta / *skill*** | **Tarefa apoiada** | **Validação realizada pela equipa** |
 |--------------------------|--------------------|--------------------------------------|
-| ChatGPT | Apoio na interpretação da estrutura do template e na escolha de uma funcionalidade de vídeo com complexidade adequada. | A equipa comparou as sugestões com o template disponibilizado pelo docente e decidiu quais eram adequadas ao contexto do PictuRAS. |
+| ChatGPT | Apoio na interpretação dos templates e na escolha e estruturação da funcionalidade de compressão/otimização de vídeo. | A equipa comparou as sugestões com os templates e enunciados disponibilizados pelo docente e adaptou o conteúdo ao caso de uso escolhido. |
+| ChatGPT | Apoio na derivação e organização dos requisitos funcionais a partir do caso de uso, regras de negócio, fluxos alternativos e exceções. | A equipa verificou a origem de cada requisito e manteve os IDs definidos no Exercício 1 quando a intenção do requisito não foi alterada. |
+| ChatGPT | Apoio na identificação e classificação dos requisitos não funcionais segundo a ISO/IEC 25010 e na definição de alvos distintos para MVP e produção. | A equipa reviu os valores propostos, confirmou a sua adequação ao âmbito do MVP e registou as decisões de qualidade utilizadas na ERS. |
+| ChatGPT | Apoio na atualização da análise de impacto, matriz de rastreabilidade, decisões de qualidade, assunções e questões em aberto. | A equipa verificou que cada requisito possui uma origem identificada e que os tópicos fora do âmbito estão explicitamente justificados. |
 
 ---
 
@@ -144,24 +150,157 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 ---
 ---
 
-## 4. Esboço de requisitos derivados
+---
 
-> ⛔ **Não preencher no Exercício 1.** Esta secção será trabalhada na aula seguinte, a partir do caso de uso das secções 2.1 a 2.8. Fica aqui para que conheçam o passo seguinte — veja a secção com o mesmo nome no exemplo de vídeo.
+## 4. Especificação de Requisitos do Sistema (ERS)
 
-### 4.1 Requisitos de Sistema
+**Caso de Uso:** UC-VID-002 — Comprimir/Otimizar vídeo  
+**Versão do dossiê:** v1.1  
+**Baseline do Exercício 1:** v1.0 (caso de uso UC-VID-001; a secção de requisitos derivados não foi preenchida no Exercício 1, pelo que todos os requisitos desta ERS são novos)
 
-| **ID** | **Requisito** | **Tipo** | **Prioridade** | **Novo/Alt** | **Origem** | **Como verificar** |
-|--------|---------------|----------|----------------|--------------|------------|--------------------|
-| REQ-VID-{FUNC}-001 | O sistema deve {…} | F | | | | |
+
+### 4.1 Requisitos da ERS
+
+#### 4.1.1 Requisitos Funcionais
+
+| **ID** | **Requisito** | **Prioridade** | **Evolução** | **Novo/Alt** | **Origem (UC / RN / decisão)** | **Justificação** | **Critério de aceitação / verificação** |
+|--------|---------------|----------------|--------------|--------------|--------------------------------|-----------------|----------------------------------------|
+| REQ-VID-COMP-001 | O sistema deve permitir ao utilizador registado ou premium selecionar um vídeo para compressão/otimização. | Deve ter | Mantido | NOVO | UC-VID-002, passos 1–2 | Permite iniciar a utilização da funcionalidade de compressão/otimização. | Dado um utilizador registado ou premium, quando seleciona a funcionalidade e escolhe um vídeo, então o sistema aceita a seleção e inicia a validação. |
+| REQ-VID-COMP-002 | O sistema deve validar o formato e o codec do vídeo selecionado antes de iniciar o processamento. | Deve ter | Mantido | NOVO | UC-VID-002, passo 3; Exceção 1; RN1 | Evita que ficheiros incompatíveis entrem no processamento. | Dado um vídeo selecionado, quando este é submetido, então o sistema identifica o formato e o codec antes de permitir o processamento. |
+| REQ-VID-COMP-003 | O sistema deve determinar o tamanho do vídeo selecionado. | Deve ter | Mantido | NOVO | UC-VID-002, passo 3; A2 | O tamanho é necessário para verificar os limites associados ao perfil do utilizador. | Dado um vídeo válido, quando é analisado, então o sistema obtém o respetivo tamanho. |
+| REQ-VID-COMP-004 | O sistema deve determinar a duração do vídeo selecionado. | Deve ter | Mantido | NOVO | UC-VID-002, passo 3; A2 | A duração é necessária para verificar os limites associados ao perfil do utilizador. | Dado um vídeo válido, quando é analisado, então o sistema obtém a respetiva duração. |
+| REQ-VID-COMP-005 | O sistema deve apresentar ao utilizador os níveis de qualidade disponíveis para otimização. | Deve ter | Mantido | NOVO | UC-VID-002, passo 4; RN5 | O utilizador necessita de conhecer as opções disponíveis antes de configurar o processamento. | Dado um vídeo validado, quando são apresentadas as opções de processamento, então o sistema apresenta os níveis Alta, Equilibrada e Tamanho reduzido. |
+| REQ-VID-COMP-006 | O sistema deve permitir ao utilizador selecionar um nível de qualidade para o vídeo otimizado. | Deve ter | Mantido | NOVO | UC-VID-002, passo 5; RN5 | A escolha da qualidade determina o perfil de otimização pretendido pelo utilizador. | Dadas as opções disponíveis, quando o utilizador seleciona uma delas, então essa opção fica associada à operação. |
+| REQ-VID-COMP-007 | O sistema deve validar os limites de tamanho e duração aplicáveis ao perfil do utilizador antes de iniciar o processamento. | Deve ter | Mantido | ALT | UC-VID-002, passo 6; Exceção 2; RN3; A5 | A operação tem de respeitar os limites definidos para cada perfil de utilização. | Dado um vídeo e um utilizador autenticado, quando a operação é confirmada, então o sistema verifica os limites do respetivo perfil antes de iniciar o processamento. |
+| REQ-VID-COMP-008 | O sistema deve gerar uma nova versão otimizada do vídeo de acordo com o nível de qualidade selecionado. | Deve ter | Mantido | NOVO | UC-VID-002, passos 7–8; Pós-condição de sucesso | Representa o resultado principal da funcionalidade escolhida. | Dado um vídeo válido e um nível de qualidade selecionado, quando o processamento termina com sucesso, então é criada uma nova versão otimizada correspondente à opção escolhida. |
+| REQ-VID-COMP-010 | O sistema deve armazenar o vídeo otimizado após a conclusão bem-sucedida do processamento. | Deve ter | Mantido | ALT | UC-VID-002, passo 9; Pós-condição de sucesso | O resultado tem de ficar disponível após o processamento para poder ser utilizado pelo utilizador. | Dado um processamento concluído com sucesso, quando a operação termina, então o ficheiro resultante fica armazenado e associado ao utilizador. |
+| REQ-VID-COMP-011 | O sistema deve informar o utilizador quando o processamento do vídeo estiver concluído. | Deve ter | Mantido | NOVO | UC-VID-002, passo 9 | Como o processamento de vídeo pode não ser imediato, o utilizador deve saber quando o resultado está disponível. | Dado um processamento concluído, quando o resultado fica disponível, então o sistema apresenta uma indicação de conclusão ao utilizador. |
+| REQ-VID-COMP-012 | O sistema deve disponibilizar ao utilizador o vídeo otimizado após a conclusão bem-sucedida do processamento. | Deve ter | Mantido | ALT | UC-VID-002, passo 10; RN6; Pós-condição de sucesso | O utilizador necessita de aceder ao resultado final da operação. | Dado um vídeo processado com sucesso, quando o utilizador solicita o resultado, então o sistema disponibiliza o ficheiro otimizado. |
+| REQ-VID-COMP-013 | O sistema deve permitir ao utilizador alterar o nível de qualidade antes de confirmar a operação. | Deveria ter | Mantido | NOVO | UC-VID-002, FA1 | Permite corrigir ou alterar a escolha antes de consumir recursos de processamento. | Dada uma qualidade previamente selecionada, quando o utilizador escolhe outra antes da confirmação, então o sistema substitui a seleção anterior. |
+| REQ-VID-COMP-014 | O sistema deve permitir ao utilizador cancelar a operação antes do início do processamento. | Deveria ter | Mantido | NOVO | UC-VID-002, FA2 | Evita iniciar um processamento que o utilizador já não pretende executar. | Dada uma operação ainda não iniciada, quando o utilizador seleciona cancelar, então nenhum vídeo otimizado é gerado. |
+| REQ-VID-COMP-015 | O sistema deve permitir ao utilizador substituir o vídeo selecionado antes de confirmar o processamento. | Deveria ter | Mantido | NOVO | UC-VID-002, FA3 | Permite corrigir a seleção do ficheiro sem abandonar a funcionalidade. | Dado um vídeo previamente selecionado, quando o utilizador escolhe outro, então o sistema substitui a seleção e valida o novo vídeo. |
+| REQ-VID-COMP-016 | O sistema deve rejeitar vídeos cujo formato ou codec não seja suportado e informar o utilizador da incompatibilidade. | Deve ter | Mantido | NOVO | UC-VID-002, Exceção 1; RN1 | Impede o processamento de ficheiros incompatíveis e fornece informação ao utilizador sobre a causa da rejeição. | Dado um ficheiro num formato ou codec não suportado, quando é submetido, então o sistema impede o processamento e apresenta uma mensagem de incompatibilidade. |
+| REQ-VID-COMP-017 | O sistema deve impedir o processamento de vídeos que excedam os limites definidos para o perfil do utilizador. | Deve ter | Mantido | ALT | UC-VID-002, Exceção 2; RN3 | Garante a aplicação dos limites definidos para cada perfil. | Dado um vídeo que exceda pelo menos um limite do perfil, quando o utilizador confirma a operação, então o sistema rejeita o processamento e informa qual o limite excedido. |
+| REQ-VID-COMP-019 | O sistema deve cancelar a operação e informar o utilizador quando não existir capacidade suficiente para concluir o processamento. | Deve ter | Mantido | NOVO | UC-VID-002, Exceção 4 | Evita que uma operação fique indefinidamente incompleta em caso de falta de capacidade. | Dada uma situação de capacidade insuficiente, quando o sistema tenta iniciar ou continuar o processamento, então a operação é cancelada e o utilizador é informado. |
+| REQ-VID-COMP-020 | O sistema deve aceitar, no MVP, apenas vídeos no formato MP4 codificados em H.264 para esta funcionalidade. | Deve ter | Mantido | NOVO | RN4 | Define explicitamente os formatos e codecs suportados no âmbito atual do MVP. | Dado um vídeo MP4/H.264, quando é submetido, então é aceite quanto ao formato e codec; um ficheiro fora desta combinação é rejeitado. |
+| REQ-VID-COMP-021 | O sistema deve limitar a 500 MB o tamanho de cada vídeo submetido por um utilizador registado. | Deve ter | Mantido | ALT | RN3 | Controla a utilização de recursos associada ao perfil registado. | Dado um utilizador registado, quando submete um vídeo até 500 MB, então o vídeo passa a validação de tamanho; acima de 500 MB é rejeitado. |
+| REQ-VID-COMP-022 | O sistema deve limitar a 10 minutos a duração de cada vídeo submetido por um utilizador registado. | Deve ter | Mantido | ALT | RN3 | Controla a utilização de recursos associada ao perfil registado. | Dado um utilizador registado, quando submete um vídeo com duração até 10 minutos, então o vídeo passa a validação de duração; acima de 10 minutos é rejeitado. |
+| REQ-VID-COMP-023 | O sistema deve limitar a 2 GB o tamanho de cada vídeo submetido por um utilizador premium. | Deve ter | Mantido | ALT | RN3 | Diferencia os limites do perfil premium relativamente ao perfil registado. | Dado um utilizador premium, quando submete um vídeo até 2 GB, então o vídeo passa a validação de tamanho; acima de 2 GB é rejeitado. |
+| REQ-VID-COMP-024 | O sistema deve limitar a 60 minutos a duração de cada vídeo submetido por um utilizador premium. | Deve ter | Mantido | ALT | RN3 | Diferencia os limites do perfil premium relativamente ao perfil registado. | Dado um utilizador premium, quando submete um vídeo com duração até 60 minutos, então o vídeo passa a validação de duração; acima de 60 minutos é rejeitado. |
+| REQ-VID-COMP-025 | O sistema deve contabilizar cada compressão/otimização iniciada com sucesso como uma operação na quota diária do utilizador registado. | Deve ter | Mantido | ALT | RN7 | Integra a nova funcionalidade de vídeo com o mecanismo de quota já existente no PictuRAS. | Dado um utilizador registado com quota disponível, quando inicia uma operação válida de compressão/otimização, então a sua contagem diária aumenta em uma operação. |
+
+#### 4.1.2 Requisitos Não Funcionais e de Qualidade
+
+| **ID** | **Requisito** | **Característica ISO/IEC 25010** | **Alvo MVP** | **Alvo produção** | **Evolução** | **Origem (UC / DQ)** | **Critério de aceitação / verificação** |
+|--------|---------------|----------------------------------|--------------|------------------|--------------|----------------------|----------------------------------------|
+| REQ-VID-COMP-009 | O sistema deve preservar o vídeo original sem alterações durante e após o processo de otimização. | Fiabilidade | O vídeo original deve permanecer inalterado em 100% das operações concluídas ou falhadas. | Igual ao MVP. | Mantido | UC-VID-002, RN2; Pós-condições | Dado um vídeo submetido, quando o processamento termina com sucesso ou falha, então o ficheiro original mantém-se inalterado. |
+| REQ-VID-COMP-018 | O sistema não deve disponibilizar ficheiros resultantes incompletos quando ocorrer uma falha durante o processamento. | Fiabilidade | Nenhum resultado parcial deve ficar acessível ao utilizador após uma falha. | Além de não disponibilizar resultados parciais, o sistema deverá permitir recuperação ou repetição automática do processamento quando aplicável. | Refinado | UC-VID-002, Exceção 3; Garantia Mínima; RN6 | Dada uma falha durante o processamento, quando a operação termina, então nenhum ficheiro parcial fica disponível ao utilizador. |
+| REQ-VID-COMP-026 | O sistema deve confirmar a aceitação ou rejeição de um vídeo para processamento em até 3 segundos após a conclusão da submissão do ficheiro. | Eficiência de Desempenho | ≤ 3 s | ≤ 1 s | Novo | DQ-001 | Dado um vídeo já submetido, quando termina a validação inicial, então o sistema apresenta a aceitação ou rejeição em até 3 segundos no MVP. |
+| REQ-VID-COMP-027 | O processamento do vídeo deve ser executado de forma assíncrona, permitindo ao utilizador continuar a utilizar a aplicação enquanto a otimização decorre. | Eficiência de Desempenho / Usabilidade | O processamento não deve bloquear a sessão do utilizador. | Igual ao MVP, com suporte a maior número de processamentos simultâneos. | Novo | DQ-002 | Dado um processamento em curso, quando o utilizador navega para outra área da aplicação, então consegue continuar a utilizá-la sem esperar pela conclusão da otimização. |
+| REQ-VID-COMP-028 | O sistema deve apresentar ao utilizador o estado do processamento do vídeo. | Usabilidade | Estados mínimos: em fila, em processamento, concluído e falhado. | Estados do MVP mais indicação detalhada de progresso e tempo estimado restante. | Novo | DQ-003 | Dado um trabalho de otimização existente, quando o utilizador consulta o seu estado, então é apresentado um dos estados definidos e este corresponde ao estado real do processamento. |
+| REQ-VID-COMP-029 | Durante o processamento, o sistema deve apresentar uma indicação de progresso atualizada pelo menos a cada 5 segundos. | Usabilidade | Atualização ≤ 5 s | Atualização ≤ 2 s e apresentação de tempo estimado restante. | Novo | DQ-004 | Dado um vídeo em processamento, quando a operação permanece ativa durante mais de 5 segundos, então a indicação de progresso é atualizada pelo menos uma vez em cada intervalo de 5 segundos. |
+| REQ-VID-COMP-030 | O acesso ao vídeo original e ao respetivo resultado otimizado deve estar restrito ao utilizador proprietário desses ficheiros. | Segurança | Um utilizador autenticado não pode aceder aos vídeos pertencentes a outro utilizador. | Igual ao MVP, complementado com mecanismos adicionais de controlo e auditoria de acessos. | Novo | DQ-005 | Dado um vídeo pertencente ao utilizador A, quando o utilizador B tenta aceder ao original ou ao resultado, então o sistema rejeita o acesso. |
+| REQ-VID-COMP-031 | Os ficheiros resultantes da otimização devem permanecer disponíveis durante pelo menos 24 horas após a conclusão do processamento. | Fiabilidade | Disponibilidade mínima de 24 horas após conclusão. | Período configurável de retenção de acordo com o perfil do utilizador. | Novo | DQ-006 | Dado um processamento concluído com sucesso, quando o utilizador acede ao resultado dentro das 24 horas seguintes, então o vídeo permanece disponível. |
+| REQ-VID-COMP-032 | O sistema deve manter o estado da operação como “falhado” quando ocorrer uma falha que impeça a conclusão da otimização. | Fiabilidade | Todas as operações interrompidas por erro terminam com estado “falhado”. | Retoma automática para falhas recuperáveis e estado “falhado” apenas quando a retoma não for possível. | Novo | DQ-007 | Dada uma falha durante a otimização, quando o processamento não consegue terminar, então o estado final apresentado é “falhado”. |
+| REQ-VID-COMP-033 | A adição futura de novos níveis de qualidade de compressão não deve exigir alterações ao comportamento dos níveis já existentes. | Manutenibilidade | A configuração de um novo nível deve poder ser adicionada sem alterar os resultados dos níveis existentes. | Novas estratégias e ferramentas de vídeo devem poder ser integradas de forma independente das existentes. | Novo | DQ-008 | Dada a introdução de um novo nível de qualidade, quando são executados testes sobre Alta, Equilibrada e Tamanho reduzido, então os seus comportamentos anteriores permanecem inalterados. |
+
+#### 4.1.3 Verificação da completude e dos limites do âmbito
+
+| **Tópico a verificar** | **Aplicável?** | **Decisão / justificação** | **Requisito(s) relacionado(s)** |
+|-----------------------|---------------|----------------------------|--------------------------------|
+| Formato, codec, duração e dimensão do vídeo | Sim | A funcionalidade depende da validação destas propriedades antes do processamento. No MVP são aceites vídeos MP4 com codec H.264 e aplicam-se limites distintos de tamanho e duração conforme o perfil do utilizador. | REQ-VID-COMP-002, REQ-VID-COMP-003, REQ-VID-COMP-004, REQ-VID-COMP-007, REQ-VID-COMP-016, REQ-VID-COMP-017, REQ-VID-COMP-020, REQ-VID-COMP-021, REQ-VID-COMP-022, REQ-VID-COMP-023, REQ-VID-COMP-024 |
+| Estado, progresso, cancelamento e resultado | Sim | Como o processamento de vídeo pode ser demorado, o utilizador deve conseguir acompanhar o estado da operação, visualizar progresso, cancelar antes do processamento e aceder ao resultado quando concluído. | REQ-VID-COMP-011, REQ-VID-COMP-012, REQ-VID-COMP-014, REQ-VID-COMP-027, REQ-VID-COMP-028, REQ-VID-COMP-029 |
+| Falhas durante o processamento | Sim | A funcionalidade deve tratar falhas sem alterar o vídeo original nem disponibilizar resultados incompletos. O estado final da operação deve refletir a falha ocorrida. | REQ-VID-COMP-009, REQ-VID-COMP-018, REQ-VID-COMP-019, REQ-VID-COMP-032 |
+| Persistência e expiração dos ficheiros | Sim | O vídeo otimizado deve ser armazenado e permanecer disponível ao utilizador por um período mínimo. Para o MVP definiu-se uma retenção mínima de 24 horas para o resultado processado. | REQ-VID-COMP-010, REQ-VID-COMP-012, REQ-VID-COMP-031 |
+| Perfis e contagem de operações | Sim | A funcionalidade mantém os perfis registado e premium já existentes, aplicando limites diferentes a cada perfil. As operações de compressão/otimização são integradas no mecanismo existente de contagem de operações do utilizador registado. | REQ-VID-COMP-007, REQ-VID-COMP-017, REQ-VID-COMP-021, REQ-VID-COMP-022, REQ-VID-COMP-023, REQ-VID-COMP-024, REQ-VID-COMP-025 |
+| Encadeamento de ferramentas e processamento em lote | Não — fora do âmbito | A compressão/otimização de vídeo no MVP é definida como uma operação individual sobre um único vídeo. A integração com o encadeamento de ferramentas e com o processamento em lote poderá ser considerada numa evolução futura, mas não faz parte do âmbito atual. | N/A |
 
 ### 4.2 Impacto no sistema existente
 
-| **Elemento existente afetado** | **Impacto (Manter / Estender / Alterar)** | **Descrição do impacto** | **Requisitos relacionados** |
-|--------------------------------|-------------------------------------------|--------------------------|------------------------------|
-| {…} | {…} | {…} | {…} |
+| **Elemento existente afetado** | **Impacto (Manter / Estender / Alterar)** | **Descrição do impacto** | **Requisito(s) relacionado(s)** |
+|--------------------------------|-------------------------------------------|--------------------------|---------------------------------|
+| Perfis de utilização — Registado e Premium | Estender | Os perfis existentes passam a incluir limites específicos de tamanho e duração para operações de compressão/otimização de vídeo. | REQ-VID-COMP-007, REQ-VID-COMP-017, REQ-VID-COMP-021, REQ-VID-COMP-022, REQ-VID-COMP-023, REQ-VID-COMP-024 |
+| Quota diária do utilizador registado | Alterar | A contagem existente de operações passa a considerar cada compressão/otimização de vídeo iniciada com sucesso como uma operação. | REQ-VID-COMP-025 |
+| Mecanismo de carregamento e validação de ficheiros | Estender | O mecanismo existente passa a suportar ficheiros de vídeo e a validar formato, codec, tamanho e duração antes do processamento. | REQ-VID-COMP-001, REQ-VID-COMP-002, REQ-VID-COMP-003, REQ-VID-COMP-004, REQ-VID-COMP-016, REQ-VID-COMP-020 |
+| Armazenamento de ficheiros | Estender | O armazenamento existente passa a suportar vídeos originais e ficheiros resultantes da otimização, incluindo a retenção do resultado durante o período definido. | REQ-VID-COMP-009, REQ-VID-COMP-010, REQ-VID-COMP-031 |
+| Disponibilização/exportação de resultados | Estender | O mecanismo existente de disponibilização de resultados passa a suportar ficheiros de vídeo otimizados após a conclusão do processamento. | REQ-VID-COMP-012 |
+| Interface de ferramentas | Estender | A interface existente passa a disponibilizar a ferramenta de compressão/otimização e as respetivas opções de qualidade. | REQ-VID-COMP-001, REQ-VID-COMP-005, REQ-VID-COMP-006, REQ-VID-COMP-013 |
+| Acompanhamento do processamento | Estender | A interface e os mecanismos de execução passam a suportar a apresentação do estado da operação e do respetivo progresso durante o processamento de vídeo. | REQ-VID-COMP-011, REQ-VID-COMP-027, REQ-VID-COMP-028, REQ-VID-COMP-029, REQ-VID-COMP-032 |
+| Controlo de acesso aos ficheiros | Estender | O mecanismo de autorização existente passa a garantir que apenas o proprietário pode aceder ao vídeo submetido e ao resultado otimizado. | REQ-VID-COMP-030 |
+| Tratamento de falhas de processamento | Estender | O sistema passa a tratar falhas específicas de processamento de vídeo, impedindo a disponibilização de resultados incompletos e mantendo o estado da operação consistente. | REQ-VID-COMP-018, REQ-VID-COMP-019, REQ-VID-COMP-032 |
+| Encadeamento de ferramentas e processamento em lote | Manter | O comportamento existente não é alterado nesta fase, porque a integração da compressão/otimização de vídeo com encadeamento e processamento em lote fica fora do âmbito do MVP atual. | N/A |
 
-### 4.3 Matriz de Rastreabilidade
+### 4.3 Matriz de Rastreabilidade Atualizada
 
-| **Elemento do Caso de Uso** | **Descrição abreviada** | **Requisito(s) de Sistema** |
-|------------------------------|-------------------------|------------------------------|
-| Passo 1 | {…} | REQ-VID-…-001 |
+| **Elemento de origem** | **Descrição abreviada** | **Requisito(s) relacionado(s)** |
+|------------------------|-------------------------|---------------------------------|
+| Passo 1 | Selecionar a funcionalidade de compressão/otimização | REQ-VID-COMP-001 |
+| Passo 2 | Selecionar um ficheiro de vídeo | REQ-VID-COMP-001, REQ-VID-COMP-002 |
+| Passo 3 | Validar o vídeo e obter informação sobre formato, tamanho e duração | REQ-VID-COMP-002, REQ-VID-COMP-003, REQ-VID-COMP-004, REQ-VID-COMP-020 |
+| Passo 4 | Apresentar as opções de qualidade disponíveis | REQ-VID-COMP-005 |
+| Passo 5 | Selecionar o nível de qualidade | REQ-VID-COMP-006 |
+| Passo 6 | Validar o perfil e os limites aplicáveis | REQ-VID-COMP-007, REQ-VID-COMP-017, REQ-VID-COMP-021, REQ-VID-COMP-022, REQ-VID-COMP-023, REQ-VID-COMP-024 |
+| Passo 7 | Iniciar o processamento | REQ-VID-COMP-008, REQ-VID-COMP-025 |
+| Passo 8 | Gerar o vídeo otimizado | REQ-VID-COMP-008, REQ-VID-COMP-009 |
+| Passo 9 | Guardar o resultado e informar o utilizador | REQ-VID-COMP-010, REQ-VID-COMP-011 |
+| Passo 10 | Disponibilizar o vídeo otimizado | REQ-VID-COMP-012 |
+| FA1 | Alterar o nível de qualidade antes da confirmação | REQ-VID-COMP-013 |
+| FA2 | Cancelar a operação antes do processamento | REQ-VID-COMP-014 |
+| FA3 | Substituir o vídeo selecionado | REQ-VID-COMP-015 |
+| Exceção 1 | Formato ou codec não suportado | REQ-VID-COMP-016, REQ-VID-COMP-020 |
+| Exceção 2 | Limites do perfil excedidos | REQ-VID-COMP-017, REQ-VID-COMP-021, REQ-VID-COMP-022, REQ-VID-COMP-023, REQ-VID-COMP-024 |
+| Exceção 3 | Falha durante o processamento | REQ-VID-COMP-009, REQ-VID-COMP-018, REQ-VID-COMP-032 |
+| Exceção 4 | Capacidade insuficiente para concluir o processamento | REQ-VID-COMP-019 |
+| Garantia de Sucesso | Criar, armazenar e disponibilizar um vídeo otimizado mantendo o original inalterado | REQ-VID-COMP-008, REQ-VID-COMP-009, REQ-VID-COMP-010, REQ-VID-COMP-012 |
+| Garantia Mínima | Preservar o original e não disponibilizar resultados incompletos | REQ-VID-COMP-009, REQ-VID-COMP-018 |
+| RN1 | Apenas formatos e codecs suportados podem ser processados | REQ-VID-COMP-002, REQ-VID-COMP-016, REQ-VID-COMP-020 |
+| RN2 | O vídeo original permanece inalterado | REQ-VID-COMP-009 |
+| RN3 | Aplicar limites diferentes consoante o perfil | REQ-VID-COMP-007, REQ-VID-COMP-017, REQ-VID-COMP-021, REQ-VID-COMP-022, REQ-VID-COMP-023, REQ-VID-COMP-024 |
+| RN4 | Suportar MP4 com codec H.264 no MVP | REQ-VID-COMP-020 |
+| RN5 | Disponibilizar níveis de qualidade para otimização | REQ-VID-COMP-005, REQ-VID-COMP-006 |
+| RN6 | Apenas resultados completos podem ser disponibilizados | REQ-VID-COMP-012, REQ-VID-COMP-018 |
+| RN7 | Contabilizar a compressão na quota diária do utilizador registado | REQ-VID-COMP-025 |
+| DQ-001 | Definir um tempo máximo para comunicar o resultado da validação inicial | REQ-VID-COMP-026 |
+| DQ-002 | Executar o processamento de forma assíncrona | REQ-VID-COMP-027 |
+| DQ-003 | Disponibilizar estados explícitos para acompanhar o processamento | REQ-VID-COMP-028 |
+| DQ-004 | Atualizar regularmente a indicação de progresso | REQ-VID-COMP-029 |
+| DQ-005 | Restringir o acesso aos vídeos ao respetivo proprietário | REQ-VID-COMP-030 |
+| DQ-006 | Definir um período mínimo de retenção do vídeo otimizado | REQ-VID-COMP-031 |
+| DQ-007 | Manter um estado consistente quando o processamento falha | REQ-VID-COMP-032 |
+| DQ-008 | Permitir evolução dos níveis de qualidade sem alterar os existentes | REQ-VID-COMP-033 |
+
+**Decisões de qualidade introduzidas nesta aula**
+
+| **ID** | **Decisão de qualidade** | **Justificação** | **Requisito(s) relacionado(s)** |
+|--------|--------------------------|-----------------|---------------------------------|
+| DQ-001 | A validação inicial deve comunicar aceitação ou rejeição em até 3 segundos no MVP. | Evita que o utilizador fique sem perceber se o vídeo foi aceite para processamento. | REQ-VID-COMP-026 |
+| DQ-002 | O processamento de vídeo deve ser assíncrono. | A compressão pode demorar vários minutos e não deve bloquear a utilização da aplicação. | REQ-VID-COMP-027 |
+| DQ-003 | O processamento deve possuir estados explícitos: em fila, em processamento, concluído e falhado. | Permite ao utilizador acompanhar operações que não são instantâneas. | REQ-VID-COMP-028 |
+| DQ-004 | A indicação de progresso deve ser atualizada pelo menos a cada 5 segundos no MVP. | Dá feedback regular ao utilizador durante operações demoradas. | REQ-VID-COMP-029 |
+| DQ-005 | Apenas o proprietário pode aceder ao vídeo original e ao resultado otimizado. | Os vídeos submetidos são dados do utilizador e não devem ficar acessíveis a outros utilizadores. | REQ-VID-COMP-030 |
+| DQ-006 | O resultado otimizado deve permanecer disponível durante pelo menos 24 horas no MVP. | Dá ao utilizador um período mínimo previsível para aceder ao resultado. | REQ-VID-COMP-031 |
+| DQ-007 | Uma operação que não termine devido a erro deve assumir o estado “falhado” no MVP. | Evita estados ambíguos e permite distinguir operações concluídas de operações interrompidas. | REQ-VID-COMP-032 |
+| DQ-008 | A introdução de novos níveis de qualidade não deve alterar o comportamento dos níveis já existentes. | Facilita a evolução futura da funcionalidade e reduz o impacto de alterações. | REQ-VID-COMP-033 |
+
+**Verificações de cobertura**
+
+- [x] Cada requisito funcional e não funcional aparece na matriz.
+- [x] Cada requisito tem origem identificada: elemento do caso de uso, regra de negócio ou decisão de qualidade.
+- [x] Todos os elementos relevantes do caso de uso têm requisito associado ou justificação para não terem.
+- [x] Os tópicos excluídos na secção 4.1.3 estão justificados.
+- [x] O impacto no sistema existente está atualizado e ligado aos requisitos relevantes.
+
+---
+
+## ✅ Lista de verificação antes de entregar
+
+- [x] As secções 0 a 3 do dossiê foram preservadas; as assunções, questões em aberto e utilização de IA foram atualizadas.
+- [x] A funcionalidade, o caso de uso e o perfil do Exercício 1 foram mantidos.
+- [x] Requisitos funcionais estão completos para o âmbito e têm critérios verificáveis.
+- [x] Requisitos de qualidade estão classificados e distinguem os alvos MVP e produção.
+- [x] Os IDs existentes foram preservados quando a intenção não mudou.
+- [x] A análise de completude não alargou o âmbito sem decisão explícita.
+- [x] A matriz de rastreabilidade não tem requisitos órfãos nem elementos relevantes por cobrir.
+- [x] As decisões de qualidade e os respetivos requisitos estão identificados.
+
+---
