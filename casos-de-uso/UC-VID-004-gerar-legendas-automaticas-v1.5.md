@@ -354,4 +354,3 @@ A análise seguinte considera a arquitetura atual do repositório `picturas-27`,
 - [x] A matriz de rastreabilidade não tem requisitos órfãos nem elementos relevantes por cobrir.
 - [x] As decisões de qualidade e os respetivos requisitos estão identificados.
 
-**Nota final:** antes da entrega, a equipa deve validar explicitamente as decisões de qualidade DQ-001 a DQ-008 e resolver, sempre que possível, as questões em aberto Q1, Q3, Q4, Q6, Q7, Q8, Q10 e Q11.
