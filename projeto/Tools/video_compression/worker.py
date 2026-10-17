@@ -7,6 +7,7 @@ import time
 import pika
 
 import config
+from authorization import authorize_start, release_failed_launch
 from compressor import compress
 from media import CompressionError
 
@@ -64,6 +65,8 @@ class CompressionWorker:
                             source, output, job.get("quality"), job.get("userType"),
                             progress=lambda pct: publish({"jobId": job["jobId"], "status": "processing", "progress": pct}),
                             tick=lambda: connection.process_data_events(time_limit=0),
+                            before_start=lambda meta: authorize_start(job, meta),
+                            launch_failed=lambda: release_failed_launch(job),
                         )
                         publish({"jobId": job["jobId"], "status": "completed", "result": result})
                     except pika.exceptions.AMQPError:

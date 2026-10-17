@@ -26,7 +26,8 @@ def build_command(source, output, quality):
     ]
 
 
-def compress(source, output, quality, user_type, progress=lambda value: None, tick=lambda: None):
+def compress(source, output, quality, user_type, progress=lambda value: None, tick=lambda: None,
+             before_start=None, launch_failed=None):
     source, output = Path(source).resolve(), Path(output).resolve()
     if source == output or (output.exists() and source.exists() and os.path.samefile(source, output)):
         raise CompressionError("INVALID_PATH", "Input and output must be different files.")
@@ -35,7 +36,8 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
     # Validate quality before launching either media executable.
     build_command(source, output, quality)
     meta = probe(source)
-    check_limits(meta, user_type)
+    if before_start is None:
+        check_limits(meta, user_type)
     output.parent.mkdir(parents=True, exist_ok=True)
     # Conservative admission check; ENOSPC is still handled by the worker.
     if shutil.disk_usage(output.parent).free < max(meta["sizeBytes"] * 2, 64 * 1024 * 1024):
@@ -49,10 +51,22 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
     percent = 0
     lines = queue.Queue()
     try:
-        progress(0)
         # A file drains stderr continuously and avoids deadlocking FFmpeg's pipes.
         with tempfile.TemporaryFile() as errors:
-            proc = subprocess.Popen(build_command(source, partial, quality), stdout=subprocess.PIPE, stderr=errors)
+            if before_start is not None:
+                # Actual ffprobe metadata + current server-side profile/quota, not the queued snapshot.
+                account = before_start(meta)
+                check_limits(meta, account["userType"])
+            try:
+                proc = subprocess.Popen(build_command(source, partial, quality), stdout=subprocess.PIPE, stderr=errors)
+            except OSError as e:
+                if launch_failed is not None:
+                    try:
+                        launch_failed()
+                    except Exception as refund_error:
+                        print(f"[COMPRESSION][REFUND] {refund_error}", flush=True)
+                raise CompressionError("LAUNCH_FAILED", "FFmpeg could not be launched; no video was processed.") from e
+            progress(0)
 
             def read_progress():
                 for line in proc.stdout:

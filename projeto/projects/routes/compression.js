@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -10,6 +11,7 @@ const CompressionJob = require("../models/compressionJob");
 const Project = require("../models/project");
 const { get_image_internal_url } = require("../utils/imageStorage");
 const mq = require("../utils/compression_mq");
+const { authorizeStart, releaseFailedLaunch } = require("../services/compressionAccess");
 const router = express.Router();
 const base = "/:user/:project/compression";
 const ROOT = path.resolve("images/video_compression");
@@ -26,7 +28,10 @@ function owner(req, res, next) {
     if (![req.params.user, req.params.project, req.params.jobId].filter(Boolean).every(mongoose.isValidObjectId)) {
       return res.status(404).json({ code: "NOT_FOUND", message: "Resource not found." });
     }
-    next();
+    // A valid JWT for the URL's user is insufficient if the project belongs to someone else.
+    Project.exists({ _id: req.params.project, user_id: req.params.user })
+      .then((project) => project ? next() : res.status(404).json({ code: "NOT_FOUND", message: "Project not found." }))
+      .catch(() => res.status(503).json({ code: "PROJECTS_UNAVAILABLE", message: "Unable to verify project ownership." }));
   } catch (_) {
     res.status(401).json({ code: "UNAUTHENTICATED", message: "A valid JWT is required." });
   }
@@ -49,7 +54,7 @@ async function fail(jobId, code, message) {
   });
 }
 
-async function prepare(job, img) {
+async function prepare(job, img, workerToken) {
   try {
     const input = job.input_path;
     await fs.promises.mkdir(path.dirname(input), { recursive: true });
@@ -59,6 +64,7 @@ async function prepare(job, img) {
     await mq.sendRequest({
       jobId: String(job._id), quality: job.quality, userType: job.user_type,
       inputPath: job.input_path, outputPath: job.output_path,
+      workerToken,
     });
   } catch (e) {
     console.error("[COMPRESSION] Preparation failed:", e.message);
@@ -84,15 +90,32 @@ router.post(base, owner, wrap(async (req, res) => {
     return res.status(403).json({ code: "REGISTERED_ONLY", message: "A registered account is required." });
   }
   const id = new mongoose.Types.ObjectId();
+  const workerToken = crypto.randomBytes(32).toString("hex");
   const directory = path.join(ROOT, String(id));
   const job = await CompressionJob.create({
     _id: id, ...filter(req), img_id: img._id, quality, user_type: userType,
+    worker_token_hash: crypto.createHash("sha256").update(workerToken).digest("hex"),
     source_name: path.basename(img.og_uri),
     input_path: path.join(directory, "source.mp4"), output_path: path.join(directory, "result.mp4"),
   });
   res.status(202).json(view(job));
   // Download/dispatch is asynchronous; the stored S3 original is never overwritten.
-  prepare(job, img).catch((e) => console.error("[COMPRESSION]", e.message));
+  prepare(job, img, workerToken).catch((e) => console.error("[COMPRESSION]", e.message));
+}));
+
+// Worker-only handshake. The per-job secret is never returned by the public API.
+router.post("/internal/video-compression/:jobId/:action(start|launch-failed)", wrap(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.jobId)) return res.status(404).json({ code: "NOT_FOUND" });
+  const token = /^Bearer (.+)$/.exec(req.headers.authorization || "")?.[1];
+  try {
+    if (req.params.action === "start") {
+      return res.json(await authorizeStart(req.params.jobId, token, req.body?.media));
+    }
+    await releaseFailedLaunch(req.params.jobId, token);
+    res.json({ released: true });
+  } catch (e) {
+    res.status(e.status || 503).json({ code: e.code || "AUTHORIZATION_FAILED", message: e.message });
+  }
 }));
 
 router.get(base, owner, wrap(async (req, res) => {
@@ -119,11 +142,22 @@ router.get(`${base}/:jobId/result`, owner, wrap(async (req, res) => {
 async function handleResult(msg) {
   if (!mongoose.isValidObjectId(msg.jobId)) return;
   const job = await CompressionJob.findById(msg.jobId).select("+input_path +output_path");
-  if (!job || ["completed", "failed"].includes(job.status)) return;
+  if (!job) return;
+  if (["completed", "failed"].includes(job.status)) {
+    if (job.status === "failed" && msg.status === "failed") {
+      await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
+      await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
+    }
+    return;
+  }
   if (msg.status === "failed") {
     await fail(job._id, msg.error?.code || "PROCESSING_FAILED", msg.error?.message || "Compression failed.");
     await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
     await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
+    return;
+  }
+  if (!job.start_claimed) {
+    await fail(job._id, "START_NOT_AUTHORIZED", "Compression was not authorized to start.");
     return;
   }
   if (msg.status === "processing") {

@@ -37,6 +37,7 @@ def probe(filename):
         if not math.isfinite(duration) or duration <= 0 or width <= 0 or height <= 0:
             raise ValueError("Invalid video metadata")
         return {
+            "format": "mp4", "videoCodec": "h264",
             "durationSec": duration, "sizeBytes": Path(filename).stat().st_size,
             "width": width, "height": height,
             "hasAudio": any(s.get("codec_type") == "audio" for s in data.get("streams", [])),
@@ -51,6 +52,10 @@ def check_limits(meta, user_type):
     if user_type not in PLAN_LIMITS:
         raise CompressionError("REGISTERED_ONLY", "A registered account is required.")
     limit = PLAN_LIMITS[user_type]
+    if (not isinstance(meta.get("sizeBytes"), int) or meta["sizeBytes"] <= 0 or
+            not isinstance(meta.get("durationSec"), (int, float)) or
+            not math.isfinite(meta["durationSec"]) or meta["durationSec"] <= 0):
+        raise CompressionError("INVALID_VIDEO", "Invalid video size or duration.")
     if meta["sizeBytes"] > limit["maxBytes"]:
         raise CompressionError("SIZE_LIMIT", "Video exceeds the size limit for this account.")
     if meta["durationSec"] > limit["maxDurationSec"]:

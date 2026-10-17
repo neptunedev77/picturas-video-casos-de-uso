@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// UC-VID-002 only. No pipeline state, quota, cancellation or expiration.
+// UC-VID-002 only. No pipeline state, cancellation or expiration.
 const compressionJobSchema = new mongoose.Schema({
   owner_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   project_id: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -8,6 +8,10 @@ const compressionJobSchema = new mongoose.Schema({
   quality: { type: String, enum: ["high", "balanced", "small"], required: true },
   profile_version: { type: Number, default: 1 },
   user_type: { type: String, enum: ["free", "premium"], required: true },
+  worker_token_hash: { type: String, select: false },
+  start_claimed: { type: Boolean, default: false },
+  quota_charged: { type: Boolean, default: false },
+  quota_refund_claimed: { type: Boolean, default: false },
   status: {
     type: String, enum: ["queued", "processing", "completed", "failed"], default: "queued",
   },

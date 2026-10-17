@@ -10,7 +10,7 @@ const uid = "a".repeat(24), pid = "b".repeat(24), jid = "c".repeat(24);
 
 test("JavaScript syntax in all new modules and shared registrations", () => {
   const appRoot = path.dirname(projectsRoot);
-  for (const file of ["apiGateway/app.js", "apiGateway/routes/compression.js", "projects/app.js",
+  for (const file of ["apiGateway/app.js", "apiGateway/routes/compression.js", "projects/app.js", "projects/services/compressionAccess.js",
     "projects/models/compressionJob.js", "projects/routes/compression.js", "projects/utils/compression_mq.js"]) {
     new vm.Script(fs.readFileSync(path.join(appRoot, file), "utf8"), { filename: file });
   }
@@ -65,10 +65,11 @@ function harness() {
     },
     "../utils/httpsAgent": {},
     "../models/compressionJob": model,
-    "../models/project": { findOne: async () => ({ imgs: { id: () => ({
+    "../models/project": { exists: async () => state.projectExists !== false, findOne: async () => ({ imgs: { id: () => ({
       _id: jid, mime_type: "video/mp4", og_uri: "/original/project/video.mp4", og_img_key: "original.mp4",
     }) } }) },
     "../utils/imageStorage": { get_image_internal_url: async () => ({ data: { url: "signed-internal-source" } }) },
+    "../services/compressionAccess": { authorizeStart: async () => ({ userType: "free" }), releaseFailedLaunch: async () => {} },
     "../utils/compression_mq": {
       consumeResults: (handler) => { state.handleResult = handler; },
       sendRequest: async (body) => { state.request = body; dispatched(); },
@@ -89,10 +90,11 @@ function response() {
     download(file, name) { this.downloaded = { file, name }; } };
 }
 
-test("all four routes have an owner guard; requests without a JWT are rejected", () => {
+test("all four public routes have an owner guard; requests without a JWT are rejected", () => {
   const { routes } = harness();
-  assert.equal(routes.length, 4);
-  for (const route of routes) {
+  const publicRoutes = routes.filter((r) => !r.url.startsWith("/internal/"));
+  assert.equal(publicRoutes.length, 4);
+  for (const route of publicRoutes) {
     const res = response();
     route.handlers[0]({ headers: {}, params: { user: uid, project: pid }, query: {} }, res, () => assert.fail("unauthorized"));
     assert.equal(res.statusCode, 401);
@@ -148,7 +150,7 @@ test("anonymous account cannot create a compression job", async () => {
 
 test("progress is bounded below 100 and terminal jobs ignore late messages", async () => {
   const { state } = harness();
-  state.doc = { _id: jid, status: "queued" };
+  state.doc = { _id: jid, status: "queued", start_claimed: true };
   await state.handleResult({ jobId: jid, status: "processing", progress: 150 });
   assert.equal(state.writes[0].update.$max.progress, 99);
   state.doc.status = "completed";
@@ -158,7 +160,7 @@ test("progress is bounded below 100 and terminal jobs ignore late messages", asy
 
 test("missing output becomes failed instead of publishing a completed result", async () => {
   const { state } = harness();
-  state.doc = { _id: jid, status: "processing", output_path: "/missing.mp4" };
+  state.doc = { _id: jid, status: "processing", start_claimed: true, output_path: "/missing.mp4" };
   state.exists = false;
   await state.handleResult({ jobId: jid, status: "completed", result: {} });
   assert.equal(state.writes[0].update.$set.status, "failed");
@@ -193,4 +195,25 @@ test("completed result is served from its stored path with an independent filena
   );
   assert.equal(res.downloaded.file, "/result.mp4");
   assert.equal(res.downloaded.name, "original-small.mp4");
+});
+
+test("every public route rejects a URL user who does not own the project", async () => {
+  const { routes, state } = harness();
+  state.projectExists = false;
+  for (const route of routes.filter((r) => !r.url.startsWith("/internal/"))) {
+    const res = response();
+    await new Promise((resolve, reject) => {
+      res.json = function (value) { this.body = value; resolve(); return this; };
+      route.handlers[0]({ headers: { authorization: `Bearer ${uid}` },
+        params: { user: uid, project: pid, jobId: jid }, query: {} }, res, () => reject(new Error("Owner bypass")));
+    });
+    assert.equal(res.statusCode, 404);
+  }
+});
+
+test("worker messages without start authorization cannot publish a completed result", async () => {
+  const { state } = harness();
+  state.doc = { _id: jid, status: "queued", start_claimed: false };
+  await state.handleResult({ jobId: jid, status: "completed", result: {} });
+  assert.equal(state.writes[0].update.$set.error.code, "START_NOT_AUTHORIZED");
 });

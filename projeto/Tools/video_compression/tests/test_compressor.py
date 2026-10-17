@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compressor import build_command, compress
@@ -55,6 +56,50 @@ class ContractTests(unittest.TestCase):
                 compress(source, output, "high", "free")
             self.assertEqual(source.read_bytes(), b"original")
             self.assertEqual(output.read_bytes(), b"existing result")
+
+    def test_quota_denied_never_launches_ffmpeg_or_changes_original(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            source.write_bytes(b"original")
+            meta = {"format": "mp4", "videoCodec": "h264", "sizeBytes": 8, "durationSec": 10}
+            authorize = Mock(side_effect=CompressionError("NO_QUOTA", "No daily operations remaining."))
+            with patch("compressor.probe", return_value=meta), patch("compressor.subprocess.Popen") as launch:
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", before_start=authorize)
+                self.assertEqual(raised.exception.code, "NO_QUOTA")
+                launch.assert_not_called()
+            authorize.assert_called_once_with(meta)
+            self.assertEqual(source.read_bytes(), b"original")
+            self.assertFalse(output.exists())
+            self.assertFalse(list(Path(tmp).glob("encode-*")))
+
+    def test_failed_popen_releases_operation_without_producing_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            source.write_bytes(b"original")
+            meta = {"sizeBytes": 8, "durationSec": 10}
+            authorize = Mock(return_value={"userType": "free"})
+            refund = Mock()
+            with patch("compressor.probe", return_value=meta), patch("compressor.subprocess.Popen", side_effect=OSError("missing ffmpeg")):
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", before_start=authorize, launch_failed=refund)
+                self.assertEqual(raised.exception.code, "LAUNCH_FAILED")
+            refund.assert_called_once()
+            self.assertEqual(source.read_bytes(), b"original")
+            self.assertFalse(output.exists())
+
+    def test_profile_upgrade_is_not_rejected_using_the_queued_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            source.write_bytes(b"original")
+            meta = {"sizeBytes": 8, "durationSec": 601}
+            authorize = Mock(return_value={"userType": "premium"})
+            # Reaching Popen proves the current premium limits replaced the queued free profile.
+            with patch("compressor.probe", return_value=meta), patch("compressor.subprocess.Popen", side_effect=OSError("test launch")) as launch:
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", before_start=authorize)
+                self.assertEqual(raised.exception.code, "LAUNCH_FAILED")
+                launch.assert_called_once()
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg/ffprobe not installed")

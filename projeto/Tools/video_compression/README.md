@@ -1,4 +1,4 @@
-# UC-VID-002 — Video compression (first backend block)
+# UC-VID-002 — Video compression
 
 Independent worker for a single existing project video. It does not import or change
 `privacy_blur`, `silence_removal`, project pipelines or their limits/queues.
@@ -6,8 +6,10 @@ Independent worker for a single existing project video. It does not import or ch
 ## REST API
 
 All public paths start with `/api-gateway/projects/:user/:project/compression`.
-Requests require `Authorization: Bearer <JWT>` for the project owner. Anonymous accounts
-and share/owner overrides are rejected. No new upload endpoint is introduced.
+Requests require `Authorization: Bearer <JWT>` for the project owner. The service checks
+that the project actually belongs to the authenticated URL user on all four routes.
+Anonymous creation and share/owner overrides are rejected. Job lookups additionally
+filter by project and owner. No new upload endpoint is introduced.
 
 | Method | Path | Response |
 | --- | --- | --- |
@@ -50,9 +52,40 @@ by projects and available through REST. No WebSocket integration is added in thi
 One job is consumed at a time. Worker results use publisher confirms and manual request
 acks. Redelivered requests report interruption instead of repeating an encode.
 
+## Profile limits and daily quota (block 3)
+
+After ffprobe and disk-capacity checks, immediately before launching FFmpeg, the worker
+requests `POST /internal/video-compression/:jobId/start` from projects. It authenticates
+using a random per-job token supplied only over the compression queue; MongoDB stores
+its SHA-256 hash with `select: false`. Public REST responses never contain this token.
+The internal route is not registered in the API gateway.
+
+Projects rechecks the source/project owner, loads the account's CURRENT profile, and
+validates real size/duration and MP4/H.264 metadata supplied by the trusted worker.
+Thus a profile change while queued is respected. Creating a queued job does not debit
+an operation. Invalid media, exceeded limits and insufficient disk capacity never debit.
+
+For free accounts, projects calls the existing users `GET /:user/process/1` exactly once
+per claimed job; that existing endpoint checks and debits the shared daily operation
+counter. No new quota counter or changes to users/blur/silence quota code are introduced.
+No remaining operations means `failed` with `NO_QUOTA`; FFmpeg is not launched. Premium
+is unlimited and bypasses the debit. An atomic job claim prevents duplicate start
+requests from charging the same compression again. A failed job requires a new job to retry.
+
+If Popen itself fails, the worker uses the internal `launch-failed` action to request the
+existing users `POST /:user/process/refund/1`; a separate atomic claim prevents duplicate
+refunds. A lost start response also attempts this release without retrying the debit.
+Failures AFTER FFmpeg has started remain charged, matching REQ-VID-COMP-025 (an initiated
+operation), rather than importing the silences-specific refund policy.
+
+This intentionally retains the existing quota service's read/update and current-day
+refund semantics. It does not provide a distributed transaction across users/projects;
+service failures during debit/refund can require reconciliation. Duplicate compression
+starts are guarded, but the general quota service is not refactored for cross-tool races.
+
 ## Deliberately excluded
 
-Frontend, quota, uploads above 100 MB, 24-hour retention policy, cancellation,
+Uploads above 100 MB, 24-hour retention policy, cancellation,
 batch/pipeline processing, advanced storage/security changes and automatic retries.
 Existing infrastructure security limitations remain. A projects-service crash during
 source preparation can leave a queued job; reconciliation/watchdog is a later block.
@@ -64,7 +97,7 @@ this backend increment as the complete UC-VID-002 MVP.
 From `projeto/`, with the required runtimes available:
 
 ```text
-node --test Tools/video_compression/tests/test_api.cjs
+node --test Tools/video_compression/tests/test_api.cjs Tools/video_compression/tests/test_quota.cjs
 python -m unittest discover -s Tools/video_compression/tests -v
 ```
 
