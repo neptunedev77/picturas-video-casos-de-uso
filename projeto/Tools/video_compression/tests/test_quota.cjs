@@ -18,10 +18,14 @@ function setup() {
     value && typeof value === "object" && "$ne" in value ? state.job[key] !== value.$ne : state.job[key] === value);
   const model = {
     findById: () => ({ select: async () => state.job }),
-    findOneAndUpdate: async (filter, update) => {
-      if (!matches(filter)) return null;
-      Object.assign(state.job, update.$set);
-      return state.job;
+    findOne: async () => state.job,
+    findOneAndUpdate: (filter, update) => {
+      const execute = async () => {
+        if (!matches(filter)) return null;
+        Object.assign(state.job, update.$set);
+        return state.job;
+      };
+      return { select: execute, then: (resolve, reject) => execute().then(resolve, reject) };
     },
     updateOne: async (filter, update) => { Object.assign(state.job, update.$set); },
   };
@@ -43,6 +47,25 @@ function setup() {
   };
   const context = { module: { exports: {} }, require: (name) => mocks[name] || require(name), Buffer, Date };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, "../../../projects/services/compressionAccess.js"), "utf8"), context);
+  const routes = [];
+  const router = { post: (url, ...handlers) => routes.push({ url, handlers }), get() {} };
+  const routeMocks = { ...mocks,
+    express: { Router: () => router }, mongoose: {}, jsonwebtoken: {},
+    "../utils/imageStorage": {}, "../utils/compression_mq": {},
+    "../services/compressionAccess": context.module.exports,
+    fs: { promises: { rm: async () => {} } },
+  };
+  const routeContext = { module: { exports: {} }, process, console,
+    require: (name) => routeMocks[name] || require(name) };
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, "../../../projects/routes/compression.js"), "utf8"), routeContext);
+  state.cancel = async () => {
+    const res = { statusCode: 200, status(n) { this.statusCode = n; return this; },
+      set() { return this; }, json(body) { this.body = body; return this; } };
+    await routes.find((r) => r.url.endsWith("/cancel")).handlers[1]({
+      params: { jobId: id, user: "owner", project: "project" },
+    }, res, (e) => { throw e; });
+    return res;
+  };
   return { state, ...context.module.exports };
 }
 
@@ -136,4 +159,36 @@ test("failed encoding remains charged after an effective start", async () => {
   await releaseFailedLaunch(id, token);
   assert.equal(state.debits, 1);
   assert.equal(state.refunds, 0);
+});
+
+test("cancellation winning before authorization prevents any quota debit", async () => {
+  const { state, authorizeStart } = setup();
+  assert.equal((await state.cancel()).statusCode, 200);
+  await assert.rejects(authorizeStart(id, token, validMedia), { code: "JOB_CANCELLED" });
+  assert.equal(state.job.status, "cancelled");
+  assert.equal(state.debits, 0);
+});
+
+test("start and cancel race on the same job: only one transition wins", async () => {
+  for (const cancelFirst of [true, false]) {
+    const { state, authorizeStart } = setup();
+    const cancel = () => state.cancel();
+    const start = () => authorizeStart(id, token, validMedia);
+    await Promise.allSettled(cancelFirst ? [cancel(), start()] : [start(), cancel()]);
+    if (state.job.status === "cancelled") assert.equal(state.debits, 0);
+    else {
+      assert.equal(state.job.status, "processing");
+      assert.equal(state.debits, 1);
+    }
+    assert.ok(["processing", "cancelled"].includes(state.job.status));
+  }
+});
+
+test("start winning prevents cancellation and leaves the active job untouched", async () => {
+  const { state, authorizeStart } = setup();
+  await authorizeStart(id, token, validMedia);
+  const cancelled = await state.cancel();
+  assert.equal(cancelled.statusCode, 409);
+  assert.equal(state.job.status, "processing");
+  assert.equal(state.debits, 1);
 });

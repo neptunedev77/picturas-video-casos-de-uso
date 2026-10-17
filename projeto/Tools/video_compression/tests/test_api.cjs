@@ -26,9 +26,19 @@ function harness() {
     post: (url, ...handlers) => routes.push({ method: "POST", url, handlers }),
     get: (url, ...handlers) => routes.push({ method: "GET", url, handlers }),
   };
-  const query = () => ({ select: async () => state.doc });
+  const query = () => ({ select: async () => state.doc,
+    then: (resolve, reject) => Promise.resolve(state.doc).then(resolve, reject) });
   const model = {
     findById: query, findOne: query,
+    exists: async () => state.created?.status === "queued",
+    findOneAndUpdate: (filter, update) => ({ select: async () => {
+      const doc = state.doc;
+      if (!doc || doc.status !== filter.status || doc.start_claimed === true ||
+          (doc.owner_id || uid) !== filter.owner_id || (doc.project_id || pid) !== filter.project_id) return null;
+      Object.assign(doc, update.$set);
+      state.writes.push({ filter, update });
+      return doc;
+    } }),
     create: async (data) => {
       state.created = { ...data, status: "queued", progress: 0, profile_version: 1 };
       return state.created;
@@ -52,7 +62,11 @@ function harness() {
       existsSync: () => state.exists,
       createWriteStream: (filename, options) => {
         state.copy = { filename, options, bytes: [] };
-        return new Writable({ write(chunk, encoding, done) { state.copy.bytes.push(chunk); done(); } });
+        return new Writable({ write(chunk, encoding, done) {
+          state.copy.bytes.push(chunk);
+          if (state.cancelDuringCopy) state.created.status = "cancelled";
+          done();
+        } });
       },
       promises: {
         mkdir: async () => {},
@@ -90,10 +104,10 @@ function response() {
     download(file, name) { this.downloaded = { file, name }; } };
 }
 
-test("all four public routes have an owner guard; requests without a JWT are rejected", () => {
+test("all five public routes have an owner guard; requests without a JWT are rejected", () => {
   const { routes } = harness();
   const publicRoutes = routes.filter((r) => !r.url.startsWith("/internal/"));
-  assert.equal(publicRoutes.length, 4);
+  assert.equal(publicRoutes.length, 5);
   for (const route of publicRoutes) {
     const res = response();
     route.handlers[0]({ headers: {}, params: { user: uid, project: pid }, query: {} }, res, () => assert.fail("unauthorized"));
@@ -216,4 +230,52 @@ test("worker messages without start authorization cannot publish a completed res
   state.doc = { _id: jid, status: "queued", start_claimed: false };
   await state.handleResult({ jobId: jid, status: "completed", result: {} });
   assert.equal(state.writes[0].update.$set.error.code, "START_NOT_AUTHORIZED");
+});
+
+test("owner cancels a queued job atomically and removes its private copies", async () => {
+  const { routes, state } = harness();
+  state.doc = { _id: jid, status: "queued", input_path: "/copy.mp4", output_path: "/result.mp4" };
+  const res = response();
+  await routes.find((r) => r.url.endsWith("/cancel")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, res, (e) => { throw e; });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "cancelled");
+  assert.equal(state.writes[0].filter.status, "queued");
+  assert.equal(state.writes[0].filter.start_claimed.$ne, true);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+  assert.equal(state.request, undefined);
+});
+
+test("processing and terminal jobs cannot be cancelled; missing job returns 404", async () => {
+  for (const status of ["processing", "completed", "failed", "cancelled", null]) {
+    const { routes, state } = harness();
+    state.doc = status ? { _id: jid, status } : null;
+    const res = response();
+    await routes.find((r) => r.url.endsWith("/cancel")).handlers[1](
+      { params: { user: uid, project: pid, jobId: jid } }, res, (e) => { throw e; });
+    assert.equal(res.statusCode, status ? 409 : 404);
+    assert.equal(state.removed.length, 0);
+  }
+});
+
+test("a cancelled job ignores late progress, success and failure messages", async () => {
+  const { state } = harness();
+  state.doc = { _id: jid, status: "cancelled", input_path: "/copy.mp4", output_path: "/result.mp4" };
+  for (const status of ["processing", "completed", "failed"]) {
+    await state.handleResult({ jobId: jid, status, progress: 99, result: {} });
+  }
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.doc.status, "cancelled");
+});
+
+test("cancellation during preparation cleans the completed copy instead of publishing a request", async () => {
+  const { routes, state } = harness();
+  state.cancelDuringCopy = true;
+  await routes[0].handlers[1]({ body: { imgId: jid, quality: "balanced" },
+    params: { user: uid, project: pid } }, response(), (e) => { throw e; });
+  // Let the mocked asynchronous stream finish, including the post-copy status check.
+  await new Promise(setImmediate);
+  assert.equal(state.created.status, "cancelled");
+  assert.equal(state.request, undefined);
+  assert.ok(state.removed.includes(state.created.input_path));
 });

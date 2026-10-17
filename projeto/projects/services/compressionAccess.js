@@ -39,6 +39,7 @@ async function workerJob(jobId, token) {
 
 async function authorizeStart(jobId, token, meta) {
   const job = await workerJob(jobId, token);
+  if (job.status === "cancelled") throw error(409, "JOB_CANCELLED", "This compression job was cancelled.");
   const project = await Project.findOne({ _id: job.project_id, user_id: job.owner_id });
   if (!project?.imgs.id(job.img_id)) throw error(404, "NOT_FOUND", "Source video no longer exists in the owner's project.");
   let user;
@@ -49,7 +50,7 @@ async function authorizeStart(jobId, token, meta) {
   // Atomic job claim prevents a duplicate delivery/HTTP retry from charging twice.
   const claimed = await CompressionJob.findOneAndUpdate({
     _id: job._id, status: "queued", start_claimed: { $ne: true },
-  }, { $set: { start_claimed: true, user_type: user.type } }, { new: true });
+  }, { $set: { start_claimed: true, status: "processing", user_type: user.type } }, { new: true });
   if (!claimed) throw error(409, "START_ALREADY_CLAIMED", "This compression job cannot be started again.");
   try {
     if (user.type === "free") {

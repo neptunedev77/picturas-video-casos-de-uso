@@ -44,7 +44,7 @@ function client() {
     }),
   };
   const lib = load("lib/compression.ts", {
-    axios: { isAxiosError: (e) => e?.isAxiosError === true },
+    axios: { __esModule: true, default: { isAxiosError: (e) => e?.isAxiosError === true } },
     "./axios": { api }, "@tanstack/react-query": hooks,
   });
   return { lib, state };
@@ -80,7 +80,7 @@ test("restore only this video's jobs from persisted REST state", async () => {
 test("poll every two seconds only while queued/processing, and pause when closed", () => {
   const { lib, state } = client();
   lib.useCompressionJobs(target, true);
-  for (const status of ["queued", "processing", "completed", "failed"]) {
+  for (const status of ["queued", "processing", "completed", "failed", "cancelled"]) {
     assert.equal(state.query.refetchInterval({ state: { data: [job(status)] } }),
       ["queued", "processing"].includes(status) ? 2000 : false);
   }
@@ -141,7 +141,8 @@ function panel(currentJob, extra = {}) {
     "@tanstack/react-query": { useMutation: () => ({ isPending: false, reset() {}, mutate() {} }) },
     "lucide-react": { AlertTriangle: "AlertTriangle", CheckCircle2: "CheckCircle2", Download: "Download", LoaderCircle: "LoaderCircle" },
     "@/components/ui/button": { Button: "Button" }, "@/components/ui/progress": { Progress: "Progress" },
-    "@/lib/compression": { ...lib, useCompressionJobs: () => query, useCreateCompression: () => create },
+    "@/lib/compression": { ...lib, useCompressionJobs: () => query, useCreateCompression: () => create,
+      useCancelCompression: () => ({ isPending: false, reset() {}, mutate() {} }) },
   });
   return { tree: exports.CompressionPanel({ target, videoName: "video.mp4", open: true }), state };
 }
@@ -214,4 +215,33 @@ test("toolbar component compiles without touching colleagues' implementations", 
   assert.equal(Boolean(nodes(tree).find((node) => node.props?.["data-testid"] === "video-compression-button").props.disabled), false);
   mocks["@/providers/session-provider"].useSession = () => ({ user: { _id: "other", type: "free" }, token: "secret" });
   assert.equal(nodes(tool({})).find((node) => node.props?.["data-testid"] === "video-compression-button").props.disabled, true);
+});
+
+test("cancel sends an authenticated POST and replaces cached queued state", async () => {
+  const { lib, state } = client();
+  state.response = job("cancelled");
+  const result = await lib.cancelCompressionJob(target, "job");
+  assert.equal(result.status, "cancelled");
+  assert.equal(state.calls[0].args[0], "/projects/owner/project/compression/job/cancel");
+  assert.equal(state.calls[0].args[2].headers.Authorization, "Bearer secret");
+  lib.useCancelCompression(target);
+  assert.equal(state.mutation.retry, false);
+  state.cache = [job()];
+  await state.mutation.onSuccess(result);
+  assert.equal(state.cache[0].status, "cancelled");
+  await state.mutation.onSettled();
+  assert.equal(state.invalidated, true);
+});
+
+test("cancel button appears only for queued jobs and cancelled state is displayed", () => {
+  for (const status of ["queued", "processing", "completed", "failed", "cancelled"]) {
+    const { tree } = panel(job(status));
+    const button = nodes(tree).find((node) => node.type === "Button" && text(node) === "Cancelar");
+    assert.equal(Boolean(button), status === "queued");
+    if (status === "cancelled") {
+      assert.ok(text(tree).includes("Cancelado"));
+      assert.equal(nodes(tree).some((node) => node.type === "Progress"), false);
+      assert.equal(Boolean(nodes(tree).find((node) => node.props?.["data-testid"] === "start-compression-button").props.disabled), false);
+    }
+  }
 });

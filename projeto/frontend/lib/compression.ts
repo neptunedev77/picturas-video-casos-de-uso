@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./axios";
 
 export type CompressionQuality = "high" | "balanced" | "small";
-export type CompressionStatus = "queued" | "processing" | "completed" | "failed";
+export type CompressionStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
 export const COMPRESSION_QUALITIES: Record<CompressionQuality, string> = {
   high: "Alta",
@@ -17,6 +17,7 @@ export const COMPRESSION_STATUS: Record<CompressionStatus, string> = {
   processing: "Em processamento",
   completed: "Concluído",
   failed: "Falhado",
+  cancelled: "Cancelado",
 };
 
 export interface CompressionTarget {
@@ -91,6 +92,10 @@ export function createCompressionJob(t: CompressionTarget, quality: CompressionQ
   return call(() => api.post<CompressionJob>(basePath(t), { imgId: t.imgId, quality }, config(t)));
 }
 
+export function cancelCompressionJob(t: CompressionTarget, jobId: string) {
+  return call(() => api.post<CompressionJob>(`${basePath(t)}/${encodeURIComponent(jobId)}/cancel`, {}, config(t)));
+}
+
 export async function downloadCompressionResult(t: CompressionTarget, job: CompressionJob) {
   if (job.status !== "completed") throw new Error("O resultado ainda não está disponível.");
   const blob = await call(() => api.get<Blob>(`${basePath(t)}/${encodeURIComponent(job._id)}/result`, {
@@ -129,6 +134,21 @@ export function useCreateCompression(t: CompressionTarget) {
       ]);
       void queryClient.invalidateQueries({ queryKey: compressionKey(t) });
     },
+  });
+}
+
+export function useCancelCompression(t: CompressionTarget) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string) => cancelCompressionJob(t, jobId),
+    retry: false,
+    onSuccess: async (job) => {
+      await queryClient.cancelQueries({ queryKey: compressionKey(t) });
+      queryClient.setQueryData<CompressionJob[]>(compressionKey(t), (previous) =>
+        (previous || []).map((old) => old._id === job._id ? job : old));
+    },
+    // Also resync on 409: the worker may have claimed the job since the last poll.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: compressionKey(t) }),
   });
 }
 

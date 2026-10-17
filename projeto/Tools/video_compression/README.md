@@ -7,7 +7,7 @@ Independent worker for a single existing project video. It does not import or ch
 
 All public paths start with `/api-gateway/projects/:user/:project/compression`.
 Requests require `Authorization: Bearer <JWT>` for the project owner. The service checks
-that the project actually belongs to the authenticated URL user on all four routes.
+that the project actually belongs to the authenticated URL user on all five public routes.
 Anonymous creation and share/owner overrides are rejected. Job lookups additionally
 filter by project and owner. No new upload endpoint is introduced.
 
@@ -17,10 +17,11 @@ filter by project and owner. No new upload endpoint is introduced.
 | GET | base | Latest 100 jobs for this owner/project |
 | GET | `/:jobId` | Status, progress, result metadata or error |
 | GET | `/:jobId/result` | Completed MP4 download (supports Range); `409` before completion |
+| POST | `/:jobId/cancel` | Cancel queued job; `409` if already started/terminal, `404` if not found |
 
 POST accepts a job, not a validated encode: the worker checks the actual media before
 transcoding. Poll GET while `queued`/`processing` (for example every 2 seconds).
-States: `queued`, `processing`, `completed`, `failed`. Download/dispatch happens after
+States: `queued`, `processing`, `completed`, `failed`, `cancelled`. Download/dispatch happens after
 the `202` response. This block does not claim the full UC's initial validation SLA.
 
 ## Processing and storage
@@ -83,9 +84,24 @@ refund semantics. It does not provide a distributed transaction across users/pro
 service failures during debit/refund can require reconciliation. Duplicate compression
 starts are guarded, but the general quota service is not refactored for cross-tool races.
 
+## Queued cancellation (REQ-VID-COMP-014)
+
+The owner can cancel only a queued job. Cancellation and start both use an atomic
+findOneAndUpdate on the same job, requiring status queued and start_claimed not true.
+The start claim now sets processing in that same update, before attempting the quota
+debit. If cancellation wins, start authorization fails and FFmpeg cannot be launched
+or quota debited. If start wins, cancellation returns 409 without deleting active files.
+
+Private source/output copies are removed on a best-effort basis. If preparation is
+still downloading, its post-download check removes the copy and skips publication.
+A request already in RabbitMQ may still be delivered; it cannot authorize a cancelled
+job. Late worker messages never replace cancelled status. The frontend shows Cancelar
+only while queued, then Cancelado; it resyncs via REST if start won the race.
+There is no cancellation during FFmpeg and no changes to other tools or shared storage.
+
 ## Deliberately excluded
 
-Uploads above 100 MB, 24-hour retention policy, cancellation,
+Uploads above 100 MB, 24-hour retention policy, cancellation during FFmpeg,
 batch/pipeline processing, advanced storage/security changes and automatic retries.
 Existing infrastructure security limitations remain. A projects-service crash during
 source preparation can leave a queued job; reconciliation/watchdog is a later block.

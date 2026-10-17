@@ -15,6 +15,7 @@ import {
   isCompressionActive,
   useCompressionJobs,
   useCreateCompression,
+  useCancelCompression,
 } from "@/lib/compression";
 
 interface Props {
@@ -28,6 +29,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
   const starting = useRef(false);
   const query = useCompressionJobs(target, open);
   const create = useCreateCompression(target);
+  const cancel = useCancelCompression(target);
   // Restore active work first; otherwise show this video's most recent result.
   const job = query.data?.find(isCompressionActive) ?? query.data?.[0];
   const busy = isCompressionActive(job);
@@ -53,6 +55,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
     if (starting.current || busy || create.isPending) return;
     starting.current = true;
     download.reset();
+    cancel.reset();
     try { await create.mutateAsync(quality); }
     catch { /* The mutation's error is displayed below. */ }
     finally { starting.current = false; }
@@ -92,7 +95,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
           <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm font-medium">
             {busy ? <LoaderCircle className="h-4 w-4 animate-spin" />
               : job.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-green-600" />
-                : <AlertTriangle className="h-4 w-4 text-destructive" />}
+                : job.status === "failed" ? <AlertTriangle className="h-4 w-4 text-destructive" /> : null}
             {COMPRESSION_STATUS[job.status]}
           </div>
           <p className="text-sm text-muted-foreground">Qualidade: {COMPRESSION_QUALITIES[job.quality]}</p>
@@ -103,6 +106,11 @@ export function CompressionPanel({ target, videoName, open }: Props) {
                 {job.status === "queued" ? "A aguardar processamento" : "A comprimir o vídeo"} · {Math.round(progress)}%
               </p>
               <p className="text-xs text-muted-foreground">Pode fechar este diálogo e consultar o trabalho mais tarde.</p>
+              {job.status === "queued" && (
+                <Button variant="outline" disabled={cancel.isPending} onClick={() => cancel.mutate(job._id)}>
+                  {cancel.isPending ? "A cancelar…" : "Cancelar"}
+                </Button>
+              )}
             </div>
           )}
           {job.status === "failed" && (
@@ -132,8 +140,9 @@ export function CompressionPanel({ target, videoName, open }: Props) {
 
       {create.error && <p role="alert" className="text-sm text-destructive">{create.error.message}</p>}
       {download.error && <p role="alert" className="text-sm text-destructive">{download.error.message}</p>}
+      {cancel.error && <p role="alert" className="text-sm text-destructive">{cancel.error.message}</p>}
       <div className="flex justify-end">
-        <Button disabled={busy || create.isPending || query.isPending || query.isError || download.isPending}
+        <Button disabled={busy || create.isPending || cancel.isPending || query.isPending || query.isError || download.isPending}
           onClick={() => void start()} data-testid="start-compression-button">
           {create.isPending && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
           {create.isPending ? "A iniciar…" : "Comprimir vídeo"}

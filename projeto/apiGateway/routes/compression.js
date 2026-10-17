@@ -12,7 +12,7 @@ async function forward(req, res) {
     return res.status(403).json({ code: "OWNER_ONLY", message: "Compression is owner-only." });
   }
   const suffix = req.params.jobId
-    ? `/${req.params.jobId}${req.path.endsWith("/result") ? "/result" : ""}` : "";
+    ? `/${req.params.jobId}${req.path.endsWith("/result") ? "/result" : req.path.endsWith("/cancel") ? "/cancel" : ""}` : "";
   try {
     const response = await axios({
       method: req.method,
@@ -44,4 +44,5 @@ router.post(base, auth.checkToken, forward);
 router.get(base, auth.checkToken, forward);
 router.get(`${base}/:jobId`, auth.checkToken, forward);
 router.get(`${base}/:jobId/result`, auth.checkToken, forward);
+router.post(`${base}/:jobId/cancel`, auth.checkToken, forward);
 module.exports = router;

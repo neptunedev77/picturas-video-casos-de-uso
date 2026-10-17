@@ -61,6 +61,11 @@ async function prepare(job, img, workerToken) {
     const signed = await get_image_internal_url(String(job.owner_id), String(job.project_id), "src", img.og_img_key);
     const response = await axios.get(signed.data.url, { responseType: "stream", timeout: 60000 });
     await pipeline(response.data, fs.createWriteStream(input, { flags: "wx" }));
+    // Cancellation may have won while the private source copy was being downloaded.
+    if (!await CompressionJob.exists({ _id: job._id, status: "queued", start_claimed: { $ne: true } })) {
+      await fs.promises.rm(input, { force: true }).catch(() => {});
+      return;
+    }
     await mq.sendRequest({
       jobId: String(job._id), quality: job.quality, userType: job.user_type,
       inputPath: job.input_path, outputPath: job.output_path,
@@ -129,6 +134,23 @@ router.get(`${base}/:jobId`, owner, wrap(async (req, res) => {
   res.set("Cache-Control", "private, no-store").json(view(job));
 }));
 
+router.post(`${base}/:jobId/cancel`, owner, wrap(async (req, res) => {
+  // Competes with authorizeStart's queued -> processing claim on this same document.
+  const job = await CompressionJob.findOneAndUpdate({
+    _id: req.params.jobId, ...filter(req), status: "queued", start_claimed: { $ne: true },
+  }, { $set: { status: "cancelled", finished_at: new Date() } }, { new: true })
+    .select("+input_path +output_path");
+  if (!job) {
+    const existing = await CompressionJob.findOne({ _id: req.params.jobId, ...filter(req) });
+    if (!existing) return res.status(404).json({ code: "NOT_FOUND", message: "Job not found." });
+    return res.status(409).json({ code: "CANNOT_CANCEL", message: "Only a queued job that has not started can be cancelled." });
+  }
+  // Best effort; an in-flight preparation retries cleanup when its download finishes.
+  await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
+  await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
+  res.set("Cache-Control", "private, no-store").json(view(job));
+}));
+
 router.get(`${base}/:jobId/result`, owner, wrap(async (req, res) => {
   const job = await CompressionJob.findOne({ _id: req.params.jobId, ...filter(req) }).select("+output_path");
   if (!job) return res.status(404).json({ code: "NOT_FOUND", message: "Job not found." });
@@ -143,8 +165,8 @@ async function handleResult(msg) {
   if (!mongoose.isValidObjectId(msg.jobId)) return;
   const job = await CompressionJob.findById(msg.jobId).select("+input_path +output_path");
   if (!job) return;
-  if (["completed", "failed"].includes(job.status)) {
-    if (job.status === "failed" && msg.status === "failed") {
+  if (["completed", "failed", "cancelled"].includes(job.status)) {
+    if (job.status === "cancelled" || (job.status === "failed" && msg.status === "failed")) {
       await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
       await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
     }
