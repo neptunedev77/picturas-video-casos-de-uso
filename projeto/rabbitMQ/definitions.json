@@ -209,6 +209,20 @@
             "durable": true,
             "auto_delete": false,
             "arguments": {}
+        },
+        {
+            "name": "video_bg_remove_queue",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "video_bg_remove_queue_priority",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
         }
     ],
     "exchanges": [
@@ -421,6 +435,22 @@
             "destination": "video_compression_results_queue",
             "destination_type": "queue",
             "routing_key": "video_compression_results_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "video_bg_remove_queue",
+            "destination_type": "queue",
+            "routing_key": "video_bg_remove_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "video_bg_remove_queue_priority",
+            "destination_type": "queue",
+            "routing_key": "video_bg_remove_queue_priority",
             "arguments": {}
         }
     ]

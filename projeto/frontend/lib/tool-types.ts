@@ -90,6 +90,15 @@ export interface PrivacyBlurParams {
   timeIntervalsStr?: string;
 }
 
+export type VideoBgMode = "green_screen" | "solid" | "bokeh";
+
+export interface VideoBgRemoveParams {
+  bgMode?: VideoBgMode;
+  solidColor?: string;
+  blurIntensity?: number;
+  timeIntervals?: TimeInterval[];
+}
+
 export type ToolParams =
   | BinarizationToolParams
   | BorderToolParams
@@ -101,6 +110,7 @@ export type ToolParams =
   | SaturationToolParams
   | ExpandAiParams
   | PrivacyBlurParams
+  | VideoBgRemoveParams
   | object;
 
 export type ToolNames =
@@ -122,5 +132,6 @@ export type ToolNames =
   | "people_ai"
   | "expand_ai"
   | "privacy_blur"
+  | "video_bg_remove"
   | "project";
 
