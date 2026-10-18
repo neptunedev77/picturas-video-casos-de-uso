@@ -5,6 +5,7 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 var projectsRouter = require("./routes/projects");
+var compressionRouter = require("./routes/compression");
 var usersRouter = require("./routes/users");
 var subscriptionsRouter = require("./routes/subscriptions");
 var app = express();
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+app.use("/projects", compressionRouter);
 app.use("/projects", projectsRouter);
 app.use("/users", usersRouter);
 app.use("/subscriptions", subscriptionsRouter);

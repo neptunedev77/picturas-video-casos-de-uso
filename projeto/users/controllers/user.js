@@ -26,7 +26,7 @@ module.exports.getOne = async (user_id) => {
 module.exports.getOneEmail = async (email) => {
   const emailHash = hashEmail(email);
   const user = await User.findOne({ email_hash: emailHash }).exec();
-  return user ? user.toJSON() : null;
+  return user;
 };
 
 
@@ -34,7 +34,7 @@ module.exports.create = async (user) => {
   try {
     const encrypt_user = await encrypt_password(user);
     const created = await User.create(encrypt_user);
-    // devolve já o objeto JSON com email desencriptado e campos sensíveis removidos
+    // devolve jÃ¡ o objeto JSON com email desencriptado e campos sensÃ­veis removidos
     return created.toJSON();
   } catch (error) {
     if (error.code === 11000 && error.keyPattern && error.keyPattern.email_hash) {

@@ -17,6 +17,7 @@ import UpgradeAITool from "./upgrade-ai-tool";
 import ExpandAITool from "./expand-ai-tool";
 import PrivacyBlurTool from "./privacy-blur-tool";
 import SilenceRemovalTool from "./silence-removal-tool";
+import VideoCompressionTool from "./video-compression-tool";
 import { useClearProjectTools } from "@/lib/mutations/projects";
 import { useSession } from "@/providers/session-provider";
 import { useProjectInfo } from "@/providers/project-provider";
@@ -71,6 +72,7 @@ export function Toolbar() {
           <span className="text-sm text-gray-500">Vídeo</span>
           <PrivacyBlurTool disabled={disabled} />
           <SilenceRemovalTool disabled={disabled} />
+          <VideoCompressionTool disabled={disabled} />
           <AppliedToolsList />
         </div>
         <Dialog open={open} onOpenChange={setOpen}>

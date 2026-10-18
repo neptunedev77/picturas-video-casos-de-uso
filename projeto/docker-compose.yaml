@@ -136,6 +136,7 @@ services:
       - "9002:9001"
     restart: on-failure
     environment:
+      JWT_SECRET_KEY: lisan_al_gaib
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: user
@@ -496,6 +497,25 @@ services:
       - RABBITMQ_USER=user
       - RABBITMQ_PASS=password
       - SILENCE_MAX_CONCURRENT_JOBS=2
+
+  # UC-VID-002: independent video compression worker.
+  video_compression_tool:
+    build:
+      context: ./Tools
+      dockerfile: video_compression/Dockerfile
+    restart: on-failure
+    networks:
+      - elk
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - image_data:/app/images
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
 
   frontend:
     build: ./frontend
