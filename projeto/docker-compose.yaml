@@ -517,6 +517,40 @@ services:
       - RABBITMQ_PASS=password
       - SILENCE_MAX_CONCURRENT_JOBS=2
 
+  # UC-VID-004: separate media, model cache and shared worker state.
+  subtitle_generation_tool:
+    build:
+      context: ./Tools
+      dockerfile: subtitle_generation/Dockerfile
+    restart: on-failure
+    init: true
+    stop_grace_period: 15s
+    networks:
+      - elk
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - image_data:/app/images
+      - subtitle_model_cache:/var/cache/subtitle-models
+      - subtitle_worker_state:/var/lib/subtitle-worker
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - SUBTITLE_REQUESTS_QUEUE=subtitle_generation_queue
+      - SUBTITLE_RESULTS_QUEUE=subtitle_results_queue
+      - SUBTITLE_CANCEL_ROUTING_KEY=subtitle_cancel
+      - SUBTITLE_CANCEL_QUEUE=subtitle_cancel_queue
+      - SUBTITLE_MODEL=base
+      - SUBTITLE_COMPUTE_TYPE=int8
+      - SUBTITLE_MAX_CONCURRENT_JOBS=1
+      - SUBTITLE_MEDIA_ROOT=/app/images
+      - SUBTITLE_TEMP_ROOT=/app/images/.subtitle_tmp
+      - SUBTITLE_MODEL_CACHE=/var/cache/subtitle-models
+      - SUBTITLE_WORK_ROOT=/var/lib/subtitle-worker
+
   # UC-VID-002: independent video compression worker.
   video_compression_tool:
     build:
@@ -616,3 +650,5 @@ volumes:
   image_data:
   seaweedfs_data:
   subscription_data:
+  subtitle_model_cache:
+  subtitle_worker_state:

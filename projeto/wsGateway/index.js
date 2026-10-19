@@ -51,9 +51,43 @@ io.on("connection", (socket) => {
 
 // id do user como room id
 
+// Subtitle updates use the existing JWT user room, never a project room (which
+// clients can join independently). Only a small, validated envelope is forwarded.
+function forwardSubtitleUpdate(message) {
+    const objectId = value => typeof value === "string" && /^[a-f0-9]{24}$/i.test(value);
+    const statuses = ["queued", "processing", "transcribed", "completed", "failed", "cancelled"];
+    if (!objectId(message.user) || !objectId(message.projectId) || !objectId(message.imgId) ||
+        typeof message.jobId !== "string" || !/^[0-9a-f-]{36}$/.test(message.jobId) ||
+        typeof message.messageId !== "string" || !message.messageId.length || message.messageId.length > 200 ||
+        !statuses.includes(message.status) || !["transcribe", "generate_srt"].includes(message.operation) ||
+        typeof message.phase !== "string" || !message.phase.length || message.phase.length > 80 ||
+        typeof message.timestamp !== "string" || !Number.isFinite(Date.parse(message.timestamp))) return;
+    let error = null;
+    if (message.error != null) {
+        if (typeof message.error !== "object" || Array.isArray(message.error) ||
+            typeof message.error.code !== "string" || !message.error.code.length || message.error.code.length > 80 ||
+            typeof message.error.message !== "string" || message.error.message.length > 1024) return;
+        error = { code: message.error.code, message: message.error.message };
+        if (typeof message.error.retryable === "boolean") error.retryable = message.error.retryable;
+    }
+    io.to(message.user).emit("subtitle-update", {
+        jobId: message.jobId, projectId: message.projectId, imgId: message.imgId,
+        status: message.status, operation: message.operation, phase: message.phase,
+        error, timestamp: message.timestamp,
+    });
+}
+
 function process_msg() {
     read_rabbit_msg('ws_queue', (msg) => {
-        const msg_content = JSON.parse(msg.content.toString());
+        let msg_content;
+        try { msg_content = JSON.parse(msg.content.toString()); }
+        catch (_) { console.warn("[WS] invalid JSON envelope ignored"); return; }
+        if (!msg_content || typeof msg_content !== "object" || Array.isArray(msg_content)) return;
+        // Exact type dispatch precedes the legacy messageId regular expressions.
+        if (msg_content.type === "subtitle-update") {
+            forwardSubtitleUpdate(msg_content);
+            return;
+        }
         const msg_id = msg_content.messageId;
         const timestamp = msg_content.timestamp
         const status = msg_content.status;
