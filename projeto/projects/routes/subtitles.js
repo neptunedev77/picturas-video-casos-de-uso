@@ -8,6 +8,7 @@ const SubtitleJob = require("../models/subtitleJob");
 const Project = require("../models/project");
 const { checkSharePermission, requireEditPermission } = require("../middleware/shareAuth");
 const mq = require("../utils/subtitles_mq");
+const { get_image_public_url } = require("../utils/imageStorage");
 const router = express.Router();
 const base = "/:user/:project/subtitles";
 const wrap = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
@@ -96,7 +97,17 @@ router.post(base, authenticate, checkSharePermission, requireEditPermission, wra
 }));
 
 router.get(`${base}/:jobId`, authenticate, checkSharePermission, wrap(async (req, res) => {
-  res.set("Cache-Control", "private, no-store").json(view(await findJob(req)));
+  const job = await findJob(req);
+  const response = view(job);
+  if (response.result?.key) {
+    try {
+      const signed = await get_image_public_url(String(job.owner_id), String(job.project_id), "out", response.result.key);
+      response.result = { ...job.toObject().result, url: signed.data.url };
+    } catch (_) {
+      throw mq.error(503, "STORAGE_UNAVAILABLE", "Não foi possível obter a ligação para descarregar as legendas. Tente novamente.");
+    }
+  }
+  res.set("Cache-Control", "private, no-store").json(response);
 }));
 
 router.post(`${base}/:jobId/confirm`, authenticate, checkSharePermission, requireEditPermission, wrap(async (req, res) => {
