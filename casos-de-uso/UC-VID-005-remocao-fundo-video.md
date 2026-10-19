@@ -8,7 +8,7 @@
 | **Campo** | **Valor** |
 |---|---|
 | **Grupo / Equipa** | Grupo 25 |
-| **Autores** | Sérgio Vieira (PG65442); António Sousa (PG63923); Rafael Sousa (PG63927); Bruno Vale (PG63926); Diogo Macedo (PG63947) |
+| **Autores** | António Sousa (PG63923), Bruno Sousa (PG63927), Bruno Vale (PG63926), Diogo Macedo (PG63947), Sérgio Vieira (PG65442) |
 | **Data** | 2026-10-18 |
 | **Versão do documento** | v2.0 (Especificação Completa ERS — Exercício 2) |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |

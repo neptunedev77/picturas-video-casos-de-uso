@@ -9,7 +9,7 @@
 | **Campo** | **Valor** |
 |-----------|-----------|
 | **Grupo / Equipa** | 6 |
-| **Autores** | António Sousa (PG63923), Bruno Sousa (63927), Bruno Vale (63926), Diogo Macedo (PG63947) |
+| **Autores** | António Sousa (PG63923), Bruno Sousa (PG63927), Bruno Vale (PG63926), Diogo Macedo (PG63947), Sérgio Vieira (PG65442) |
 | **Data** | 2026-10-15 |
 | **Versão do documento** | v1.1 |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |
@@ -29,6 +29,7 @@ Quem grava aulas, podcasts em vídeo, tutoriais ou reuniões perde muito tempo a
 
 ---
 
+## 2. Caso de Uso
 ### 2.1 Cabeçalho
 
 | **Secção** | **Detalhes** |

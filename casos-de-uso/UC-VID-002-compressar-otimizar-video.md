@@ -8,7 +8,7 @@
 | **Campo** | **Valor** |
 |-----------|-----------|
 | **Grupo / Equipa** | 6 |
-| **Autores** | Bruno Sousa PG63927, Bruno Vale PG63926, Diogo Macedo PG63947, António Sousa PG63923 |
+| **Autores** | António Sousa (PG63923), Bruno Sousa (PG63927), Bruno Vale (PG63926), Diogo Macedo (PG63947), Sérgio Vieira (PG65442) |
 | **Data** | 2026-10-05 |
 | **Versão do documento** | v1.1 |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |
@@ -156,7 +156,7 @@ A compressão e otimização de vídeo permite reduzir o tamanho dos ficheiros m
 
 **Caso de Uso:** UC-VID-002 — Comprimir/Otimizar vídeo  
 **Versão do dossiê:** v1.1  
-**Baseline do Exercício 1:** v1.0 (caso de uso UC-VID-001; a secção de requisitos derivados não foi preenchida no Exercício 1, pelo que todos os requisitos desta ERS são novos)
+**Baseline do Exercício 1:** v1.0 (caso de uso UC-VID-002; a secção de requisitos derivados não foi preenchida no Exercício 1, pelo que todos os requisitos desta ERS são novos)
 
 
 ### 4.1 Requisitos da ERS

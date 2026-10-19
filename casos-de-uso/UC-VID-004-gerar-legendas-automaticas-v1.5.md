@@ -9,7 +9,7 @@
 | **Campo** | **Valor** |
 |-----------|-----------|
 | **Grupo / Equipa** | 6 |
-| **Autores** | Bruno Vale (PG63926); Bruno Sousa (PG63927); António Sousa (PG63923); Diogo Macedo (PG63947); Sérgio Vieira (PG65442) |
+| **Autores** | António Sousa (PG63923), Bruno Sousa (PG63927), Bruno Vale (PG63926), Diogo Macedo (PG63947), Sérgio Vieira (PG65442) |
 | **Data** | 2026-10-16 |
 | **Versão do documento** | v1.5 |
 | **Unidade Curricular** | Requisitos e Arquiteturas de Software — MEI, Universidade do Minho |
@@ -318,7 +318,7 @@ A análise seguinte considera a arquitetura atual do repositório `picturas-27`,
 | DQ-006 | O processamento de legendas é implementado como worker/microserviço independente segundo o padrão `Tools`, comunicando através da mensageria existente. | Preserva o baixo acoplamento e o modelo arquitetural já usado pelas ferramentas do PictuRAS. | REQ-VID-LEG-041 |
 | DQ-007 | O ficheiro de legendas é persistido através do `imageStorageService`/SeaweedFS e segue o ciclo de vida dos restantes resultados do projeto; não é definido TTL exclusivo para legendas no MVP. | Remove períodos de retenção arbitrários e reutiliza o mecanismo de armazenamento S3 já existente. | REQ-VID-LEG-034; REQ-VID-LEG-042 |
 | DQ-008 | O worker de legendas deve ser empacotado como serviço Docker e integrado na stack Docker Compose do PictuRAS. | A aplicação atual é composta por microserviços orquestrados por Docker Compose; o novo serviço deve manter esse modelo de implantação. | REQ-VID-LEG-043 |
-| DQ-008 | O worker de legendas é empacotado e executado no modelo Docker Compose do PictuRAS. | REQ-VID-LEG-043 |
+| DQ-009 | O worker de legendas é empacotado e executado no modelo Docker Compose do PictuRAS. | REQ-VID-LEG-043 |
 
 **Decisões de qualidade introduzidas nesta aula**
 
