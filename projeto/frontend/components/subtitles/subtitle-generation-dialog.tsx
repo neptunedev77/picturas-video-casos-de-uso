@@ -49,6 +49,11 @@ export function SubtitleGenerationPanel({
   const cancelling = Boolean(
     job?.cancellationRequested && !isSubtitleTerminal(job),
   );
+  const previewSegments =
+    !cancelling &&
+    (job?.status === "transcribed" || job?.status === "completed")
+      ? job.segments
+      : undefined;
   const locked = pending || mutation.isPending;
   const loading = !ready || Boolean(jobId && query.isPending);
   const [action, setAction] = useState<SubtitleCommand["action"] | null>(null);
@@ -121,11 +126,7 @@ export function SubtitleGenerationPanel({
         <SubtitleVideoPreview
           videoUrl={videoUrl}
           videoName={videoName}
-          segments={
-            job?.status === "transcribed" && !cancelling
-              ? job.segments
-              : undefined
-          }
+          segments={previewSegments}
         />
         <p className="text-xs text-muted-foreground">
           Vídeo original · O vídeo não será alterado. As legendas são um
@@ -234,11 +235,11 @@ export function SubtitleGenerationPanel({
             </p>
           )}
 
+          {previewSegments && <SubtitlePreview segments={previewSegments} />}
+
           {job.status === "transcribed" && !cancelling && (
             <>
-              {job.segments ? (
-                <SubtitlePreview segments={job.segments} />
-              ) : (
+              {!job.segments && (
                 <p role="status" className="text-sm">
                   A obter os segmentos guardados…
                 </p>

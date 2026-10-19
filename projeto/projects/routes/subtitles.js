@@ -53,7 +53,7 @@ function view(job) {
     language: job.language, model: job.model, status: job.status, phase: job.phase,
     operation: job.current_operation, requestId: job.current_request_id,
     cancellationRequested: Boolean(job.cancel_requested_at),
-    segments: job.status === "transcribed" ? job.segments.map(s => ({ text: s.text, start: s.start, end: s.end })) : undefined,
+    segments: ["transcribed", "completed"].includes(job.status) ? job.segments.map(s => ({ text: s.text, start: s.start, end: s.end })) : undefined,
     duration: job.duration,
     result: job.status === "completed" && !job.orphaned ? job.result : null,
     error: job.error?.code ? job.error : null,

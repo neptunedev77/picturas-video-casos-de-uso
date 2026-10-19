@@ -160,7 +160,10 @@ test("video overlay follows native media time with inclusive start/exclusive end
   let time = 0;
   const jsx = (type, props) => ({ type, props });
   const { SubtitleVideoPreview } = load("components/subtitles/subtitle-preview.tsx", {
-    react: { useState: () => [time, value => { time = value; }] },
+    react: {
+      useState: initial => initial === 0 ? [time, value => { time = value; }] : [initial, () => {}],
+      useRef: current => ({ current }), useEffect() {}, useMemo: fn => fn(),
+    },
     "react/jsx-runtime": { jsx, jsxs: jsx },
   });
   const segments = [{ start: 1, end: 2, text: "Olá, ação!" }, { start: 2, end: 3, text: "Já está." }, { start: 4, end: 5, text: "Última legenda." }];
@@ -178,6 +181,106 @@ test("video overlay follows native media time with inclusive start/exclusive end
   assert.equal(render(undefined).props.children[1], undefined);
 });
 
+test("temporary WebVTT keeps Unicode, millisecond timing and literal text; skips invalid/empty cues", () => {
+  const { subtitlePreviewVtt } = load("components/subtitles/subtitle-preview.tsx", { react: {}, "react/jsx-runtime": {} });
+  assert.equal(subtitlePreviewVtt(), "");
+  assert.equal(subtitlePreviewVtt([]), "");
+  const vtt = subtitlePreviewVtt([
+    { start: 1.2, end: 2.345, text: "Olá, ação & <b>coração</b>!\r\n \r\n\t\r\nJá está." },
+    { start: 2.345, end: 3601.234, text: "Segundo segmento." },
+    ...[{ start: -1, end: 2 }, { start: NaN, end: 2 }, { start: 1, end: Infinity },
+      { start: 2, end: 1 }, { start: 1, end: 1.0001 }].map(times => ({ ...times, text: "inválido" })),
+    { start: 3, end: 4, text: " \n " },
+  ]);
+  assert.equal(vtt, "WEBVTT\n\n1\n00:00:01.200 --> 00:00:02.345\nOlá, ação &amp; &lt;b&gt;coração&lt;/b&gt;!\nJá está.\n\n2\n00:00:02.345 --> 01:00:01.234\nSegundo segmento.\n");
+});
+
+test("native fullscreen switches one caption renderer, handles WebKit events and cleans URLs/listeners", async () => {
+  const hooks = [], pending = [], created = [], revoked = [];
+  let cursor = 0, dirty = false, tree, trackNode, mountedTrackRef;
+  function events(extra = {}) {
+    const listeners = new Map();
+    return { ...extra, listeners,
+      addEventListener(name, fn) { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn); },
+      removeEventListener(name, fn) { listeners.get(name)?.delete(fn); },
+      emit(name) { listeners.get(name)?.forEach(fn => fn()); },
+    };
+  }
+  const document = events({ fullscreenElement: null });
+  const video = events({ textTracks: events(), currentTime: 1.5 });
+  const react = {
+    useState(initial) {
+      const i = cursor++; hooks[i] ||= { value: initial };
+      return [hooks[i].value, value => { if (!Object.is(hooks[i].value, value)) { hooks[i].value = value; dirty = true; } }];
+    },
+    useRef(current) { const i = cursor++; return hooks[i] ||= { current }; },
+    useMemo(calculate, deps) {
+      const i = cursor++, old = hooks[i];
+      if (!old || deps.some((d, j) => !Object.is(d, old.deps[j]))) hooks[i] = { deps, value: calculate() };
+      return hooks[i].value;
+    },
+    useEffect(effect, deps) {
+      const i = cursor++, old = hooks[i];
+      if (!old || deps.some((d, j) => !Object.is(d, old.deps[j]))) {
+        hooks[i] = { deps, cleanup: old?.cleanup };
+        pending.push(() => { hooks[i].cleanup?.(); hooks[i].cleanup = effect(); });
+      }
+    },
+  };
+  const jsx = (type, props) => ({ type, props });
+  const { SubtitleVideoPreview } = load("components/subtitles/subtitle-preview.tsx", {
+    react, "react/jsx-runtime": { jsx, jsxs: jsx },
+  }, { document, Blob, URL: { createObjectURL(blob) { const url = `blob:preview-${created.length}`; created.push({ url, blob }); return url; }, revokeObjectURL(url) { revoked.push(url); } } });
+  let segments = [{ start: 1, end: 2, text: "Olá, ação!" }];
+  function render() {
+    do {
+      dirty = false; cursor = 0;
+      tree = SubtitleVideoPreview({ videoUrl: "original.mp4", videoName: "original", segments });
+      const v = tree.props.children[0]; v.props.ref.current = video;
+      const t = v.props.children;
+      if (t) {
+        if (trackNode?.src !== t.props.src) trackNode = { src: t.props.src, track: { mode: "disabled" } };
+        mountedTrackRef = t.props.ref; mountedTrackRef.current = trackNode;
+      } else if (mountedTrackRef) mountedTrackRef.current = null;
+      while (pending.length) pending.shift()();
+    } while (dirty);
+  }
+  const overlay = () => tree.props.children[1];
+  render();
+  tree.props.children[0].props.onPause({ currentTarget: video }); render();
+  assert.equal(overlay().props.children.props.children, "Olá, ação!");
+  assert.equal(trackNode.track.mode, "hidden");
+  assert.equal(created[0].blob.type, "text/vtt;charset=utf-8");
+  assert.match(await created[0].blob.text(), /Olá, ação!/);
+  document.fullscreenElement = { contains: element => element === video };
+  document.emit("fullscreenchange"); render();
+  assert.equal(trackNode.track.mode, "showing"); assert.equal(Boolean(overlay()), false);
+  // A late track load must retain fullscreen mode, including while paused.
+  tree.props.children[0].props.children.props.onLoad({ currentTarget: trackNode }); render();
+  assert.equal(trackNode.track.mode, "showing");
+  document.fullscreenElement = null; document.emit("fullscreenchange"); render();
+  assert.equal(trackNode.track.mode, "hidden"); assert.ok(overlay());
+  video.emit("webkitbeginfullscreen"); render();
+  assert.equal(trackNode.track.mode, "showing"); assert.equal(Boolean(overlay()), false);
+  video.emit("webkitendfullscreen"); render(); assert.ok(overlay());
+  video.webkitPresentationMode = "fullscreen"; video.emit("webkitpresentationmodechanged"); render();
+  assert.equal(trackNode.track.mode, "showing");
+  video.webkitPresentationMode = "inline"; video.emit("webkitpresentationmodechanged"); render();
+  assert.equal(trackNode.track.mode, "hidden");
+  // Manually enabling CC outside fullscreen must also suppress the DOM overlay.
+  trackNode.track.mode = "showing"; video.textTracks.emit("change"); render(); assert.equal(Boolean(overlay()), false);
+  trackNode.track.mode = "hidden"; video.textTracks.emit("change"); render(); assert.ok(overlay());
+  segments = segments.map(s => ({ ...s })); render(); assert.equal(created.length, 1);
+  segments = [{ start: 1, end: 2, text: "Já atualizado." }]; render();
+  assert.equal(created.length, 2); assert.deepEqual(revoked, [created[0].url]);
+  segments = undefined; render(); assert.deepEqual(revoked, created.map(x => x.url));
+  segments = [{ start: 1, end: 2, text: "Ao desmontar." }]; render();
+  hooks.forEach(h => h.cleanup?.());
+  assert.deepEqual(revoked, created.map(x => x.url));
+  for (const target of [document, video, video.textTracks])
+    assert.equal([...target.listeners.values()].reduce((count, listeners) => count + listeners.size, 0), 0);
+});
+
 test("textual preview keeps every cue and timestamp alongside the overlay", () => {
   const jsx = (type, props) => ({ type, props });
   const { SubtitlePreview } = load("components/subtitles/subtitle-preview.tsx", {
@@ -189,4 +292,58 @@ test("textual preview keeps every cue and timestamp alongside the overlay", () =
   assert.ok(serialized.includes("00:00:04,500"));
   assert.ok(serialized.includes("Texto integral com acentos: ação."));
   assert.ok(serialized.includes("Segmentos reconhecidos"));
+});
+
+test("Project Service serializer exposes existing segments for transcribed/completed without modifying stored job or quota", () => {
+  const router = { post() {}, get() {} };
+  const { _internal: { view } } = load("../projects/routes/subtitles.js", {
+    express: { Router: () => router }, mongoose: {}, jsonwebtoken: {}, crypto: {}, path: {},
+    "../models/subtitleJob": {}, "../models/project": {},
+    "../middleware/shareAuth": {}, "../utils/subtitles_mq": {}, "../utils/imageStorage": {},
+  });
+  const savedSegments = [{ start: 1.2, end: 4.5, text: "Legendas já guardadas: ação.", internal: "not-public" }];
+  for (const status of ["transcribed", "completed", "queued", "processing", "failed", "cancelled"]) {
+    const stored = { job_id: jobId, project_id: "project", img_id: "video", runner_id: "runner", status,
+      segments: savedSegments, result: { key: "original.srt" }, quota: { charged: true, refund_state: "none" } };
+    const before = JSON.stringify(stored);
+    const response = view(stored);
+    if (["transcribed", "completed"].includes(status))
+      assert.deepEqual(JSON.parse(JSON.stringify(response.segments)), [{ start: 1.2, end: 4.5, text: "Legendas já guardadas: ação." }]);
+    else assert.equal(response.segments, undefined);
+    assert.equal(JSON.stringify(stored), before);
+    if (status === "completed") assert.equal(response.result.key, "original.srt");
+  }
+});
+
+test("completed panel reuses persisted segments for video/list and keeps download without offering confirm/reject", () => {
+  const { lib } = client();
+  const jsx = (type, props) => ({ type, props });
+  for (const status of ["transcribed", "completed"]) {
+    const segments = [{ start: 1, end: 2, text: "Legendas já existentes." }];
+    const current = job({ status, language: "pt", segments, result: status === "completed" ? { key: "stored.srt", name: "guardadas.srt" } : null });
+    let requests = 0;
+    const { SubtitleGenerationPanel } = load("components/subtitles/subtitle-generation-dialog.tsx", {
+      react: { useState: value => [value, () => {}], useRef: value => ({ current: value }) },
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "@tanstack/react-query": { useMutation: () => ({ isPending: false, reset() {} }) },
+      "lucide-react": {}, "@/components/ui/button": { Button: "button" },
+      "@/lib/subtitles": { ...lib, useSubtitleJob: () => ({ query: { data: current }, mutation: { mutateAsync: () => { requests++; } }, ready: true, jobId, pending: false }) },
+      "./subtitle-preview": { SubtitlePreview: "subtitle-list", SubtitleVideoPreview: "subtitle-video" },
+    });
+    const tree = SubtitleGenerationPanel({ target, videoName: "original.mp4", videoUrl: "https://example.invalid/original.mp4", open: true });
+    const nodes = [];
+    function walk(node) {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      nodes.push(node); walk(node.props?.children);
+    }
+    walk(tree);
+    assert.equal(nodes.find(n => n.type === "subtitle-video").props.segments, segments);
+    assert.equal(nodes.find(n => n.type === "subtitle-list").props.segments, segments);
+    const labels = nodes.filter(n => n.type === "button").map(n => JSON.stringify(n.props.children)).join(" ");
+    assert.equal(labels.includes("Confirmar e gerar SRT"), status === "transcribed");
+    assert.equal(labels.includes("Rejeitar"), status === "transcribed");
+    assert.equal(labels.includes("Descarregar SRT"), status === "completed");
+    assert.equal(requests, 0);
+  }
 });
