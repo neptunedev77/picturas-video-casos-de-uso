@@ -8,6 +8,8 @@ const mongoose = require("mongoose");
 const { router: projectsRouter, process_msg } = require("./routes/projects");
 const { router: silenceRouter, startSilenceConsumer } = require("./routes/silence");
 const { router: compressionRouter, startCompressionConsumer } = require("./routes/compression");
+const { router: subtitlesRouter } = require("./routes/subtitles");
+const { startSubtitleConsumer } = require("./utils/subtitles_mq");
 
 // Run Docker
 const mongoDB = "mongodb://projects_mongoDB:27018/project";
@@ -36,12 +38,14 @@ app.use(express.static(path.join(__dirname, "public")));
 // UC-VID-001: remoção de silêncios (rotas /:user/:project/silence/:img...)
 app.use("/", silenceRouter);
 app.use("/", compressionRouter);
+app.use("/", subtitlesRouter);
 app.use("/", projectsRouter);
 
 // Start the message processing
 process_msg();
 startSilenceConsumer();
 startCompressionConsumer();
+startSubtitleConsumer();
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
