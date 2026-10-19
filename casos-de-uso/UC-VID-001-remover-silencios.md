@@ -8,7 +8,7 @@
 
 | **Campo** | **Valor** |
 |-----------|-----------|
-| **Grupo / Equipa** | 25 |
+| **Grupo / Equipa** | 6 |
 | **Autores** | António Sousa (PG63923), Bruno Sousa (63927), Bruno Vale (63926), Diogo Macedo (PG63947) |
 | **Data** | 2026-10-15 |
 | **Versão do documento** | v1.1 |
