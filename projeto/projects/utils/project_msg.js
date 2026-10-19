@@ -19,6 +19,7 @@ const queues = {
     'expand_ai': 'expand_ai_queue',
     'watermark': 'watermark_queue',
     'privacy_blur': 'privacy_blur_queue',
+    'video_bg_remove': 'video_bg_remove_queue',
     'high_priority': 'high_priority_queue',
     'project': 'project_queue',
     'ws': 'ws_queue'
@@ -26,7 +27,7 @@ const queues = {
 
 function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params, runnerId, userType) {
     let queue = queues[tool];
-    if (userType === "premium" && tool === "privacy_blur") {
+    if (userType === "premium" && (tool === "privacy_blur" || tool === "video_bg_remove")) {
         queue = queues['high_priority'] || queue;
     }
     const msg = {

@@ -28,6 +28,7 @@ class ToolMSG:
         'people_ai': 'people_ai_queue',
         'expand_ai': 'expand_ai_queue',
         'privacy_blur': 'privacy_blur_queue',
+        'video_bg_remove': 'video_bg_remove_queue',
         'high_priority': 'high_priority_queue',
         'project': 'project_queue',
         'ws': 'ws_queue'

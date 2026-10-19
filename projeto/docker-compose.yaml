@@ -478,6 +478,25 @@ services:
       - RABBITMQ_USERNAME=user
       - RABBITMQ_PASSWORD=password
 
+  # UC-VID-005: Remoção e Substituição Automática de Fundo em Vídeo por IA (Virtual Green Screen)
+  video_bg_remove_tool:
+    build:
+      context: ./Tools
+      dockerfile: video_bg_remove/Dockerfile
+    restart: on-failure
+    networks:
+      - elk
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - image_data:/app/images
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=user
+      - RABBITMQ_PASSWORD=password
+
   # UC-VID-001: remoção de silêncios e pausas em vídeo (análise + cortes com FFmpeg)
   silence_removal_tool:
     build:
