@@ -39,7 +39,7 @@ function client() {
   } };
   const lib = load("lib/subtitles.ts", {
     axios: { __esModule: true, default: axios }, react: {}, "@tanstack/react-query": {},
-    "./axios": { api }, "./queries/projects": {},
+    "./axios": { api }, "./queries/projects": {}, "./mutations/session": {},
   }, { window: { location: { origin: "https://picturas.example" } } });
   return { lib, state };
 }
@@ -128,6 +128,22 @@ test("job bookmarks isolate users/owners/projects/videos without storing credent
   assert.ok(!key.includes(target.token));
   for (const field of ["uid", "ownerId", "pid", "imgId"])
     assert.notEqual(lib.subtitleBookmarkKey({ ...target, [field]: "different" }), key);
+});
+
+test("terminal refund polling waits for the backend, never assumes a refund or polls completed/Premium/uncertain jobs", () => {
+  const { lib } = client();
+  for (const status of ["failed", "cancelled"]) {
+    for (const refundState of ["none", "claimed"])
+      assert.equal(lib.isSubtitleRefundPending(job({ status, quota: { charged: true, refundState, reconciliationRequired: false } })), true);
+    for (const quota of [
+      { charged: false, refundState: "refunded", reconciliationRequired: false },
+      { charged: false, refundState: "none", reconciliationRequired: false },
+      { charged: true, refundState: "uncertain", reconciliationRequired: true },
+      { charged: true, refundState: "none", reconciliationRequired: true },
+    ]) assert.equal(lib.isSubtitleRefundPending(job({ status, quota })), false);
+  }
+  assert.equal(lib.isSubtitleRefundPending(job({ status: "completed", quota: { charged: true, refundState: "none" } })), false);
+  assert.equal(lib.isSubtitleRefundPending(), false);
 });
 
 test("preview timestamps use HH:MM:SS,mmm with correct rounding across seconds and hours", () => {

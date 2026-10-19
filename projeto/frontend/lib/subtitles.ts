@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useIsMutating,
   useMutation,
@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-query";
 import { api } from "./axios";
 import { useGetSocket } from "./queries/projects";
+import { useUpdateSession } from "./mutations/session";
 
 export const SUBTITLE_LANGUAGES = { pt: "Português", en: "Inglês" } as const;
 export type SubtitleLanguage = keyof typeof SUBTITLE_LANGUAGES;
@@ -55,6 +56,12 @@ export interface SubtitleJob {
     url?: string;
   } | null;
   error: { code: string; message: string; retryable?: boolean } | null;
+  quota?: {
+    charged: boolean;
+    refundState: "none" | "claimed" | "refunded" | "uncertain";
+    reconciliationRequired: boolean;
+    reconciliationReason?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +73,14 @@ export const isSubtitleActive = (job?: SubtitleJob) =>
   job?.status === "queued" || job?.status === "processing";
 export const isSubtitleTerminal = (job?: SubtitleJob) =>
   Boolean(job && ["completed", "failed", "cancelled"].includes(job.status));
+export const isSubtitleRefundPending = (job?: SubtitleJob) =>
+  Boolean(
+    job &&
+      ["failed", "cancelled"].includes(job.status) &&
+      job.quota?.charged &&
+      !job.quota.reconciliationRequired &&
+      ["none", "claimed"].includes(job.quota.refundState),
+  );
 export function subtitleStatusLabel(job: SubtitleJob) {
   if (job.cancellationRequested && !isSubtitleTerminal(job))
     return "A cancelar…";
@@ -292,6 +307,8 @@ export function useSubtitleJob(
   );
   const qc = useQueryClient();
   const socket = useGetSocket(t.token);
+  const { mutate: refreshSession } = useUpdateSession();
+  const refreshedQuota = useRef<string | null>(null);
   const bookmark = subtitleBookmarkKey(t);
   const pending =
     useIsMutating({ mutationKey: ["subtitle-command", bookmark] }) > 0;
@@ -331,10 +348,28 @@ export function useSubtitleJob(
     retry: false,
     refetchInterval: (q) =>
       isSubtitleActive(q.state.data) ||
+      isSubtitleRefundPending(q.state.data) ||
       (q.state.data?.cancellationRequested && !isSubtitleTerminal(q.state.data))
         ? 4000
         : false,
   });
+
+  // Terminal notifications can precede refund persistence. Keep reading the
+  // existing job until it settles, then refresh the official session once.
+  const quotaRefreshKey =
+    isSubtitleTerminal(query.data) && !isSubtitleRefundPending(query.data)
+      ? `${query.data!.jobId}:${query.data!.status}`
+      : null;
+  useEffect(() => {
+    if (
+      !enabled ||
+      !quotaRefreshKey ||
+      refreshedQuota.current === quotaRefreshKey
+    )
+      return;
+    refreshedQuota.current = quotaRefreshKey;
+    refreshSession({ userId: uid, token });
+  }, [enabled, quotaRefreshKey, refreshSession, uid, token]);
 
   function remember(id: string | null) {
     qc.setQueryData([bookmark], id);
