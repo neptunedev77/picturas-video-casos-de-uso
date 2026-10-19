@@ -1,0 +1,11 @@
+# Python 3.11+; FFmpeg and ffprobe must be installed separately.
+# CPU inference only. No torch, CUDA or GPU packages are required.
+# STT API, multilingual model and VAD (used by stt.SpeechRecognizer).
+faster-whisper==1.2.1
+# CPU/INT8 runtime, imported to verify supported compute types before loading.
+ctranslate2==4.6.0
+# CTranslate2 4.6 imports pkg_resources, removed from newer setuptools.
+setuptools==80.9.0
+# Faster-Whisper's audio decoder uses PyAV; pin its compatible API/wheels.
+# Version 1.2.1 uses av.open(metadata_errors=...), absent in PyAV 19.
+av==15.1.0
