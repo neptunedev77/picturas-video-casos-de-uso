@@ -147,11 +147,46 @@ test("terminal refund polling waits for the backend, never assumes a refund or p
 });
 
 test("preview timestamps use HH:MM:SS,mmm with correct rounding across seconds and hours", () => {
-  const { formatSubtitleTime } = load("components/subtitles/subtitle-preview.tsx", { "react/jsx-runtime": {} });
+  const { formatSubtitleTime } = load("components/subtitles/subtitle-preview.tsx", { react: {}, "react/jsx-runtime": {} });
   assert.equal(formatSubtitleTime(0), "00:00:00,000");
   assert.equal(formatSubtitleTime(1.2), "00:00:01,200");
   assert.equal(formatSubtitleTime(59.9999), "00:01:00,000");
   assert.equal(formatSubtitleTime(3601.234), "01:00:01,234");
   assert.equal(formatSubtitleTime(-1), "—");
   assert.equal(formatSubtitleTime(NaN), "—");
+});
+
+test("video overlay follows native media time with inclusive start/exclusive end, gaps, consecutive cues and UTF-8", () => {
+  let time = 0;
+  const jsx = (type, props) => ({ type, props });
+  const { SubtitleVideoPreview } = load("components/subtitles/subtitle-preview.tsx", {
+    react: { useState: () => [time, value => { time = value; }] },
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+  });
+  const segments = [{ start: 1, end: 2, text: "Olá, ação!" }, { start: 2, end: 3, text: "Já está." }, { start: 4, end: 5, text: "Última legenda." }];
+  const source = "https://example.invalid/original.mp4";
+  const render = cues => SubtitleVideoPreview({ videoUrl: source, videoName: "original.mp4", segments: cues });
+  for (const [instant, event, text] of [[0, "onLoadedMetadata", undefined], [1, "onTimeUpdate", "Olá, ação!"],
+    [1.5, "onPause", "Olá, ação!"], [2, "onTimeUpdate", "Já está."], [3, "onTimeUpdate", undefined],
+    [4.5, "onSeeking", "Última legenda."], [1.2, "onSeeked", "Olá, ação!"], [6, "onEnded", undefined]]) {
+    render(segments).props.children[0].props[event]({ currentTarget: { currentTime: instant } });
+    const [video, overlay] = render(segments).props.children;
+    assert.equal(overlay ? overlay.props.children.props.children : undefined, text);
+    assert.equal(video.props.src, source);
+    assert.equal(video.props.controls, true);
+  }
+  assert.equal(render(undefined).props.children[1], undefined);
+});
+
+test("textual preview keeps every cue and timestamp alongside the overlay", () => {
+  const jsx = (type, props) => ({ type, props });
+  const { SubtitlePreview } = load("components/subtitles/subtitle-preview.tsx", {
+    react: {}, "react/jsx-runtime": { jsx, jsxs: jsx },
+  });
+  const tree = SubtitlePreview({ segments: [{ start: 1.2, end: 4.5, text: "Texto integral com acentos: ação." }] });
+  const serialized = JSON.stringify(tree);
+  assert.ok(serialized.includes("00:00:01,200"));
+  assert.ok(serialized.includes("00:00:04,500"));
+  assert.ok(serialized.includes("Texto integral com acentos: ação."));
+  assert.ok(serialized.includes("Segmentos reconhecidos"));
 });

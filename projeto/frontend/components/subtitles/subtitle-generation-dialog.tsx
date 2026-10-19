@@ -23,7 +23,7 @@ import {
   type SubtitleLanguage,
   type SubtitleTarget,
 } from "@/lib/subtitles";
-import { SubtitlePreview } from "./subtitle-preview";
+import { SubtitlePreview, SubtitleVideoPreview } from "./subtitle-preview";
 
 interface Props {
   target: SubtitleTarget;
@@ -118,12 +118,14 @@ export function SubtitleGenerationPanel({
     >
       <div className="space-y-2">
         <p className="break-all text-sm font-medium">{videoName}</p>
-        <video
-          src={videoUrl}
-          controls
-          preload="metadata"
-          aria-label={`Vídeo original: ${videoName}`}
-          className="max-h-56 w-full rounded-md border bg-black"
+        <SubtitleVideoPreview
+          videoUrl={videoUrl}
+          videoName={videoName}
+          segments={
+            job?.status === "transcribed" && !cancelling
+              ? job.segments
+              : undefined
+          }
         />
         <p className="text-xs text-muted-foreground">
           Vídeo original · O vídeo não será alterado. As legendas são um
