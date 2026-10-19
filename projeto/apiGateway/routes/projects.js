@@ -133,6 +133,50 @@ router.get("/:user/:project/silence/:img", auth.checkToken, forwardSilence);
 router.post("/:user/:project/silence/:img/:action(analyze|apply|cancel)", auth.checkToken, forwardSilence);
 router.put("/:user/:project/silence/:img/:action(review)", auth.checkToken, forwardSilence);
 
+// UC-VID-004: authenticate and proxy the existing Project Service contract.
+// Owner/share resolution follows forwardSilence; the caller comes from the JWT.
+async function forwardSubtitles(req, res) {
+  const ownerId = req.query.owner || req.params.user;
+  const parts = [ownerId, req.params.project, "subtitles", req.params.jobId, req.params.action]
+    .filter(part => part !== undefined).map(part => encodeURIComponent(String(part)));
+  try {
+    const response = await axios({
+      method: req.method,
+      url: projectsURL + parts.join("/"),
+      data: req.method === "GET" ? undefined : req.body,
+      params: req.query,
+      headers: { Authorization: req.headers.authorization, "X-Caller-Id": req.authUserId },
+      httpsAgent,
+      timeout: 15000,
+      validateStatus: () => true,
+    });
+    if (response.headers["cache-control"]) res.set("Cache-Control", response.headers["cache-control"]);
+    if (response.status >= 500) {
+      // Preserve status and safe correlation, never upstream stack/HTML/details.
+      const code = typeof response.data?.code === "string" && /^[A-Z0-9_]{1,80}$/.test(response.data.code)
+        ? response.data.code : "PROJECTS_ERROR";
+      const jobId = typeof response.data?.jobId === "string" && /^[0-9a-f-]{36}$/.test(response.data.jobId)
+        ? response.data.jobId : undefined;
+      return res.status(response.status).json({ code, jobId, message: "O serviço de projetos não conseguiu concluir o pedido." });
+    }
+    const data = response.status >= 400
+      ? JSON.parse(JSON.stringify(response.data ?? null, (key, value) => /^(stack|stacktrace|stack_trace)$/i.test(key) ? undefined : value))
+      : response.data;
+    return res.status(response.status).json(data);
+  } catch (err) {
+    const timeout = err.code === "ECONNABORTED" || err.code === "ETIMEDOUT";
+    return res.status(timeout ? 504 : 503).json({
+      code: timeout ? "PROJECTS_TIMEOUT" : "PROJECTS_UNAVAILABLE",
+      message: timeout ? "O serviço de projetos excedeu o tempo de resposta." : "O serviço de projetos está indisponível.",
+    });
+  }
+}
+
+const subtitleBase = "/:user/:project/subtitles";
+router.post(subtitleBase, auth.checkToken, forwardSubtitles);
+router.get(`${subtitleBase}/:jobId`, auth.checkToken, forwardSubtitles);
+router.post(`${subtitleBase}/:jobId/:action(confirm|reject|cancel)`, auth.checkToken, forwardSubtitles);
+
 router.get("/:user/:project/share", auth.checkToken, (req, res) => {
   axios
     .get(projectsURL + `${req.params.user}/${req.params.project}/share`, {

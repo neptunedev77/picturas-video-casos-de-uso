@@ -17,6 +17,7 @@ const REQUESTS = "subtitle_generation_queue";
 const RESULTS = "subtitle_results_queue";
 const CANCEL = "subtitle_cancel";
 const CANCEL_QUEUE = "subtitle_cancel_queue";
+const WS_QUEUE = "ws_queue";
 const MEDIA = path.resolve(process.env.SUBTITLE_MEDIA_ROOT || "./images");
 const ROOT = path.join(MEDIA, "subtitle_generation");
 const USERS = (process.env.USERS_MS || "https://users:10001/").replace(/\/$/, "");
@@ -32,6 +33,23 @@ let running = false, maintaining = false;
 function error(status, code, message) { return Object.assign(new Error(message), { status, code }); }
 function day(date = new Date()) { return date.toISOString().slice(0, 10); }
 function failure(code, message) { return { code, message, retryable: false }; }
+
+// Best-effort hints after persistence. Never await WS publication in the job,
+// quota or storage flow; GET remains authoritative after a missed event.
+function notify(job, fields = {}) {
+  if (!job?.runner_id) return;
+  const messageId = `subtitle-update-${crypto.randomUUID()}`;
+  const event = {
+    messageId, type: "subtitle-update", user: String(job.runner_id),
+    jobId: job.job_id, projectId: String(job.project_id), imgId: String(job.img_id),
+    status: fields.status || job.status, operation: job.current_operation,
+    phase: fields.phase || job.phase, timestamp: new Date().toISOString(),
+    error: job.error?.code ? { code: job.error.code.slice(0, 80),
+      message: String(job.error.message || "").slice(0, 1024), retryable: Boolean(job.error.retryable) } : null,
+  };
+  publish(WS_QUEUE, event, messageId).catch(e => console.error("[SUBTITLES][WS] atualização não entregue:", job.job_id, e.message));
+}
+
 function bounded(promise, ms, code) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => {
@@ -215,7 +233,7 @@ async function fail(jobId, code, message) {
     status: "failed", active: false, phase: "failed", error: failure(code, message), finished_at: new Date(),
     dispatch_state: "stopped", cancel_dispatch_state: "pending", cancel_reason: "failure", cleanup_pending: true,
   } }, { new: true });
-  if (job) { await refund(jobId); await cleanup(job); }
+  if (job) { notify(job); await refund(jobId); await cleanup(job); }
 }
 
 async function cancelled(jobId) {
@@ -223,7 +241,7 @@ async function cancelled(jobId) {
     status: "cancelled", active: false, phase: "cancelled", finished_at: new Date(),
     dispatch_state: "stopped", cleanup_pending: true, worker_terminal_at: new Date(),
   } }, { new: true });
-  if (job) { await refund(jobId); await cleanup(job); }
+  if (job) { notify(job); await refund(jobId); await cleanup(job); }
 }
 
 async function openChannel() {
@@ -241,7 +259,7 @@ async function openChannel() {
       conn.close().catch(() => {});
     });
     await ch.assertExchange(EXCHANGE, "direct", { durable: true });
-    for (const [queue, key, args] of [[REQUESTS, REQUESTS, { "x-max-priority": 10 }], [RESULTS, RESULTS, {}], [CANCEL_QUEUE, CANCEL, {}]]) {
+    for (const [queue, key, args] of [[REQUESTS, REQUESTS, { "x-max-priority": 10 }], [RESULTS, RESULTS, {}], [CANCEL_QUEUE, CANCEL, {}], [WS_QUEUE, WS_QUEUE, {}]]) {
       await ch.assertQueue(queue, { durable: true, arguments: args });
       await ch.bindQueue(queue, EXCHANGE, key);
     }
@@ -280,6 +298,7 @@ async function dispatch(jobId) {
     $set: { dispatch_claim: token, dispatch_until: new Date(Date.now() + LEASE_MS), phase: "preparing" },
   }, { new: true });
   if (!job) return;
+  notify(job);
   try {
     if (!await sourceExists(job)) throw error(404, "SOURCE_REMOVED", "O vídeo de origem já não existe no projeto.");
     if (job.current_operation === "transcribe") {
@@ -347,6 +366,7 @@ async function requestCancel(jobId, reason = "user") {
     cancel_local: job.status === "transcribed",
   } }, { new: true });
   if (!claimed) return requestCancel(jobId, reason);
+  notify(claimed);
   try { await sendCancellation(jobId); }
   catch (e) { console.error("[SUBTITLES] cancelamento guardado para reenvio:", jobId, e.message); }
   return SubtitleJob.findOne({ job_id: jobId });
@@ -378,6 +398,7 @@ async function storeResult(job, event) {
     storage_until: new Date(Date.now() + LEASE_MS), worker_terminal_at: new Date(),
   } }, { new: true });
   if (!claimed) return;
+  notify(claimed);
   let key, uploadStarted = false;
   try {
     if (!await sourceExists(claimed)) throw error(404, "SOURCE_REMOVED", "O vídeo de origem já não existe.");
@@ -421,7 +442,7 @@ async function storeResult(job, event) {
       await SubtitleJob.updateOne({ _id: claimed._id }, { $set: { storage_cleanup_pending: true } });
       await cancelled(claimed.job_id);
       await deleteStored(await SubtitleJob.findById(claimed._id));
-    } else await cleanup(completed);
+    } else { notify(completed); await cleanup(completed); }
   } catch (e) {
     await SubtitleJob.updateOne({ _id: claimed._id }, { $set: {
       ...(key ? { storage_cleanup_pending: true, storage_key: key } : {}),
@@ -455,8 +476,9 @@ async function handleResult(event, properties = {}) {
     if (!OPEN.includes(job.status) || job.storage_state !== "none") return;
     const phases = job.current_operation === "transcribe" ? ["starting", "validating", "extracting_audio", "transcribing", "already_running"] : ["starting", "generating_srt", "already_running"];
     if (!phases.includes(event.phase)) { await fail(job.job_id, "INVALID_RESULT", "Fase do worker inválida."); return; }
-    await SubtitleJob.updateOne({ _id: job._id, status: { $in: OPEN }, cancel_requested_at: null, storage_state: "none",
+    const updated = await SubtitleJob.updateOne({ _id: job._id, status: { $in: OPEN }, cancel_requested_at: null, storage_state: "none",
       current_operation: event.operation }, { $set: { status: "processing", phase: event.phase }, $min: { started_at: new Date() } });
+    if (updated.modifiedCount) notify(job, { status: "processing", phase: event.phase });
     return;
   }
   if (event.status === "transcribed" && job.current_operation === "transcribe") {
@@ -470,7 +492,7 @@ async function handleResult(event, properties = {}) {
       status: "transcribed", phase: "review", segments: event.segments, duration: event.duration,
       dispatch_state: "stopped", worker_terminal_at: new Date(), cleanup_pending: true,
     } }, { new: true });
-    if (updated) await cleanup(updated);
+    if (updated) { notify(updated); await cleanup(updated); }
     return;
   }
   if (event.status === "completed" && job.current_operation === "generate_srt") { await storeResult(job, event); return; }
