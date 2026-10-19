@@ -9,3 +9,5 @@ setuptools==80.9.0
 # Faster-Whisper's audio decoder uses PyAV; pin its compatible API/wheels.
 # Version 1.2.1 uses av.open(metadata_errors=...), absent in PyAV 19.
 av==15.1.0
+# RabbitMQ worker, matching the existing silence_removal client.
+pika==1.3.2

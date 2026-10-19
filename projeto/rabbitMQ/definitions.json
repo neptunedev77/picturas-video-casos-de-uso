@@ -218,6 +218,27 @@
             "arguments": {}
         },
         {
+            "name": "subtitle_generation_queue",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {"x-max-priority": 10}
+        },
+        {
+            "name": "subtitle_results_queue",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "subtitle_cancel_queue",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
             "name": "video_bg_remove_queue_priority",
             "vhost": "/",
             "durable": true,
@@ -443,6 +464,30 @@
             "destination": "video_bg_remove_queue",
             "destination_type": "queue",
             "routing_key": "video_bg_remove_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "subtitle_generation_queue",
+            "destination_type": "queue",
+            "routing_key": "subtitle_generation_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "subtitle_results_queue",
+            "destination_type": "queue",
+            "routing_key": "subtitle_results_queue",
+            "arguments": {}
+        },
+        {
+            "source": "picturas",
+            "vhost": "/",
+            "destination": "subtitle_cancel_queue",
+            "destination_type": "queue",
+            "routing_key": "subtitle_cancel",
             "arguments": {}
         },
         {
