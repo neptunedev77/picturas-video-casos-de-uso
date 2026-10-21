@@ -285,60 +285,78 @@ export function ToolbarButton({
 
   const lockReason = "Read-only (não podes editar)";
 
-  const TButton = () => (
-    <Tooltip>
-      <Button
-        variant={variant}
-        className={`size-8 relative ${
-          isPremium && variant === "default" ? "bg-indigo-500 hover:bg-indigo-400" : ""
-        }`}
-        disabled={uiDisabled}
-        onClick={handleClick}
-      >
-        {waiting ? (
-          <LoaderCircle className="animate-spin" />
-        ) : (
-          <>
-            {isPremium ? (
-              <TooltipTrigger asChild>
-                <div
-                  className={
-                    isPremium && variant === "default" ? "text-white" : "text-indigo-500"
-                  }
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <Sparkle className="h-3 w-3 absolute -top-1 -right-1" />
-                  <span className="sr-only">{label}</span>
-                </div>
-              </TooltipTrigger>
-            ) : (
-              <>
-                <Icon className="h-3.5 w-3.5" />
-                <span className="sr-only">{label}</span>
-              </>
-            )}
-          </>
-        )}
-      </Button>
-      <TooltipContent className="ml-2 bg-indigo-500" side="right">
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
-
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      {!locked && !((isPremium && session.user.type === "anonymous") || noParams) ? (
-        <DropdownMenuTrigger asChild disabled={uiDisabled}>
+      <Tooltip>
+        <TooltipTrigger asChild>
           <div>
-            <TButton />
+            {!locked && !((isPremium && session.user.type === "anonymous") || noParams) ? (
+              <DropdownMenuTrigger asChild disabled={uiDisabled}>
+                <Button
+                  variant={variant}
+                  className={`size-8 relative ${
+                    isPremium && variant === "default" ? "bg-indigo-500 hover:bg-indigo-400" : ""
+                  }`}
+                  disabled={uiDisabled}
+                  onClick={handleClick}
+                >
+                  {waiting ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <Icon
+                        className={`h-3.5 w-3.5 ${
+                          isPremium && variant === "default"
+                            ? "text-white"
+                            : isPremium
+                              ? "text-indigo-500"
+                              : ""
+                        }`}
+                      />
+                      {isPremium && (
+                        <Sparkle className="h-3 w-3 absolute -top-1 -right-1 text-indigo-500" />
+                      )}
+                      <span className="sr-only">{label}</span>
+                    </div>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+            ) : (
+              <Button
+                variant={variant}
+                className={`size-8 relative ${
+                  isPremium && variant === "default" ? "bg-indigo-500 hover:bg-indigo-400" : ""
+                }`}
+                disabled={uiDisabled}
+                onClick={handleClick}
+              >
+                {waiting ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <Icon
+                      className={`h-3.5 w-3.5 ${
+                        isPremium && variant === "default"
+                          ? "text-white"
+                          : isPremium
+                            ? "text-indigo-500"
+                            : ""
+                      }`}
+                    />
+                    {isPremium && (
+                      <Sparkle className="h-3 w-3 absolute -top-1 -right-1 text-indigo-500" />
+                    )}
+                    <span className="sr-only">{label}</span>
+                  </div>
+                )}
+              </Button>
+            )}
           </div>
-        </DropdownMenuTrigger>
-      ) : (
-        <div>
-          <TButton />
-        </div>
-      )}
+        </TooltipTrigger>
+        <TooltipContent className="ml-2 bg-indigo-500" side="right">
+          {label}
+        </TooltipContent>
+      </Tooltip>
 
 
       {!locked && (

@@ -151,7 +151,7 @@ export default function PrivacyBlurTool({ disabled }: { disabled?: boolean }) {
   return (
     <ToolbarButton
       icon={EyeOff}
-      label="Anonimização de Vídeo (Blur)"
+      label="Anonimizar rostos e matrículas"
       disabled={disabled}
       isPremium={false}
       open={open}

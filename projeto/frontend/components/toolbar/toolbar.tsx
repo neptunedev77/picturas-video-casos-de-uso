@@ -37,6 +37,7 @@ import {
 import { Eraser, Film } from "lucide-react";
 import { useState } from "react";
 import { useCurrentImage } from "@/providers/project-provider";
+import { TooltipProvider } from "../ui/tooltip";
 
 export function Toolbar() {
   const searchParams = useSearchParams();
@@ -69,14 +70,76 @@ export function Toolbar() {
 
   if (isVideo && view !== "grid") {
     return (
+      <TooltipProvider delayDuration={150}>
+        <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
+          <div className="flex flex-col gap-2 items-center">
+            <span className="text-sm text-gray-500">Vídeo</span>
+            <PrivacyBlurTool disabled={disabled} />
+            <SilenceRemovalTool disabled={disabled} />
+            <VideoCompressionTool disabled={disabled} />
+            <VideoBgRemoveTool disabled={disabled} />
+            <SubtitleGenerationTool disabled={disabled} />
+            <AppliedToolsList />
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="text-red-400 size-8"
+                disabled={project.tools.length === 0}
+              >
+                <Eraser />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Clear Tools?</DialogTitle>
+                <DialogDescription>
+                  This will remove <b>all</b> edits from the current project.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    clearTools.mutate({
+                      toolIds: project.tools.map((t) => t._id),
+                      projectVersion: project.version,
+                    });
+                    setOpen(false);
+                  }}
+                >
+                  Clear
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <TooltipProvider delayDuration={150}>
       <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
         <div className="flex flex-col gap-2 items-center">
-          <span className="text-sm text-gray-500">Vídeo</span>
-          <PrivacyBlurTool disabled={disabled} />
-          <SilenceRemovalTool disabled={disabled} />
-          <VideoCompressionTool disabled={disabled} />
-          <VideoBgRemoveTool disabled={disabled} />
-          <SubtitleGenerationTool disabled={disabled} />
+          <span className="text-sm text-gray-500">Tools</span>
+          <BrightnessTool disabled={disabled} />
+          <ContrastTool disabled={disabled} />
+          <SaturationTool disabled={disabled} />
+          <BinarizationTool disabled={disabled} />
+          <RotateTool disabled={disabled} />
+          <CropTool disabled={disabled} />
+          <ResizeTool disabled={disabled} />
+          <BorderTool disabled={disabled} />
+          <WatermarkTool disabled={disabled} />
+          <BgRemovalAITool disabled={disabled} />
+          <CropAITool disabled={disabled} />
+          <ObjectAITool disabled={disabled} />
+          <PeopleAITool disabled={disabled} />
+          <TextAITool disabled={disabled} />
+          <ExpandAITool disabled={disabled} />
+          <UpgradeAITool disabled={disabled} />
           <AppliedToolsList />
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -113,64 +176,6 @@ export function Toolbar() {
           </DialogContent>
         </Dialog>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full w-24 flex-col justify-between items-stretch border-r bg-background p-2">
-      <div className="flex flex-col gap-2 items-center">
-        <span className="text-sm text-gray-500">Tools</span>
-        <BrightnessTool disabled={disabled} />
-        <ContrastTool disabled={disabled} />
-        <SaturationTool disabled={disabled} />
-        <BinarizationTool disabled={disabled} />
-        <RotateTool disabled={disabled} />
-        <CropTool disabled={disabled} />
-        <ResizeTool disabled={disabled} />
-        <BorderTool disabled={disabled} />
-        <WatermarkTool disabled={disabled} />
-        <BgRemovalAITool disabled={disabled} />
-        <CropAITool disabled={disabled} />
-        <ObjectAITool disabled={disabled} />
-        <PeopleAITool disabled={disabled} />
-        <TextAITool disabled={disabled} />
-        <ExpandAITool disabled={disabled} />
-        <UpgradeAITool disabled={disabled} />
-        <AppliedToolsList />
-      </div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            className="text-red-400 size-8"
-            disabled={project.tools.length === 0}
-          >
-            <Eraser />
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Clear Tools?</DialogTitle>
-            <DialogDescription>
-              This will remove <b>all</b> edits from the current project.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                clearTools.mutate({
-                  toolIds: project.tools.map((t) => t._id),
-                  projectVersion: project.version,
-                });
-                setOpen(false);
-              }}
-            >
-              Clear
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </TooltipProvider>
   );
 }
