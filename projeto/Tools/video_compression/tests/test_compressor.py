@@ -1,4 +1,5 @@
 import hashlib
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -15,7 +16,7 @@ from media import CompressionError, check_limits, probe
 
 class ContractTests(unittest.TestCase):
     def test_profiles_and_optional_audio(self):
-        for quality, crf in [("high", "20"), ("balanced", "25"), ("small", "30")]:
+        for quality, crf, bitrate in [("high", "23", "160k"), ("balanced", "28", "128k"), ("small", "32", "96k")]:
             with self.subTest(quality=quality):
                 cmd = build_command("source.mp4", "output.mp4", quality)
                 self.assertEqual(cmd[cmd.index("-crf") + 1], crf)
@@ -23,6 +24,11 @@ class ContractTests(unittest.TestCase):
                 self.assertIn("-n", cmd)
                 self.assertNotIn("-y", cmd)
                 self.assertEqual(cmd[cmd.index("-c:v") + 1], "libx264")
+                self.assertEqual(cmd[cmd.index("-preset") + 1], "veryfast")
+                self.assertEqual(cmd[cmd.index("-pix_fmt") + 1], "yuv420p")
+                self.assertEqual(cmd[cmd.index("-c:a") + 1], "aac")
+                self.assertEqual(cmd[cmd.index("-b:a") + 1], bitrate)
+                self.assertEqual("scale=" in cmd[cmd.index("-vf") + 1], quality == "small")
 
     def test_unknown_quality_is_rejected(self):
         with self.assertRaises(CompressionError):
@@ -118,6 +124,7 @@ class FFmpegTests(unittest.TestCase):
                 output = Path(tmp) / f"{quality}.mp4"
                 result = compress(source, output, quality, "free", progress=values.append)
                 self.assertGreater(result["sizeBytes"], 0)
+                self.assertEqual((result["width"], result["height"]), (160, 120))
                 self.assertTrue(probe(output)["hasAudio"])
                 self.assertEqual(hashlib.sha256(source.read_bytes()).digest(), original_hash)
                 self.assertTrue(values)
@@ -132,6 +139,49 @@ class FFmpegTests(unittest.TestCase):
             ], check=True, capture_output=True)
             compress(source, output, "small", "free")
             self.assertFalse(probe(output)["hasAudio"])
+
+    def test_profile_resolution_and_aspect_ratio(self):
+        cases = [
+            (1920, 1080, (1280, 720)),
+            (1080, 1920, (720, 1280)),
+            (1600, 1000, (1152, 720)),
+            (1000, 1600, (720, 1152)),
+            (640, 360, (640, 360)),
+            (360, 640, (360, 640)),
+            (1280, 720, (1280, 720)),
+            (720, 1280, (720, 1280)),
+            (1000, 1000, (720, 720)),
+            (321, 241, (320, 240)),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            for width, height, small_size in cases:
+                source = Path(tmp) / f"source-{width}x{height}.mp4"
+                subprocess.run([
+                    "ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+                    f"testsrc=size={width}x{height}:rate=5", "-t", "0.4",
+                    "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv444p", str(source),
+                ], check=True, capture_output=True)
+                for quality in ["high", "balanced", "small"]:
+                    with self.subTest(size=(width, height), quality=quality):
+                        output = Path(tmp) / f"{quality}-{width}x{height}.mp4"
+                        result = compress(source, output, quality, "free")
+                        expected = small_size if quality == "small" else (width + width % 2, height + height % 2)
+                        self.assertEqual((result["width"], result["height"]), expected)
+                        self.assertEqual(result["width"] % 2, 0)
+                        self.assertEqual(result["height"] % 2, 0)
+                        response = subprocess.run([
+                            "ffprobe", "-v", "error", "-select_streams", "v:0",
+                            "-show_entries", "stream=codec_name,pix_fmt,display_aspect_ratio",
+                            "-of", "json", str(output),
+                        ], check=True, capture_output=True)
+                        stream = json.loads(response.stdout)["streams"][0]
+                        self.assertEqual(stream["codec_name"], "h264")
+                        self.assertEqual(stream["pix_fmt"], "yuv420p")
+                        if quality == "small":
+                            self.assertLessEqual(result["width"], width)
+                            self.assertLessEqual(result["height"], height)
+                            numerator, denominator = map(int, stream["display_aspect_ratio"].split(":"))
+                            self.assertAlmostEqual(numerator / denominator, width / height, places=4)
 
     def test_invalid_video_never_publishes_output(self):
         with tempfile.TemporaryDirectory() as tmp:

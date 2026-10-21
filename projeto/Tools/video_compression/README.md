@@ -32,20 +32,23 @@ output, validates it and renames it to `result.mp4`. The S3 original, project `i
 pipeline and existing results remain unchanged. Only a completed job exposes a download.
 The working copy is removed after completion/failure; results stay on the named volume.
 
-| Quality | CRF | Preset | Audio |
-| --- | --- | --- | --- |
-| high | 20 | veryfast | AAC 160k |
-| balanced | 25 | veryfast | AAC 128k |
-| small | 30 | veryfast | AAC 96k |
+| Quality | CRF | Preset | Audio | Resolution |
+| --- | --- | --- | --- | --- |
+| high | 23 | veryfast | AAC 160k | Original |
+| balanced | 28 | veryfast | AAC 128k | Original |
+| small | 32 | veryfast | AAC 96k | Maximum 1280x720 landscape / 720x1280 portrait |
 
-MP4/H.264 input only; audio is optional. Video is encoded with libx264/yuv420p;
-dimensions are preserved except for minimum even-dimension padding if necessary.
+MP4/H.264 input only; audio is optional. Video is encoded with libx264/yuv420p.
+For high/balanced, dimensions are preserved except for minimum even-dimension
+padding if necessary. Small preserves orientation and aspect ratio without upscaling;
+dimensions are rounded down to even values for yuv420p compatibility.
 CRF does not guarantee a smaller file for an already compressed source. The real
 `reductionPercent` can be negative; metadata reports the actual output size.
 
 Worker limits (decimal units): free 500,000,000 bytes/600 seconds; premium
 2,000,000,000 bytes/3600 seconds. The existing global 100 MB upload limit remains.
-No resolution restriction is added. Profiles are version 1 in `config.py`.
+No input resolution restriction is added; only small limits output resolution.
+Profiles are version 1 in `config.py`.
 
 The new durable queues/routing keys, on the existing direct exchange `picturas`, are:
 `video_compression_queue` and `video_compression_results_queue`. Progress is persisted

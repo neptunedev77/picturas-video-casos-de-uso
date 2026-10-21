@@ -16,10 +16,19 @@ def build_command(source, output, quality):
     if quality not in PROFILES:
         raise CompressionError("INVALID_QUALITY", "Quality must be high, balanced or small.")
     profile = PROFILES[quality]
+    video_filter = "pad=ceil(iw/2)*2:ceil(ih/2)*2"
+    if "maxLongEdge" in profile:
+        long_edge, short_edge = profile["maxLongEdge"], profile["maxShortEdge"]
+        # Bound each orientation without upscaling; round down to even dimensions.
+        video_filter = (
+            f"scale=w='min(iw,if(gte(iw,ih),{long_edge},{short_edge}))':"
+            f"h='min(ih,if(gte(iw,ih),{short_edge},{long_edge}))':"
+            "force_original_aspect_ratio=decrease:force_divisible_by=2"
+        )
     return [
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-n", "-i", str(source),
         "-map", "0:v:0", "-map", "0:a:0?",
-        "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+        "-vf", video_filter,
         "-c:v", "libx264", "-preset", profile["preset"], "-crf", str(profile["crf"]),
         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", profile["audioBitrate"],
         "-movflags", "+faststart", "-progress", "pipe:1", "-nostats", str(output),

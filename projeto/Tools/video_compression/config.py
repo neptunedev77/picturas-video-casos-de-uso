@@ -8,9 +8,10 @@ RESULTS_QUEUE = "video_compression_results_queue"
 ROOT = Path("/app/images/video_compression")
 PROFILE_VERSION = 1
 PROFILES = {
-    "high": {"crf": 20, "audioBitrate": "160k", "preset": "veryfast"},
-    "balanced": {"crf": 25, "audioBitrate": "128k", "preset": "veryfast"},
-    "small": {"crf": 30, "audioBitrate": "96k", "preset": "veryfast"},
+    "high": {"crf": 23, "audioBitrate": "160k", "preset": "veryfast"},
+    "balanced": {"crf": 28, "audioBitrate": "128k", "preset": "veryfast"},
+    "small": {"crf": 32, "audioBitrate": "96k", "preset": "veryfast",
+              "maxLongEdge": 1280, "maxShortEdge": 720},
 }
 # Decimal MB/GB. The existing upload remains limited to 100 MB in this block.
 PLAN_LIMITS = {
