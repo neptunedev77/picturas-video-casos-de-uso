@@ -97,6 +97,7 @@ const advanced_tools = [
   "people_ai",
   "expand_ai",
   "privacy_blur",
+  "video_bg_remove",
 ];
 
 // Conta quantas ferramentas avançadas existem neste projeto (independente de imagens)
@@ -1551,6 +1552,69 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
                       res.status(400).jsonp(`O intervalo de tempo definido (${iv.start}s - ${iv.end}s) excede a duração total do vídeo (${Math.round(dur)}s).`);
                       return;
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Validação REQ-VID-BG-001, REQ-VID-BG-006, REQ-VID-BG-030: limites de perfil e modos para video_bg_remove
+      const hasVideoBgRemove = (project.tools || []).some((t) => t.procedure === "video_bg_remove");
+      if (hasVideoBgRemove) {
+        if (userType === "anonymous") {
+          res.status(403).jsonp("Ferramentas avançadas de vídeo não estão disponíveis para utilizadores anónimos");
+          return;
+        }
+
+        const bgRemoveTool = (project.tools || []).find((t) => t.procedure === "video_bg_remove");
+        const bgMode = String(bgRemoveTool?.params?.bgMode || "").toLowerCase();
+        if (userType === "free" && (bgMode === "bokeh" || bgMode === "blur" || bgMode === "desfocagem")) {
+          res.status(403).jsonp("O modo de Desfocagem de Profundidade (Bokeh) é exclusivo para utilizadores do plano Premium");
+          return;
+        }
+
+        const videoMeta = req.body?.videoMeta;
+        for (const img of (project.imgs || [])) {
+          const isVideo = (img.og_uri && img.og_uri.toLowerCase().endsWith(".mp4")) || img.mime_type === "video/mp4";
+          if (isVideo) {
+            const dur = videoMeta?.duration ?? img.duration;
+            const w = videoMeta?.width ?? img.width;
+            const h = videoMeta?.height ?? img.height;
+
+            if (userType === "free") {
+              if (dur && dur > 30) {
+                res.status(400).jsonp("A ferramenta de remoção de fundo em contas Gratuitas está limitada a vídeos de até 30 segundos (720p). O vídeo atual excede este limite");
+                return;
+              }
+              if ((w && w > 1280) || (h && h > 720)) {
+                res.status(400).jsonp("A ferramenta de remoção de fundo em contas Gratuitas está limitada a resolução máxima 720p (1280x720). O vídeo atual excede este limite");
+                return;
+              }
+            } else if (userType === "premium") {
+              if (dur && dur > 180) {
+                res.status(400).jsonp("A ferramenta de remoção de fundo está limitada a vídeos de até 180 segundos. O vídeo atual excede este limite");
+                return;
+              }
+              if ((w && w > 1920) || (h && h > 1080)) {
+                res.status(400).jsonp("A resolução do vídeo excede o limite máximo permitido de 1080p (1920x1080)");
+                return;
+              }
+            }
+
+            // Validação de intervalos temporais face à duração do vídeo (REQ-VID-BG-005)
+            if (dur && bgRemoveTool?.params?.timeIntervals) {
+              const intervals = bgRemoveTool.params.timeIntervals;
+              if (Array.isArray(intervals)) {
+                for (const iv of intervals) {
+                  if (iv.start >= dur) {
+                    res.status(400).jsonp(`O intervalo de tempo definido (${iv.start}s - ${iv.end}s) excede a duração total do vídeo (${Math.round(dur)}s).`);
+                    return;
+                  }
+                  if (iv.start >= iv.end) {
+                    res.status(400).jsonp(`O instante inicial (${iv.start}s) deve ser estritamente inferior ao instante final (${iv.end}s).`);
+                    return;
                   }
                 }
               }

@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserCheck, Sparkles, Clock, AlertTriangle } from "lucide-react";
+import { UserCheck, Sparkles, Clock, AlertTriangle, Lock } from "lucide-react";
 import { ToolbarButton } from "./toolbar-button";
 import { VideoBgMode, VideoBgRemoveParams, TimeInterval } from "@/lib/tool-types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useCurrentImage } from "@/providers/project-provider";
+import { useSession } from "@/providers/session-provider";
+import { useToast } from "@/hooks/use-toast";
 
 export default function VideoBgRemoveTool({ disabled }: { disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const currentImage = useCurrentImage();
+  const session = useSession();
+  const { toast } = useToast();
+  const isPremium = session?.user?.type === "premium";
 
   const [videoDuration, setVideoDuration] = useState<number | null>(
     currentImage?.duration || null
@@ -95,6 +100,13 @@ export default function VideoBgRemoveTool({ disabled }: { disabled?: boolean }) 
           <span className="text-sm font-semibold">Remover Fundo de Vídeo (IA)</span>
         </div>
 
+        {!isPremium && videoDuration !== null && videoDuration > 30 && (
+          <div className="flex items-center gap-1.5 rounded bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>Vídeo com {videoDuration.toFixed(0)}s. Contas Free estão limitadas a 30s (720p).</span>
+          </div>
+        )}
+
         {/* Modo de Substituição de Fundo */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium">Modo de Fundo:</label>
@@ -121,10 +133,21 @@ export default function VideoBgRemoveTool({ disabled }: { disabled?: boolean }) 
               type="button"
               size="sm"
               variant={bgMode === "bokeh" ? "default" : "outline"}
-              onClick={() => setBgMode("bokeh")}
+              onClick={() => {
+                if (!isPremium) {
+                  toast({
+                    title: "Exclusivo Premium",
+                    description: "O modo de Desfocagem de Profundidade (Portrait Bokeh) está reservado a contas Premium.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setBgMode("bokeh");
+              }}
               className="h-8 text-xs"
             >
               Desfocagem
+              {!isPremium && <Lock className="ml-1 size-3 text-amber-500 inline" />}
             </Button>
           </div>
         </div>

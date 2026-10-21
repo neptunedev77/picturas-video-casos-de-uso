@@ -141,6 +141,7 @@ class VideoBgRemove:
             "-c:v", "libx264",
             "-preset", "veryfast",
             "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
             "-c:a", "aac",
             "-shortest",
             output_path
@@ -164,12 +165,20 @@ class VideoBgRemove:
         frame_idx = 0
         last_progress_time = time.time()
         last_progress_val = -1
+        start_proc_time = time.time()
+        timeout_sec = max(60.0, 3.0 * duration_sec + 60.0)
+        subject_detected_count = 0
+        total_interval_frames = 0
 
         try:
             while True:
                 ret, frame = cap.read()
                 if not ret or frame is None:
                     break
+
+                if time.time() - start_proc_time > timeout_sec:
+                    ffmpeg_proc.kill()
+                    raise TimeoutError(f"Tempo limite de execução ({timeout_sec:.1f}s) excedido pelo worker de IA")
 
                 if ffmpeg_proc.poll() is not None:
                     raise RuntimeError("O processo FFmpeg encerrou prematuramente antes da conclusão dos frames")
@@ -191,7 +200,10 @@ class VideoBgRemove:
                         out_pil = remove(frame_rgb, session=rembg_session, only_mask=True, post_process_mask=True)
                         raw_mask = np.array(out_pil, dtype=np.float32) / 255.0
 
+                    total_interval_frames += 1
                     if raw_mask is not None and raw_mask.shape[:2] == (height, width):
+                        if np.mean(raw_mask) > 0.01:
+                            subject_detected_count += 1
                         # Feathering localizado: suavizar exclusivamente a banda de transição [0.05, 0.95]
                         # Interior do sujeito (> 0.95) permanece 100% sólido e nítido; fundo (< 0.05) fica limpo
                         transition_band = (raw_mask >= 0.05) & (raw_mask <= 0.95)
@@ -240,6 +252,9 @@ class VideoBgRemove:
                     ffmpeg_proc.stdin.close()
                 except Exception:
                     pass
+
+        if total_interval_frames > 0 and subject_detected_count == 0:
+            print("[WARN] Nenhum sujeito humano detetado para isolamento de fundo", flush=True)
 
         ffmpeg_proc.wait()
         if ffmpeg_proc.returncode != 0:
@@ -303,12 +318,14 @@ class VideoBgRemove:
             print(f"[SUCCESS] Processed video bg removal: {output_video_uri}", flush=True)
 
         except Exception as e:
+            err_timestamp = datetime.datetime.now(pytz.utc)
+            err_proc_time = (err_timestamp - timestamp).total_seconds() * 1000
             self._tool_msg.send_msg(
                 msg_id=msg_id,
                 resp_msg_id=resp_msg_id,
-                timestamp=cur_timestamp.isoformat(),
+                timestamp=err_timestamp.isoformat(),
                 status='error',
-                processingTime=proc_time,
+                processingTime=err_proc_time,
                 new_img_uri=None,
                 err_code=self._codes['error_processing'],
                 err_msg=str(e),

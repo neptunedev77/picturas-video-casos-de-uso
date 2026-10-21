@@ -2,7 +2,7 @@
 
 - **Projeto:** PictuRAS — Edição e Processamento de Imagem e Vídeo
 - **Unidade Curricular:** Requisitos e Arquitetura de Software (RAS) — MEI, Universidade do Minho
-- **Equipa:** Grupo 25 — António Sousa, Bruno Sousa, Bruno Vale, Diogo Macedo, Sérgio Vieira
+- **Equipa:** Grupo 6 — António Sousa, Bruno Sousa, Bruno Vale, Diogo Macedo, Sérgio Vieira
 - **Última atualização:** Outubro de 2026
 
 ---
@@ -108,12 +108,17 @@ Alterações comuns, usadas por todas as funcionalidades de vídeo:
   - *Feathering* localizado: suavização gaussiana seletiva restrita à banda de transição da máscara ($0.05 \le \alpha \le 0.95$), preservando o interior 100% nítido e o fundo limpo.
   - Três modos de substituição: **Chroma Key (verde `#00FF00`)**, **Cor Sólida** (paleta RGB personalizada) e **Desfocagem de Profundidade (*Portrait Bokeh*)** com aproximação multi-escala rápida.
   - Streaming em memória via pipe `stdin` direto para processo FFmpeg em paralelo, eliminando gigabytes de escrita e leitura temporária em SSD.
-  - Remuxing de áudio com preservação de cadência e continuidade de timestamps (PTS), garantindo meta nominal de sincronismo $\le 40\text{ ms}$.
+  - Remuxing de áudio com preservação de cadência e continuidade de timestamps (PTS), garantindo meta nominal de sincronismo $\le 40\text{ ms}$; codificação H.264 com +faststart (moov no início) e tolerância a vídeos mudos.
+  - Monitor de timeout de segurança proporcional à duração ($(3\times \text{duração} + 60\text{ s})$), com cancelamento gracioso e registo de deteção de sujeito.
 * **Frontend (`components/toolbar/video-bg-remove-tool.tsx`):**
   - Janela modal com pré-visualização de vídeo e seletores dinâmicos de modo (Chroma Key, Seletor de cor hexadecimal e Slider de intensidade Bokeh).
-  - Configuração de intervalo temporal (Todo o Vídeo ou Segmento $T_{start}$ a $T_{end}$) com validação de duração.
+  - Configuração de intervalo temporal (Todo o Vídeo ou Segmento $T_{start}$ a $T_{end}$) com validação de duração e botão de ajuste rápido (FA4).
+  - Bloqueio de seleção de modo Desfocagem Bokeh para contas Free com alerta visual e badge PRO/cadeado (REQ-VID-BG-030).
+  - Alerta de duração excedida para contas Free (> 30s).
   - Painel de acompanhamento com estados e notificações Toast via WebSocket.
-* **Projetos / Regras de negócio:**
+* **Projetos / Regras de negócio (`projects/routes/projects.js`):**
+  - `video_bg_remove` integrado no catálogo de `advanced_tools` para validação e consumo de quotas diárias.
+  - Bloqueio no backend do modo Bokeh para contas Free com HTTP 403 (REQ-VID-BG-030).
   - Free até 30 s e 720p; Premium até 180 s e 1080p, com prioridade na fila RabbitMQ.
   - Acesso exclusivo a utilizadores autenticados (Anónimos bloqueados com HTTP 401/403 - RN0).
   - Edição estritamente não-destrutiva: o ficheiro gerado é registado como `<nome>_sem_fundo.mp4`; o vídeo original permanece intacto.
