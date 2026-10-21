@@ -440,3 +440,42 @@ test("a larger result stays completed and downloadable even with rounded zero sa
   assert.equal(download.downloaded.file, "/result.mp4");
   assert.equal(download.downloaded.name, "original-balanced.mp4");
 });
+
+test("NO_CAPACITY cancels active jobs, removes private results and preserves quota state", async () => {
+  for (const [status, charged] of [["queued", false], ["processing", true]]) {
+    const { routes, state } = harness();
+    state.doc = { ...activeJob(), status, quota_charged: charged, start_claimed: charged,
+      ffmpeg_started_at: charged ? new Date() : null, result: { sizeBytes: 42 } };
+    await state.handleResult({ jobId: jid, status: "failed", error: {
+      code: "NO_CAPACITY", message: "Not enough disk space to compress this video.",
+    } });
+    assert.equal(state.doc.status, "cancelled");
+    assert.equal(state.doc.error.code, "NO_CAPACITY");
+    assert.equal(state.doc.error.message, "Not enough disk space to compress this video.");
+    assert.equal(state.doc.quota_charged, charged);
+    assert.equal(state.doc.quota_refund_claimed, undefined);
+    assert.ok(state.doc.finished_at);
+    assert.equal(state.doc.result, undefined);
+    assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+    assert.equal(state.original.toString(), "existing S3 original");
+    const download = response();
+    await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+      { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+    assert.equal(download.statusCode, 409);
+    assert.equal(download.downloaded, undefined);
+    await state.handleResult({ jobId: jid, status: "completed", result: {} });
+    assert.equal(state.doc.status, "cancelled");
+    assert.equal(state.doc.result, undefined);
+  }
+});
+
+test("late NO_CAPACITY never replaces a terminal state or deletes a completed result", async () => {
+  for (const status of ["completed", "failed", "cancelled"]) {
+    const { state } = harness();
+    state.doc = { ...activeJob(), status, error: { code: "ORIGINAL_ERROR" } };
+    await state.handleResult({ jobId: jid, status: "failed", error: { code: "NO_CAPACITY" } });
+    assert.equal(state.doc.status, status);
+    assert.equal(state.doc.error.code, "ORIGINAL_ERROR");
+    if (status === "completed") assert.deepEqual(state.removed, []);
+  }
+});

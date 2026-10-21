@@ -135,8 +135,9 @@ Compensation before Popen retains the existing once-only refund claim. There is 
 distributed transaction between MongoDB, users and the operating-system process;
 communication failures during debit/refund retain the reconciliation limitation above.
 
-This backend block does not change the frontend: its Cancelar button still appears
-only while queued. Processing cancellation is available through the existing REST API.
+The frontend offers Cancelar for both queued and processing jobs. After a processing
+cancellation is accepted, the button stays disabled while polling continues until
+the server confirms the final state.
 
 ## Deliberately excluded
 

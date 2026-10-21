@@ -11,6 +11,35 @@ import pika
 
 
 class WorkerTests(unittest.TestCase):
+    def test_capacity_refusal_reports_no_capacity_before_authorization_or_ffmpeg(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job_id = "c" * 24
+            root = Path(tmp)
+            directory = root / job_id
+            directory.mkdir()
+            source, output = directory / "source.mp4", directory / "result.mp4"
+            source.write_bytes(b"original")
+            job = {"jobId": job_id, "inputPath": str(source), "outputPath": str(output),
+                   "quality": "balanced", "userType": "free"}
+            publish = Mock()
+            with patch("worker.config.ROOT", root), \
+                    patch("compressor.probe", return_value={"sizeBytes": 8, "durationSec": 10}), \
+                    patch("compressor.shutil.disk_usage", return_value=Mock(free=0)), \
+                    patch("worker.authorize_start") as authorize, \
+                    patch("compressor.subprocess.Popen") as launch, \
+                    patch("worker.release_failed_launch") as refund:
+                CompressionWorker().process(job, publish, Mock())
+            authorize.assert_not_called()
+            launch.assert_not_called()
+            refund.assert_not_called()
+            # Projects maps this specific terminal error to the cancelled job state.
+            publish.assert_called_once_with({"jobId": job_id, "status": "failed", "error": {
+                "code": "NO_CAPACITY", "message": "Not enough disk space to compress this video.",
+            }})
+            self.assertEqual(source.read_bytes(), b"original")
+            self.assertFalse(output.exists())
+            self.assertFalse(list(directory.glob("encode-*")))
+
     def test_no_quota_runs_real_compressor_without_launch_or_refund_and_publishes_failed(self):
         with tempfile.TemporaryDirectory() as tmp:
             job_id = "c" * 24

@@ -197,6 +197,16 @@ async function handleResult(msg) {
   if (["completed", "failed", "cancelled"].includes(msg.status) && await finishCancellation(job._id)) return;
   if (msg.status === "cancelled") return; // Never accept unsolicited cancellation.
   if (msg.status === "failed") {
+    if (msg.error?.code === "NO_CAPACITY") {
+      // Capacity refusal is cancellation, without changing any quota bookkeeping.
+      const cancelled = await CompressionJob.findOneAndUpdate({
+        _id: job._id, status: { $in: ["queued", "processing"] },
+      }, { $set: { status: "cancelled", finished_at: new Date(),
+        error: { code: "NO_CAPACITY", message: msg.error.message || "Not enough disk space to compress this video." },
+      }, $unset: { result: 1 } }, { new: true }).select("+input_path +output_path");
+      if (cancelled) await removeCopies(cancelled);
+      return;
+    }
     const failed = await fail(job._id, msg.error?.code || "PROCESSING_FAILED", msg.error?.message || "Compression failed.");
     if (failed.matchedCount) await removeCopies(job);
     else await finishCancellation(job._id);
