@@ -207,6 +207,25 @@ function process_msg() {
       
       if (msg_content.status === "error") {
         console.log(JSON.stringify(msg_content));
+
+        // Estornar quota pendente em caso de erro no processamento
+        try {
+          const freshProject = await Project.getOne(process.user_id, process.project_id);
+          if (freshProject && freshProject.pendingAdvancedOps > 0) {
+            const advRefund = freshProject.pendingAdvancedOps;
+            freshProject.pendingAdvancedOps = 0;
+            await Project.updateRaw(process.user_id, process.project_id, freshProject);
+            await axios.post(
+              `${users_ms}${runnerId}/process/refund/${advRefund}`,
+              {},
+              { httpsAgent, timeout: 5000 }
+            );
+            console.log(`[PROCESS-ERROR-REFUND] Refunded ${advRefund} ops to ${runnerId}`);
+          }
+        } catch (refErr) {
+          console.error("Error refunding operations on process error:", refErr);
+        }
+
         if (/preview/.test(msg_id)) {
           send_msg_client_preview_error(`update-client-preview-${uuidv4()}`, timestamp, runnerId, msg_content.error.code, msg_content.error.msg)
         }
@@ -1479,44 +1498,58 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
         }
 
         const videoMeta = req.body?.videoMeta;
+
+        // REQ-VID-BLUR-002 / Exceção 3: Validar formato e codec logo no Passo 3
+        if (videoMeta?.format && videoMeta.format.toLowerCase() !== "mp4") {
+          res.status(400).jsonp("Formato ou codec de vídeo inválido. Certifique-se de que o ficheiro utiliza um formato suportado (MP4 com vídeo H.264)");
+          return;
+        }
+        if (videoMeta?.codec && !videoMeta.codec.toLowerCase().includes("h264") && !videoMeta.codec.toLowerCase().includes("avc")) {
+          res.status(400).jsonp("Formato ou codec de vídeo inválido. Certifique-se de que o ficheiro utiliza um formato suportado (MP4 com vídeo H.264)");
+          return;
+        }
+
         for (const img of (project.imgs || [])) {
           const isVideo = (img.og_uri && img.og_uri.toLowerCase().endsWith(".mp4")) || img.mime_type === "video/mp4";
-          if (isVideo) {
-            const dur = videoMeta?.duration ?? img.duration;
-            const w = videoMeta?.width ?? img.width;
-            const h = videoMeta?.height ?? img.height;
+          if (!isVideo) {
+            res.status(400).jsonp("Formato ou codec de vídeo inválido. Certifique-se de que o ficheiro utiliza um formato suportado (MP4 com vídeo H.264)");
+            return;
+          }
 
-            if (userType === "free") {
-              if (dur && dur > 60) {
-                res.status(400).jsonp("A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite");
-                return;
-              }
-              if ((w && w > 1920) || (h && h > 1080)) {
-                res.status(400).jsonp("A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite");
-                return;
-              }
-            } else if (userType === "premium") {
-              if (dur && dur > 300) {
-                res.status(400).jsonp("A ferramenta de anonimização está limitada a vídeos de até 300 segundos. O vídeo atual excede este limite");
-                return;
-              }
-              if ((w && w > 3840) || (h && h > 2160)) {
-                res.status(400).jsonp("A resolução do vídeo excede o limite máximo permitido de 4K");
-                return;
-              }
+          const dur = videoMeta?.duration ?? img.duration;
+          const w = videoMeta?.width ?? img.width;
+          const h = videoMeta?.height ?? img.height;
+
+          if (userType === "free") {
+            if (dur && dur > 60) {
+              res.status(400).jsonp("A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite");
+              return;
             }
+            if ((w && w > 1920) || (h && h > 1080)) {
+              res.status(400).jsonp("A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite");
+              return;
+            }
+          } else if (userType === "premium") {
+            if (dur && dur > 300) {
+              res.status(400).jsonp("A ferramenta de anonimização está limitada a vídeos de até 300 segundos. O vídeo atual excede este limite");
+              return;
+            }
+            if ((w && w > 3840) || (h && h > 2160)) {
+              res.status(400).jsonp("A resolução do vídeo excede o limite máximo permitido de 4K");
+              return;
+            }
+          }
 
-            // Validação de intervalos temporais face à duração do vídeo
-            if (dur) {
-              for (const t of (project.tools || [])) {
-                if (t.procedure === "privacy_blur" && t.params?.timeIntervals) {
-                  const intervals = t.params.timeIntervals;
-                  if (Array.isArray(intervals)) {
-                    for (const iv of intervals) {
-                      if (iv.start >= dur) {
-                        res.status(400).jsonp(`O intervalo de tempo definido (${iv.start}s - ${iv.end}s) excede a duração total do vídeo (${Math.round(dur)}s).`);
-                        return;
-                      }
+          // Validação de intervalos temporais face à duração do vídeo
+          if (dur) {
+            for (const t of (project.tools || [])) {
+              if (t.procedure === "privacy_blur" && t.params?.timeIntervals) {
+                const intervals = t.params.timeIntervals;
+                if (Array.isArray(intervals)) {
+                  for (const iv of intervals) {
+                    if (iv.start >= dur) {
+                      res.status(400).jsonp(`O intervalo de tempo definido (${iv.start}s - ${iv.end}s) excede a duração total do vídeo (${Math.round(dur)}s).`);
+                      return;
                     }
                   }
                 }
@@ -1634,6 +1667,78 @@ router.post("/:user/:project/process", checkSharePermission, requireEditPermissi
             );
         } else {
           res.sendStatus(201);
+
+          // REQ-VID-BLUR-012 / Exceção 4: Timeout dinâmico de segurança no backend (3 * duração + 60s)
+          if (hasPrivacyBlur) {
+            const videoMeta = req.body?.videoMeta;
+            let videoDur = videoMeta?.duration;
+            if (!videoDur) {
+              for (const img of (project.imgs || [])) {
+                if (img.duration) {
+                  videoDur = img.duration;
+                  break;
+                }
+              }
+            }
+            const durSec = videoDur && videoDur > 0 ? Number(videoDur) : (userType === "premium" ? 300 : 60);
+            const watchdogMs = Math.round((durSec * 3 + 60) * 1000);
+            console.log(`[WATCHDOG-START] project=${req.params.project} token=${runToken} timeout=${watchdogMs / 1000}s`);
+
+            setTimeout(async () => {
+              try {
+                const freshProject = await Project.getOne(ownerId, req.params.project);
+                if (
+                  freshProject &&
+                  (freshProject.activeToken || 0) === runToken &&
+                  (freshProject.committedToken || 0) !== runToken
+                ) {
+                  console.warn(`[WATCHDOG-TIMEOUT] Invalidation of runToken=${runToken} for project=${req.params.project}`);
+                  freshProject.activeToken = (freshProject.activeToken || 0) + 1;
+                  const adv_refund = freshProject.pendingAdvancedOps || 0;
+                  freshProject.pendingAdvancedOps = 0;
+
+                  const prev = freshProject.prevCommittedToken ?? (freshProject.committedToken || 0);
+                  if ((freshProject.committedToken || 0) === runToken) {
+                    freshProject.committedToken = prev;
+                    freshProject.resultsToken = prev;
+                  }
+                  await Project.updateRaw(ownerId, req.params.project, freshProject);
+
+                  if (adv_refund > 0) {
+                    try {
+                      await axios.post(
+                        `${users_ms}${runnerUserId || ownerId}/process/refund/${adv_refund}`,
+                        {},
+                        { httpsAgent, timeout: 5000 }
+                      );
+                      console.log(`[WATCHDOG-REFUND] Refunded ${adv_refund} ops to ${runnerUserId || ownerId}`);
+                    } catch (err) {
+                      console.error("Error refunding on watchdog timeout:", err);
+                    }
+                  }
+
+                  // Limpar processos do runToken
+                  const processes = await Process.getProject(ownerId, req.params.project);
+                  for (const p of (processes || [])) {
+                    if (p.token === runToken) {
+                      await Process.delete(p.user_id, p.project_id, p._id);
+                    }
+                  }
+
+                  // Notificar frontend via websocket de erro 2304
+                  send_msg_client_error(
+                    `update-client-process-${uuidv4()}`,
+                    new Date().toISOString(),
+                    runnerUserId,
+                    "2304",
+                    "O serviço de processamento demorou demasiado tempo a responder. A operação foi cancelada e o seu crédito foi reposto."
+                  );
+                }
+              } catch (watchdogErr) {
+                console.error("[WATCHDOG-ERROR]", watchdogErr);
+              }
+            }, watchdogMs);
+          }
         }
       };
 

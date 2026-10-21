@@ -898,7 +898,7 @@ export const processProject = async ({
   shareId?: string;
   projectVersion: number;
   runnerUserId: string;  
-  videoMeta?: { duration?: number; width?: number; height?: number };
+  videoMeta?: { duration?: number; width?: number; height?: number; format?: string; codec?: string };
 }) => {
   try {
     const query = buildQuery({ ownerId, shareId });

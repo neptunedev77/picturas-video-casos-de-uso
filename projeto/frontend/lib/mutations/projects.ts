@@ -240,7 +240,7 @@ export const useProcessProject = (
   const resultsKey = ["projectResults", uid, pid, token, ownerId, shareId];
 
   return useMutation({
-    mutationFn: (args: { projectVersion: number; videoMeta?: { duration?: number; width?: number; height?: number } }) =>
+    mutationFn: (args: { projectVersion: number; videoMeta?: { duration?: number; width?: number; height?: number; format?: string; codec?: string } }) =>
       processProject({
         uid: shareId ? (ownerId ?? uid) : uid,  
         pid,
