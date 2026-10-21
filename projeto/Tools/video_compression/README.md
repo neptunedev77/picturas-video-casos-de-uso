@@ -88,6 +88,25 @@ refund semantics. It does not provide a distributed transaction across users/pro
 service failures during debit/refund can require reconciliation. Duplicate compression
 starts are guarded, but the general quota service is not refactored for cross-tool races.
 
+## Performance target and technical timeout (REQ-VID-COMP-035/036)
+
+The MVP performance target is total processing time <= 1.5 times the video's
+duration under the reference conditions. This is a target for real measurements,
+not an interruption threshold; exceeding 1.5x alone does not fail a job.
+
+The technical FFmpeg timeout is max(60 seconds, 2 times the probed video duration).
+It starts at FFmpeg launch, excluding queueing, download, initial probing and quota
+authorization. The worker checks the deadline while FFmpeg runs and immediately
+after observing its exit; final output probing is outside this FFmpeg execution timer.
+Checks surround the existing progress/control work, so blocking calls can delay
+detection until control returns to the processing loop.
+
+Exceeding the technical timeout raises PROCESSING_TIMEOUT, kills and waits for an
+active FFmpeg process, and removes temporary output. No result is published and the
+original remains unchanged. The job becomes failed unless an accepted cancellation
+request wins the existing atomic transition, in which case it becomes cancelled.
+Quota remains consumed after FFmpeg has launched in either case.
+
 ## Queued and processing cancellation (REQ-VID-COMP-014)
 
 Queued cancellation retains the atomic queued/unclaimed -> cancelled transition.

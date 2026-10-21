@@ -116,7 +116,10 @@ test("no quota prevents start; quota exhausted after preflight is also rejected"
     else state.user.remaining_operations = 0;
     await assert.rejects(authorizeStart(id, token, validMedia), { code: "NO_QUOTA" });
     assert.equal(state.debits, 0);
+    assert.equal(state.refunds, 0);
     assert.equal(state.job.status, "failed");
+    assert.equal(Boolean(state.job.quota_charged), false);
+    assert.equal(state.job.ffmpeg_started_at == null, true);
   }
 });
 
@@ -163,6 +166,21 @@ test("failed encoding remains charged after an effective start", async () => {
   await releaseFailedLaunch(id, token);
   assert.equal(state.debits, 1);
   assert.equal(state.refunds, 0);
+});
+
+test("a PROCESSING_TIMEOUT after FFmpeg launch retains the debit and blocks compensation", async () => {
+  const { state, authorizeStart, markLaunched, releaseFailedLaunch } = setup();
+  await authorizeStart(id, token, validMedia);
+  await markLaunched(id, token);
+  // Even before the terminal event is persisted, the launch marker prevents refunds.
+  await releaseFailedLaunch(id, token);
+  state.job.status = "failed";
+  state.job.error = { code: "PROCESSING_TIMEOUT" };
+  await releaseFailedLaunch(id, token);
+  assert.equal(state.debits, 1);
+  assert.equal(state.refunds, 0);
+  assert.equal(state.job.quota_charged, true);
+  assert.equal(state.user.remaining_operations, 0);
 });
 
 test("cancellation winning before authorization prevents any quota debit", async () => {

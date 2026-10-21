@@ -11,6 +11,47 @@ import pika
 
 
 class WorkerTests(unittest.TestCase):
+    def test_no_quota_runs_real_compressor_without_launch_or_refund_and_publishes_failed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job_id = "c" * 24
+            root = Path(tmp)
+            directory = root / job_id
+            directory.mkdir()
+            source, output = directory / "source.mp4", directory / "result.mp4"
+            source.write_bytes(b"original")
+            job = {"jobId": job_id, "inputPath": str(source), "outputPath": str(output),
+                   "quality": "balanced", "userType": "free"}
+            meta = {"sizeBytes": 8, "durationSec": 10}
+            publish = Mock()
+            with patch("worker.config.ROOT", root), patch("compressor.probe", return_value=meta), \
+                    patch("worker.authorize_start", side_effect=CompressionError("NO_QUOTA", "No daily operations remaining.")) as authorize, \
+                    patch("compressor.subprocess.Popen") as launch, \
+                    patch("worker.release_failed_launch") as refund, patch("worker.check_control") as control:
+                CompressionWorker().process(job, publish, Mock())
+            authorize.assert_called_once_with(job, meta)
+            launch.assert_not_called()
+            refund.assert_not_called()
+            control.assert_not_called()
+            publish.assert_called_once_with({"jobId": job_id, "status": "failed", "error": {
+                "code": "NO_QUOTA", "message": "No daily operations remaining.",
+            }})
+            self.assertEqual(source.read_bytes(), b"original")
+            self.assertFalse(output.exists())
+            self.assertFalse(list(directory.glob("encode-*")))
+
+    def test_timeout_publishes_failed_with_original_code_and_never_refunds(self):
+        with patch("worker.validate_paths", return_value=(Path("source.mp4"), Path("result.mp4"))), \
+                patch("worker.compress", side_effect=CompressionError("PROCESSING_TIMEOUT", "Exceeded FFmpeg deadline")), \
+                patch("worker.release_failed_launch") as refund:
+            publish = Mock()
+            CompressionWorker().process({"jobId": "c" * 24}, publish, Mock())
+            publish.assert_called_once()
+            message = publish.call_args.args[0]
+            self.assertEqual(message["status"], "failed")
+            self.assertEqual(message["error"]["code"], "PROCESSING_TIMEOUT")
+            self.assertNotIn("result", message)
+            refund.assert_not_called()
+
     def test_cancelled_is_published_only_after_compressor_cleanup(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

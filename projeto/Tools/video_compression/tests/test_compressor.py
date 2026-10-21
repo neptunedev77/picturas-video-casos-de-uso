@@ -1,15 +1,17 @@
 import hashlib
+import io
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from compressor import build_command, compress
+from compressor import build_command, compress, processing_timeout
 from config import PLAN_LIMITS
 from media import CompressionError, check_limits, probe
 
@@ -141,8 +143,136 @@ class ContractTests(unittest.TestCase):
             self.assertFalse(list(Path(tmp).glob("encode-*")))
 
 
+class TimeoutTests(unittest.TestCase):
+    def test_timeout_formula(self):
+        for duration, expected in [(1, 60), (29.9, 60), (30, 60), (30.5, 61), (120, 240), (540, 1080)]:
+            with self.subTest(duration=duration):
+                self.assertEqual(processing_timeout(duration), expected)
+
+    def run_encode(self, duration, elapsed, finishes):
+        clock = {"now": 0, "running": True}
+        proc = Mock(stdout=io.BytesIO(), returncode=0)
+        proc.poll.side_effect = lambda: None if clock["running"] else proc.returncode
+
+        def kill():
+            clock["running"] = False
+            proc.returncode = -9
+
+        proc.kill.side_effect = kill
+        refund = Mock()
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            source.write_bytes(b"original")
+
+            def inspect(filename):
+                return {"durationSec": duration, "sizeBytes": Path(filename).stat().st_size,
+                        "width": 160, "height": 120}
+
+            def authorize(_meta):
+                clock["now"] = 5000 # Pre-launch authorization delay must not consume FFmpeg's budget.
+                return {"userType": "free"}
+
+            def launch(cmd, **kwargs):
+                Path(cmd[-1]).write_bytes(b"partial")
+                return proc
+
+            def tick():
+                clock["now"] = 5000 + elapsed
+                clock["running"] = not finishes
+
+            error = None
+            with patch("compressor.probe", side_effect=inspect), \
+                    patch("compressor.subprocess.Popen", side_effect=launch), \
+                    patch("compressor.time.monotonic", side_effect=lambda: clock["now"]), \
+                    patch("compressor.time.sleep"):
+                try:
+                    compress(source, output, "balanced", "free", tick=tick,
+                             before_start=authorize, launch_failed=refund)
+                except CompressionError as caught:
+                    error = caught
+            self.assertEqual(source.read_bytes(), b"original")
+            self.assertFalse(list(Path(tmp).glob("encode-*")))
+            self.assertEqual(output.exists(), error is None)
+            proc.wait.assert_called_once()
+            self.assertTrue(proc.stdout.closed)
+            refund.assert_not_called()
+        return error, proc
+
+    def test_below_and_exactly_at_timeout_can_complete(self):
+        for duration, elapsed in [(10, 59.9), (10, 60), (120, 239.9), (120, 240)]:
+            with self.subTest(duration=duration, elapsed=elapsed):
+                error, proc = self.run_encode(duration, elapsed, finishes=True)
+                self.assertIsNone(error)
+                proc.kill.assert_not_called()
+
+    def test_performance_target_is_not_a_timeout(self):
+        error, proc = self.run_encode(120, 200, finishes=True) # 1.5x < elapsed < 2x.
+        self.assertIsNone(error)
+        proc.kill.assert_not_called()
+
+    def test_exceeding_timeout_kills_active_process_without_result_or_refund(self):
+        for duration, elapsed in [(10, 60.01), (120, 240.01)]:
+            with self.subTest(duration=duration):
+                error, proc = self.run_encode(duration, elapsed, finishes=False)
+                self.assertEqual(error.code, "PROCESSING_TIMEOUT")
+                proc.kill.assert_called_once()
+
+    def test_late_process_exit_cannot_publish_success(self):
+        error, proc = self.run_encode(10, 60.01, finishes=True)
+        self.assertEqual(error.code, "PROCESSING_TIMEOUT")
+        proc.kill.assert_not_called() # Already exited, but still reaped and discarded.
+
+
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg/ffprobe not installed")
 class FFmpegTests(unittest.TestCase):
+    def test_simulated_timeout_terminates_real_ffmpeg_and_removes_partial(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            subprocess.run([
+                "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=15",
+                "-t", "5", "-c:v", "libx264", str(source),
+            ], check=True, capture_output=True)
+            original_hash = hashlib.sha256(source.read_bytes()).digest()
+            real_popen, real_clock, real_sleep = subprocess.Popen, time.monotonic, time.sleep
+            processes = []
+            clock = {"now": 0}
+            refund = Mock()
+
+            def launch(cmd, *args, **kwargs):
+                if "-progress" in cmd:
+                    cmd = list(cmd)
+                    cmd.insert(cmd.index("-i"), "-re")
+                proc = real_popen(cmd, *args, **kwargs)
+                if "-progress" in cmd:
+                    processes.append(proc)
+                return proc
+
+            def launched():
+                # Observe a real in-progress file before advancing only the test clock.
+                deadline = real_clock() + 3
+                while not list(Path(tmp).glob("encode-*/partial.mp4")) and real_clock() < deadline:
+                    real_sleep(0.01)
+                self.assertIsNone(processes[0].poll())
+                self.assertTrue(list(Path(tmp).glob("encode-*/partial.mp4")))
+
+            def tick():
+                clock["now"] = 60.01
+
+            with patch("compressor.subprocess.Popen", side_effect=launch), \
+                    patch("compressor.time.monotonic", side_effect=lambda: clock["now"]):
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", tick=tick, launched=launched,
+                             before_start=lambda _: {"userType": "free"}, launch_failed=refund)
+            self.assertEqual(raised.exception.code, "PROCESSING_TIMEOUT")
+            self.assertEqual(len(processes), 1)
+            self.assertIsNotNone(processes[0].returncode)
+            self.assertNotEqual(processes[0].returncode, 0)
+            self.assertTrue(processes[0].stdout.closed)
+            refund.assert_not_called()
+            self.assertFalse(output.exists())
+            self.assertFalse(list(Path(tmp).glob("encode-*")))
+            self.assertEqual(hashlib.sha256(source.read_bytes()).digest(), original_hash)
+
     def test_running_ffmpeg_is_killed_and_reaped_without_refund_or_partial_result(self):
         with tempfile.TemporaryDirectory() as tmp:
             source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"

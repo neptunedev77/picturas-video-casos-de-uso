@@ -35,6 +35,10 @@ def build_command(source, output, quality):
     ]
 
 
+def processing_timeout(duration_seconds):
+    return max(60, 2 * duration_seconds)
+
+
 def compress(source, output, quality, user_type, progress=lambda value: None, tick=lambda: None,
              before_start=None, launch_failed=None, check_cancel=lambda: None, launched=lambda: None):
     source, output = Path(source).resolve(), Path(output).resolve()
@@ -55,8 +59,7 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
     partial = work / "partial.mp4"
     proc = None
     reader = None
-    started = time.monotonic()
-    last_update = started
+    timeout_seconds = processing_timeout(meta["durationSec"])
     percent = 0
     lines = queue.Queue()
     authorized = False
@@ -70,10 +73,18 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
                 check_limits(meta, account["userType"])
             check_cancel()
             try:
+                # Exclude probing, admission and quota authorization from FFmpeg time.
+                started = time.monotonic()
                 proc = subprocess.Popen(build_command(source, partial, quality), stdout=subprocess.PIPE, stderr=errors)
             except OSError as e:
                 raise CompressionError("LAUNCH_FAILED", "FFmpeg could not be launched; no video was processed.") from e
             # From here on no exception, including a lost control response, refunds quota.
+            last_update = started
+
+            def check_timeout():
+                if time.monotonic() - started > timeout_seconds:
+                    raise CompressionError("PROCESSING_TIMEOUT", "Compression exceeded its processing time limit.")
+
             launched()
             progress(0)
 
@@ -85,6 +96,7 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
             reader.start()
             last_control = time.monotonic()
             while proc.poll() is None:
+                check_timeout()
                 tick()  # Service AMQP heartbeats without sharing Pika across threads.
                 if time.monotonic() - last_control >= 1:
                     check_cancel()
@@ -104,9 +116,10 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
                 if now - last_update >= 2:
                     progress(percent)
                     last_update = now
-                if now - started > max(600, meta["durationSec"] * 5 + 300):
-                    raise CompressionError("PROCESSING_TIMEOUT", "Compression exceeded its processing time limit.")
+                check_timeout()
                 time.sleep(0.1)
+            # A process that exits between polls must not escape the deadline check.
+            check_timeout()
             reader.join(timeout=2)
             check_cancel()
             if proc.returncode != 0:

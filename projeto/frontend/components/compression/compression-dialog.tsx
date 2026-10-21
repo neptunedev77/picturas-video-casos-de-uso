@@ -128,7 +128,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
                 <dt className="text-muted-foreground">Redução</dt>
                 <dd>{job.result.reductionPercent.toLocaleString("pt-PT", { maximumFractionDigits: 2 })}%</dd>
               </dl>
-              {job.result.reductionPercent < 0 && (
+              {job.result.sizeBytes > job.result.originalSizeBytes && (
                 <p className="text-sm text-muted-foreground">O resultado ficou maior do que o original. Vídeos já comprimidos podem não diminuir de tamanho.</p>
               )}
               <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate()}>

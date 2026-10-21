@@ -78,7 +78,7 @@ function harness() {
         stat: async () => {
           if (state.duringStat) await state.duringStat();
           if (!state.exists) throw Object.assign(new Error("missing"), { code: "ENOENT" });
-          return { isFile: () => true, size: 42 };
+          return { isFile: () => true, size: state.outputSize ?? 42 };
         },
         rm: async (file) => { state.removed.push(file); },
       },
@@ -355,4 +355,88 @@ test("cancellation wins against a failure between its read and atomic update", a
   await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_FAILED" } });
   assert.equal(state.doc.status, "cancelled");
   assert.equal(state.doc.error, undefined);
+});
+
+test("timeout without pending cancellation becomes failed and blocks late cancellation and download", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_TIMEOUT", message: "Deadline exceeded" } });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "PROCESSING_TIMEOUT");
+  assert.equal(state.doc.quota_charged, true);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+  assert.equal((await cancelJob(routes)).statusCode, 409);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 409);
+  assert.equal(download.downloaded, undefined);
+  await state.handleResult({ jobId: jid, status: "completed", result: {} });
+  await state.handleResult({ jobId: jid, status: "cancelled" });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "PROCESSING_TIMEOUT");
+});
+
+test("accepted cancellation wins over a subsequent PROCESSING_TIMEOUT", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  assert.equal((await cancelJob(routes)).statusCode, 202);
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_TIMEOUT" } });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.error, undefined);
+  assert.equal(state.doc.quota_charged, true);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+});
+
+test("cancellation accepted between timeout read and failure commit still wins atomically", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  state.beforeUpdate = async () => assert.equal((await cancelJob(routes)).statusCode, 202);
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_TIMEOUT" } });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.error, undefined);
+  assert.equal(state.doc.quota_charged, true);
+});
+
+test("NO_QUOTA is persisted without a debit or result and its download is blocked", async () => {
+  const { routes, state } = harness();
+  state.doc = { ...activeJob(), quota_charged: false, ffmpeg_started_at: null };
+  await state.handleResult({ jobId: jid, status: "failed", error: {
+    code: "NO_QUOTA", message: "No daily operations remaining.",
+  } });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "NO_QUOTA");
+  assert.equal(state.doc.error.message, "No daily operations remaining.");
+  assert.equal(state.doc.quota_charged, false);
+  assert.equal(state.doc.ffmpeg_started_at, null);
+  assert.equal(state.doc.result, undefined);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 409);
+  assert.equal(download.downloaded, undefined);
+  await state.handleResult({ jobId: jid, status: "completed", result: {} });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "NO_QUOTA");
+});
+
+test("a larger result stays completed and downloadable even with rounded zero savings", async () => {
+  const { routes, state } = harness();
+  state.doc = { ...activeJob(), source_name: "original.mp4", quality: "balanced" };
+  state.outputSize = 1_000_001;
+  await state.handleResult({ jobId: jid, status: "completed", result: {
+    originalSizeBytes: 1_000_000, reductionPercent: -0, durationSec: 10, width: 160, height: 120,
+  } });
+  assert.equal(state.doc.status, "completed");
+  assert.equal(state.doc.result.sizeBytes, 1_000_001);
+  assert.equal(state.doc.result.originalSizeBytes, 1_000_000);
+  assert.equal(state.doc.result.reductionPercent, -0);
+  assert.deepEqual(state.removed, ["/copy.mp4"]);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 200);
+  assert.equal(download.downloaded.file, "/result.mp4");
+  assert.equal(download.downloaded.name, "original-balanced.mp4");
 });

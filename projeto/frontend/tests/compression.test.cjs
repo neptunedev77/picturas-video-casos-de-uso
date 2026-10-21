@@ -181,12 +181,49 @@ test("active panel shows persisted progress and blocks a duplicate start", () =>
 });
 
 test("completed panel shows final size, reduction, download and honest negative savings", () => {
-  const { tree } = panel(job("completed", { result: { sizeBytes: 2_000_000, reductionPercent: -5 } }));
+  const { tree } = panel(job("completed", { result: { sizeBytes: 2_000_000, originalSizeBytes: 1_904_762, reductionPercent: -5 } }));
   assert.ok(text(tree).includes("Concluído"));
   assert.ok(text(tree).includes("2 MB"));
   assert.ok(text(tree).includes("-5"));
   assert.ok(text(tree).includes("Descarregar resultado"));
   assert.ok(text(tree).includes("ficou maior"));
+});
+
+test("a result larger by one byte warns and remains downloadable despite a rounded zero percentage", async () => {
+  const completed = job("completed", { result: {
+    sizeBytes: 1_000_001, originalSizeBytes: 1_000_000, reductionPercent: -0,
+  } });
+  const { tree } = panel(completed);
+  assert.ok(text(tree).includes("Concluído"));
+  assert.ok(text(tree).includes("ficou maior"));
+  const download = nodes(tree).find((node) => node.type === "Button" && text(node).includes("Descarregar resultado"));
+  assert.equal(download.props.disabled, false);
+  const { lib, state } = client();
+  state.response = new Blob(["larger mp4"], { type: "video/mp4" });
+  const result = await lib.downloadCompressionResult(target, completed);
+  assert.equal(result.blob.size, 10);
+  assert.equal(state.calls[0].args[0], "/projects/owner/project/compression/job/result");
+});
+
+test("equal and smaller results show no size warning regardless of the percentage", () => {
+  for (const [sizeBytes, reductionPercent] of [[1_000_000, 0], [999_999, 0], [900_000, 10], [1_000_000, -0.01]]) {
+    const { tree } = panel(job("completed", { result: { sizeBytes, originalSizeBytes: 1_000_000, reductionPercent } }));
+    assert.equal(text(tree).includes("ficou maior"), false);
+    assert.ok(text(tree).includes("Descarregar resultado"));
+  }
+});
+
+test("NO_QUOTA is shown without a result or download and no download request can be sent", async () => {
+  const refused = job("failed", { error: { code: "NO_QUOTA", message: "No daily operations remaining." },
+    result: { sizeBytes: 1_000, originalSizeBytes: 2_000, reductionPercent: 50 } });
+  const { tree } = panel(refused);
+  assert.ok(text(tree).includes("Falhado"));
+  assert.ok(text(tree).includes("No daily operations remaining."));
+  assert.equal(text(tree).includes("Descarregar resultado"), false);
+  assert.equal(text(tree).includes("Tamanho final"), false);
+  const { lib, state } = client();
+  await assert.rejects(lib.downloadCompressionResult(target, refused), /ainda não está disponível/);
+  assert.equal(state.calls.length, 0);
 });
 
 test("failed panel displays backend error and allows a new job", () => {
