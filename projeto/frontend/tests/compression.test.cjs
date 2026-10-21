@@ -134,6 +134,7 @@ function panel(currentJob, extra = {}) {
   const state = { selected: null };
   const query = { data: currentJob ? [currentJob] : [], isPending: false, isError: false, ...extra };
   const create = { isPending: false, reset() {}, mutateAsync: async () => {}, ...extra.create };
+  const cancel = { isPending: false, reset() {}, mutate() {}, ...extra.cancel };
   const jsx = (type, props) => ({ type, props });
   const exports = load("components/compression/compression-dialog.tsx", {
     react: { useState: (value) => [value, (next) => { state.selected = next; }], useRef: (current) => ({ current }) },
@@ -142,7 +143,7 @@ function panel(currentJob, extra = {}) {
     "lucide-react": { AlertTriangle: "AlertTriangle", CheckCircle2: "CheckCircle2", Download: "Download", LoaderCircle: "LoaderCircle" },
     "@/components/ui/button": { Button: "Button" }, "@/components/ui/progress": { Progress: "Progress" },
     "@/lib/compression": { ...lib, useCompressionJobs: () => query, useCreateCompression: () => create,
-      useCancelCompression: () => ({ isPending: false, reset() {}, mutate() {} }) },
+      useCancelCompression: () => cancel },
   });
   return { tree: exports.CompressionPanel({ target, videoName: "video.mp4", open: true }), state };
 }
@@ -180,12 +181,49 @@ test("active panel shows persisted progress and blocks a duplicate start", () =>
 });
 
 test("completed panel shows final size, reduction, download and honest negative savings", () => {
-  const { tree } = panel(job("completed", { result: { sizeBytes: 2_000_000, reductionPercent: -5 } }));
+  const { tree } = panel(job("completed", { result: { sizeBytes: 2_000_000, originalSizeBytes: 1_904_762, reductionPercent: -5 } }));
   assert.ok(text(tree).includes("Concluído"));
   assert.ok(text(tree).includes("2 MB"));
   assert.ok(text(tree).includes("-5"));
   assert.ok(text(tree).includes("Descarregar resultado"));
   assert.ok(text(tree).includes("ficou maior"));
+});
+
+test("a result larger by one byte warns and remains downloadable despite a rounded zero percentage", async () => {
+  const completed = job("completed", { result: {
+    sizeBytes: 1_000_001, originalSizeBytes: 1_000_000, reductionPercent: -0,
+  } });
+  const { tree } = panel(completed);
+  assert.ok(text(tree).includes("Concluído"));
+  assert.ok(text(tree).includes("ficou maior"));
+  const download = nodes(tree).find((node) => node.type === "Button" && text(node).includes("Descarregar resultado"));
+  assert.equal(download.props.disabled, false);
+  const { lib, state } = client();
+  state.response = new Blob(["larger mp4"], { type: "video/mp4" });
+  const result = await lib.downloadCompressionResult(target, completed);
+  assert.equal(result.blob.size, 10);
+  assert.equal(state.calls[0].args[0], "/projects/owner/project/compression/job/result");
+});
+
+test("equal and smaller results show no size warning regardless of the percentage", () => {
+  for (const [sizeBytes, reductionPercent] of [[1_000_000, 0], [999_999, 0], [900_000, 10], [1_000_000, -0.01]]) {
+    const { tree } = panel(job("completed", { result: { sizeBytes, originalSizeBytes: 1_000_000, reductionPercent } }));
+    assert.equal(text(tree).includes("ficou maior"), false);
+    assert.ok(text(tree).includes("Descarregar resultado"));
+  }
+});
+
+test("NO_QUOTA is shown without a result or download and no download request can be sent", async () => {
+  const refused = job("failed", { error: { code: "NO_QUOTA", message: "No daily operations remaining." },
+    result: { sizeBytes: 1_000, originalSizeBytes: 2_000, reductionPercent: 50 } });
+  const { tree } = panel(refused);
+  assert.ok(text(tree).includes("Falhado"));
+  assert.ok(text(tree).includes("No daily operations remaining."));
+  assert.equal(text(tree).includes("Descarregar resultado"), false);
+  assert.equal(text(tree).includes("Tamanho final"), false);
+  const { lib, state } = client();
+  await assert.rejects(lib.downloadCompressionResult(target, refused), /ainda não está disponível/);
+  assert.equal(state.calls.length, 0);
 });
 
 test("failed panel displays backend error and allows a new job", () => {
@@ -233,15 +271,96 @@ test("cancel sends an authenticated POST and replaces cached queued state", asyn
   assert.equal(state.invalidated, true);
 });
 
-test("cancel button appears only for queued jobs and cancelled state is displayed", () => {
+test("cancel button appears for queued and processing jobs and cancelled state is displayed", () => {
   for (const status of ["queued", "processing", "completed", "failed", "cancelled"]) {
     const { tree } = panel(job(status));
     const button = nodes(tree).find((node) => node.type === "Button" && text(node) === "Cancelar");
-    assert.equal(Boolean(button), status === "queued");
+    assert.equal(Boolean(button), ["queued", "processing"].includes(status));
     if (status === "cancelled") {
       assert.ok(text(tree).includes("Cancelado"));
       assert.equal(nodes(tree).some((node) => node.type === "Progress"), false);
       assert.equal(Boolean(nodes(tree).find((node) => node.props?.["data-testid"] === "start-compression-button").props.disabled), false);
     }
   }
+});
+
+test("queued and processing cancellation sends the displayed job id", () => {
+  for (const status of ["queued", "processing"]) {
+    const calls = [];
+    const { tree } = panel(job(status), { cancel: { mutate: (id) => calls.push(id) } });
+    const button = nodes(tree).find((node) => node.type === "Button" && text(node) === "Cancelar");
+    assert.equal(button.props.disabled, false);
+    button.props.onClick();
+    assert.deepEqual(calls, ["job"]);
+  }
+});
+
+test("pending POST and accepted processing cancellation prevent repeated clicks", () => {
+  for (const [current, cancelState] of [
+    [job("queued"), { isPending: true }],
+    [job("processing"), { isPending: true }],
+    [job("processing", { cancelRequested: true }), { isPending: false }],
+  ]) {
+    const calls = [];
+    const { tree } = panel(current, { cancel: { ...cancelState, mutate: (id) => calls.push(id) } });
+    const button = nodes(tree).find((node) => node.type === "Button" && text(node) === "A cancelar…");
+    assert.equal(button.props.disabled, true);
+    button.props.onClick();
+    button.props.onClick();
+    assert.deepEqual(calls, []);
+    assert.ok(text(tree).includes("A aguardar confirmação do cancelamento"));
+    assert.equal(nodes(tree).find((node) => node.props?.["data-testid"] === "start-compression-button").props.disabled, true);
+  }
+});
+
+test("accepted processing cancellation stays cached and polls until cancelled", async () => {
+  const { lib, state } = client();
+  state.cache = [job("processing")];
+  state.response = job("processing", { cancelRequested: true });
+  lib.useCancelCompression(target);
+  const mutation = state.mutation;
+  const accepted = await mutation.mutationFn("job");
+  await mutation.onSuccess(accepted);
+  await mutation.onSettled();
+  assert.equal(state.cancelled, true);
+  assert.equal(state.invalidated, true);
+  assert.equal(state.cache[0].status, "processing");
+  assert.equal(state.cache[0].cancelRequested, true);
+  lib.useCompressionJobs(target, true);
+  assert.equal(state.query.refetchInterval({ state: { data: state.cache } }), 2000);
+
+  state.response = [job("cancelled", { cancelRequested: true })];
+  const confirmed = await state.query.queryFn();
+  assert.equal(state.query.refetchInterval({ state: { data: confirmed } }), false);
+  const { tree } = panel(confirmed[0]);
+  assert.ok(text(tree).includes("Cancelado"));
+  assert.equal(text(tree).includes("A cancelar…"), false);
+  assert.equal(nodes(tree).some((node) => node.type === "Progress"), false);
+});
+
+test("cancelled jobs never display or download a result, even with stale result metadata", async () => {
+  const cancelled = job("cancelled", { cancelRequested: true, result: { sizeBytes: 2_000_000, reductionPercent: 50 } });
+  const { tree } = panel(cancelled);
+  assert.ok(text(tree).includes("Cancelado"));
+  assert.equal(text(tree).includes("Descarregar resultado"), false);
+  assert.equal(text(tree).includes("Tamanho final"), false);
+  const { lib, state } = client();
+  await assert.rejects(lib.downloadCompressionResult(target, cancelled), /ainda não está disponível/);
+  assert.equal(state.calls.length, 0);
+});
+
+test("a rejected cancellation allows retry and resyncs if completion won", async () => {
+  const calls = [];
+  const { tree } = panel(job("processing"), { cancel: {
+    isPending: false, error: new Error("Unable to cancel"), mutate: (id) => calls.push(id),
+  } });
+  const button = nodes(tree).find((node) => node.type === "Button" && text(node) === "Cancelar");
+  assert.equal(button.props.disabled, false);
+  button.props.onClick();
+  assert.deepEqual(calls, ["job"]);
+  assert.ok(text(tree).includes("Unable to cancel"));
+  const { lib, state } = client();
+  lib.useCancelCompression(target);
+  await state.mutation.onSettled();
+  assert.equal(state.invalidated, true);
 });

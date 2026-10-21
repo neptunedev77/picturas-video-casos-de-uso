@@ -4,6 +4,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { matches, apply } = require("./mongo_helpers.cjs");
 const id = "c".repeat(24);
 const token = "private-worker-secret";
 const validMedia = { format: "mp4", videoCodec: "h264", sizeBytes: 1000, durationSec: 10 };
@@ -14,20 +15,22 @@ function setup() {
       worker_token_hash: crypto.createHash("sha256").update(token).digest("hex") },
     user: { type: "free", remaining_operations: 1 }, debits: 0, refunds: 0, project: true,
   };
-  const matches = (filter) => Object.entries(filter).every(([key, value]) =>
-    value && typeof value === "object" && "$ne" in value ? state.job[key] !== value.$ne : state.job[key] === value);
   const model = {
-    findById: () => ({ select: async () => state.job }),
-    findOne: async () => state.job,
+    findById: () => ({ select: async () => ({ ...state.job }) }),
+    findOne: async () => ({ ...state.job }),
     findOneAndUpdate: (filter, update) => {
       const execute = async () => {
-        if (!matches(filter)) return null;
-        Object.assign(state.job, update.$set);
-        return state.job;
+        if (!matches(state.job, filter)) return null;
+        apply(state.job, update);
+        return { ...state.job };
       };
       return { select: execute, then: (resolve, reject) => execute().then(resolve, reject) };
     },
-    updateOne: async (filter, update) => { Object.assign(state.job, update.$set); },
+    updateOne: async (filter, update) => {
+      if (!matches(state.job, filter)) return { matchedCount: 0 };
+      apply(state.job, update);
+      return { matchedCount: 1 };
+    },
   };
   const mocks = {
     axios: {
@@ -36,9 +39,10 @@ function setup() {
         if (state.reservationFails) return { status: 701, data: "No more daily_operations available" };
         state.debits++;
         state.user.remaining_operations--;
+        if (state.duringDebit) await state.duringDebit();
         return { status: 200 };
       },
-      post: async () => { state.refunds++; return { status: 200 }; },
+      post: async () => { state.refunds++; state.user.remaining_operations++; return { status: 200 }; },
     },
     "../models/compressionJob": model,
     "../models/project": { findOne: async (filter) => state.project && filter.user_id === state.job.owner_id
@@ -112,7 +116,10 @@ test("no quota prevents start; quota exhausted after preflight is also rejected"
     else state.user.remaining_operations = 0;
     await assert.rejects(authorizeStart(id, token, validMedia), { code: "NO_QUOTA" });
     assert.equal(state.debits, 0);
+    assert.equal(state.refunds, 0);
     assert.equal(state.job.status, "failed");
+    assert.equal(Boolean(state.job.quota_charged), false);
+    assert.equal(state.job.ffmpeg_started_at == null, true);
   }
 });
 
@@ -161,6 +168,21 @@ test("failed encoding remains charged after an effective start", async () => {
   assert.equal(state.refunds, 0);
 });
 
+test("a PROCESSING_TIMEOUT after FFmpeg launch retains the debit and blocks compensation", async () => {
+  const { state, authorizeStart, markLaunched, releaseFailedLaunch } = setup();
+  await authorizeStart(id, token, validMedia);
+  await markLaunched(id, token);
+  // Even before the terminal event is persisted, the launch marker prevents refunds.
+  await releaseFailedLaunch(id, token);
+  state.job.status = "failed";
+  state.job.error = { code: "PROCESSING_TIMEOUT" };
+  await releaseFailedLaunch(id, token);
+  assert.equal(state.debits, 1);
+  assert.equal(state.refunds, 0);
+  assert.equal(state.job.quota_charged, true);
+  assert.equal(state.user.remaining_operations, 0);
+});
+
 test("cancellation winning before authorization prevents any quota debit", async () => {
   const { state, authorizeStart } = setup();
   assert.equal((await state.cancel()).statusCode, 200);
@@ -184,11 +206,56 @@ test("start and cancel race on the same job: only one transition wins", async ()
   }
 });
 
-test("start winning prevents cancellation and leaves the active job untouched", async () => {
-  const { state, authorizeStart } = setup();
+test("an active job accepts cancellation and retains quota after FFmpeg starts", async () => {
+  const { state, authorizeStart, markLaunched, releaseFailedLaunch } = setup();
   await authorizeStart(id, token, validMedia);
+  await markLaunched(id, token);
   const cancelled = await state.cancel();
-  assert.equal(cancelled.statusCode, 409);
+  assert.equal(cancelled.statusCode, 202);
   assert.equal(state.job.status, "processing");
+  assert.ok(state.job.cancel_requested_at);
   assert.equal(state.debits, 1);
+  await releaseFailedLaunch(id, token);
+  assert.equal(state.refunds, 0);
+});
+
+test("cancellation during debit survives authorization and permits compensation before Popen", async () => {
+  const { state, authorizeStart, releaseFailedLaunch, control } = setup();
+  state.duringDebit = async () => assert.equal((await state.cancel()).statusCode, 202);
+  await authorizeStart(id, token, validMedia);
+  assert.equal((await control(id, token)).cancelRequested, true);
+  await releaseFailedLaunch(id, token);
+  await releaseFailedLaunch(id, token);
+  assert.equal(state.debits, 1);
+  assert.equal(state.refunds, 1);
+  assert.equal(state.job.quota_charged, false);
+  assert.equal(state.user.remaining_operations, 1);
+});
+
+test("control and launch acknowledgement require the private job token", async () => {
+  const { state, control, markLaunched } = setup();
+  await assert.rejects(control(id, "wrong"), { code: "INVALID_WORKER_TOKEN" });
+  await assert.rejects(markLaunched(id, "wrong"), { code: "INVALID_WORKER_TOKEN" });
+  assert.equal(state.job.ffmpeg_started_at, undefined);
+});
+
+test("launch acknowledgement records Popen even with cancellation already pending", async () => {
+  const { state, authorizeStart, markLaunched, releaseFailedLaunch } = setup();
+  await authorizeStart(id, token, validMedia);
+  await state.cancel();
+  assert.equal((await markLaunched(id, token)).cancelRequested, true);
+  assert.ok(state.job.ffmpeg_started_at);
+  await releaseFailedLaunch(id, token);
+  assert.equal(state.refunds, 0);
+});
+
+test("authorization failure cannot overwrite cancellation or a terminal state", async () => {
+  const { state, authorizeStart } = setup();
+  state.duringDebit = async () => {
+    await state.cancel();
+    throw new Error("lost debit response");
+  };
+  await assert.rejects(authorizeStart(id, token, validMedia), { code: "USERS_UNAVAILABLE" });
+  assert.equal(state.job.status, "processing");
+  assert.ok(state.job.cancel_requested_at);
 });

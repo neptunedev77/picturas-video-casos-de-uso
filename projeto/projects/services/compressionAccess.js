@@ -65,12 +65,12 @@ async function authorizeStart(jobId, token, meta) {
         throw error(503, "USERS_UNAVAILABLE", "Unable to reserve a daily operation.");
       }
     }
-    await CompressionJob.updateOne({ _id: job._id }, { $set: {
-      quota_charged: user.type === "free", status: "processing", started_at: new Date(),
+    await CompressionJob.updateOne({ _id: job._id, status: "processing" }, { $set: {
+      quota_charged: user.type === "free",
     } });
     return { userType: user.type };
   } catch (e) {
-    await CompressionJob.updateOne({ _id: job._id }, { $set: {
+    await CompressionJob.updateOne({ _id: job._id, status: "processing", cancel_requested_at: null }, { $set: {
       status: "failed", finished_at: new Date(),
       error: { code: e.code || "USERS_UNAVAILABLE", message: e.status ? e.message : "Unable to authorize compression." },
     } });
@@ -83,6 +83,7 @@ async function releaseFailedLaunch(jobId, token) {
   // Only the worker's failed Popen path may refund; encode failures remain charged.
   const claimed = await CompressionJob.findOneAndUpdate({
     _id: job._id, status: "processing", quota_charged: true, quota_refund_claimed: { $ne: true },
+    ffmpeg_started_at: null,
   }, { $set: { quota_refund_claimed: true } }, { new: true });
   if (!claimed) return;
   const response = await axios.post(`${USERS}/${job.owner_id}/process/refund/1`, {}, {
@@ -92,4 +93,19 @@ async function releaseFailedLaunch(jobId, token) {
   await CompressionJob.updateOne({ _id: job._id }, { $set: { quota_charged: false } });
 }
 
-module.exports = { authorizeStart, releaseFailedLaunch, validateMedia };
+async function control(jobId, token) {
+  const job = await workerJob(jobId, token);
+  return { cancelRequested: Boolean(job.cancel_requested_at) || job.status === "cancelled", status: job.status };
+}
+
+async function markLaunched(jobId, token) {
+  const job = await workerJob(jobId, token);
+  // A cancellation request may already exist: still record that Popen succeeded.
+  await CompressionJob.updateOne({
+    _id: job._id, status: "processing", start_claimed: true,
+    ffmpeg_started_at: null, quota_refund_claimed: { $ne: true },
+  }, { $set: { ffmpeg_started_at: new Date(), started_at: new Date() } });
+  return control(jobId, token);
+}
+
+module.exports = { authorizeStart, releaseFailedLaunch, validateMedia, control, markLaunched };

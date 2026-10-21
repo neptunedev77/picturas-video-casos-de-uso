@@ -17,7 +17,7 @@ filter by project and owner. No new upload endpoint is introduced.
 | GET | base | Latest 100 jobs for this owner/project |
 | GET | `/:jobId` | Status, progress, result metadata or error |
 | GET | `/:jobId/result` | Completed MP4 download (supports Range); `409` before completion |
-| POST | `/:jobId/cancel` | Cancel queued job; `409` if already started/terminal, `404` if not found |
+| POST | `/:jobId/cancel` | `200` cancels queued job; `202` requests processing cancellation; `409` if terminal, `404` if not found |
 
 POST accepts a job, not a validated encode: the worker checks the actual media before
 transcoding. Poll GET while `queued`/`processing` (for example every 2 seconds).
@@ -32,20 +32,23 @@ output, validates it and renames it to `result.mp4`. The S3 original, project `i
 pipeline and existing results remain unchanged. Only a completed job exposes a download.
 The working copy is removed after completion/failure; results stay on the named volume.
 
-| Quality | CRF | Preset | Audio |
-| --- | --- | --- | --- |
-| high | 20 | veryfast | AAC 160k |
-| balanced | 25 | veryfast | AAC 128k |
-| small | 30 | veryfast | AAC 96k |
+| Quality | CRF | Preset | Audio | Resolution |
+| --- | --- | --- | --- | --- |
+| high | 23 | veryfast | AAC 160k | Original |
+| balanced | 28 | veryfast | AAC 128k | Original |
+| small | 32 | veryfast | AAC 96k | Maximum 1280x720 landscape / 720x1280 portrait |
 
-MP4/H.264 input only; audio is optional. Video is encoded with libx264/yuv420p;
-dimensions are preserved except for minimum even-dimension padding if necessary.
+MP4/H.264 input only; audio is optional. Video is encoded with libx264/yuv420p.
+For high/balanced, dimensions are preserved except for minimum even-dimension
+padding if necessary. Small preserves orientation and aspect ratio without upscaling;
+dimensions are rounded down to even values for yuv420p compatibility.
 CRF does not guarantee a smaller file for an already compressed source. The real
 `reductionPercent` can be negative; metadata reports the actual output size.
 
 Worker limits (decimal units): free 500,000,000 bytes/600 seconds; premium
 2,000,000,000 bytes/3600 seconds. The existing global 100 MB upload limit remains.
-No resolution restriction is added. Profiles are version 1 in `config.py`.
+No input resolution restriction is added; only small limits output resolution.
+Profiles are version 1 in `config.py`.
 
 The new durable queues/routing keys, on the existing direct exchange `picturas`, are:
 `video_compression_queue` and `video_compression_results_queue`. Progress is persisted
@@ -73,7 +76,8 @@ No remaining operations means `failed` with `NO_QUOTA`; FFmpeg is not launched. 
 is unlimited and bypasses the debit. An atomic job claim prevents duplicate start
 requests from charging the same compression again. A failed job requires a new job to retry.
 
-If Popen itself fails, the worker uses the internal `launch-failed` action to request the
+If Popen itself fails, or control stops the job between authorization and Popen,
+the worker uses the internal `launch-failed` action to request the
 existing users `POST /:user/process/refund/1`; a separate atomic claim prevents duplicate
 refunds. A lost start response also attempts this release without retrying the debit.
 Failures AFTER FFmpeg has started remain charged, matching REQ-VID-COMP-025 (an initiated
@@ -84,24 +88,60 @@ refund semantics. It does not provide a distributed transaction across users/pro
 service failures during debit/refund can require reconciliation. Duplicate compression
 starts are guarded, but the general quota service is not refactored for cross-tool races.
 
-## Queued cancellation (REQ-VID-COMP-014)
+## Performance target and technical timeout (REQ-VID-COMP-035/036)
 
-The owner can cancel only a queued job. Cancellation and start both use an atomic
-findOneAndUpdate on the same job, requiring status queued and start_claimed not true.
-The start claim now sets processing in that same update, before attempting the quota
-debit. If cancellation wins, start authorization fails and FFmpeg cannot be launched
-or quota debited. If start wins, cancellation returns 409 without deleting active files.
+The MVP performance target is total processing time <= 1.5 times the video's
+duration under the reference conditions. This is a target for real measurements,
+not an interruption threshold; exceeding 1.5x alone does not fail a job.
 
-Private source/output copies are removed on a best-effort basis. If preparation is
-still downloading, its post-download check removes the copy and skips publication.
-A request already in RabbitMQ may still be delivered; it cannot authorize a cancelled
-job. Late worker messages never replace cancelled status. The frontend shows Cancelar
-only while queued, then Cancelado; it resyncs via REST if start won the race.
-There is no cancellation during FFmpeg and no changes to other tools or shared storage.
+The technical FFmpeg timeout is max(60 seconds, 2 times the probed video duration).
+It starts at FFmpeg launch, excluding queueing, download, initial probing and quota
+authorization. The worker checks the deadline while FFmpeg runs and immediately
+after observing its exit; final output probing is outside this FFmpeg execution timer.
+Checks surround the existing progress/control work, so blocking calls can delay
+detection until control returns to the processing loop.
+
+Exceeding the technical timeout raises PROCESSING_TIMEOUT, kills and waits for an
+active FFmpeg process, and removes temporary output. No result is published and the
+original remains unchanged. The job becomes failed unless an accepted cancellation
+request wins the existing atomic transition, in which case it becomes cancelled.
+Quota remains consumed after FFmpeg has launched in either case.
+
+## Queued and processing cancellation (REQ-VID-COMP-014)
+
+Queued cancellation retains the atomic queued/unclaimed -> cancelled transition.
+If it wins against start authorization, there is no quota debit and no FFmpeg launch.
+Preparation still checks the job after downloading and removes its private copy.
+
+For processing jobs, cancellation atomically sets cancel_requested_at and returns 202
+with status processing and cancelRequested true. It does not delete active files.
+The worker polls the authenticated internal control action approximately every second
+(2-second HTTP timeout), checks before launch and publication, and records successful
+Popen through the launched action. A control outage stops encoding rather than
+permitting unverified success. Existing RabbitMQ heartbeats and result queues remain.
+
+Cancellation kills and waits for FFmpeg, closes its pipes, and removes the encode
+temporary directory before the worker sends cancelled. Projects then commits cancelled
+and removes private source/output copies. A completed/failed message arriving after an
+accepted request also confirms the worker has stopped and resolves to cancelled.
+The original S3 video is never changed; only completed jobs can be downloaded.
+
+Completion requires an atomic processing update with no cancellation request.
+If cancellation wins, a late result is discarded; if completion wins, cancellation
+returns 409 and preserves the result. Late messages never overwrite terminal jobs.
+Once Popen succeeds, neither cancellation nor control/acknowledgement failures request
+a refund. The launch marker also blocks launch-failed refunds after confirmed launch.
+Compensation before Popen retains the existing once-only refund claim. There is no
+distributed transaction between MongoDB, users and the operating-system process;
+communication failures during debit/refund retain the reconciliation limitation above.
+
+The frontend offers Cancelar for both queued and processing jobs. After a processing
+cancellation is accepted, the button stays disabled while polling continues until
+the server confirms the final state.
 
 ## Deliberately excluded
 
-Uploads above 100 MB, 24-hour retention policy, cancellation during FFmpeg,
+Uploads above 100 MB, 24-hour retention policy,
 batch/pipeline processing, advanced storage/security changes and automatic retries.
 Existing infrastructure security limitations remain. A projects-service crash during
 source preparation can leave a queued job; reconciliation/watchdog is a later block.
@@ -117,8 +157,9 @@ node --test Tools/video_compression/tests/test_api.cjs Tools/video_compression/t
 python -m unittest discover -s Tools/video_compression/tests -v
 ```
 
-Python contract tests need only the standard library. Real encode tests run when
-FFmpeg/ffprobe are available, otherwise they are skipped.
+Compressor/authorization contract tests need only the standard library; worker tests
+also use the image's Pika dependency. Real encode tests run when FFmpeg/ffprobe are
+available, otherwise they are skipped.
 
 After authorization to build/run Docker (not required for the static/API unit checks):
 

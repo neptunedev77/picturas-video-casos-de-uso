@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { Readable, Writable } = require("node:stream");
+const { matches, apply } = require("./mongo_helpers.cjs");
 const projectsRoot = path.resolve(__dirname, "../../../projects");
 const uid = "a".repeat(24), pid = "b".repeat(24), jid = "c".repeat(24);
 
@@ -26,24 +27,28 @@ function harness() {
     post: (url, ...handlers) => routes.push({ method: "POST", url, handlers }),
     get: (url, ...handlers) => routes.push({ method: "GET", url, handlers }),
   };
-  const query = () => ({ select: async () => state.doc,
-    then: (resolve, reject) => Promise.resolve(state.doc).then(resolve, reject) });
+  const snapshot = () => state.doc ? { ...state.doc } : null;
+  const query = () => ({ select: async () => snapshot(),
+    then: (resolve, reject) => Promise.resolve(snapshot()).then(resolve, reject) });
+  const updateDoc = (filter, update) => {
+    if (!matches(state.doc && { owner_id: uid, project_id: pid, ...state.doc }, filter)) return null;
+    apply(state.doc, update);
+    state.writes.push({ filter, update });
+    return snapshot();
+  };
   const model = {
     findById: query, findOne: query,
     exists: async () => state.created?.status === "queued",
-    findOneAndUpdate: (filter, update) => ({ select: async () => {
-      const doc = state.doc;
-      if (!doc || doc.status !== filter.status || doc.start_claimed === true ||
-          (doc.owner_id || uid) !== filter.owner_id || (doc.project_id || pid) !== filter.project_id) return null;
-      Object.assign(doc, update.$set);
-      state.writes.push({ filter, update });
-      return doc;
-    } }),
+    findOneAndUpdate: (filter, update) => ({ select: async () => updateDoc(filter, update),
+      then: (resolve, reject) => Promise.resolve(updateDoc(filter, update)).then(resolve, reject) }),
     create: async (data) => {
       state.created = { ...data, status: "queued", progress: 0, profile_version: 1 };
       return state.created;
     },
-    updateOne: async (filter, update) => { state.writes.push({ filter, update }); },
+    updateOne: async (filter, update) => {
+      if (state.beforeUpdate) { const hook = state.beforeUpdate; state.beforeUpdate = null; await hook(); }
+      return { matchedCount: updateDoc(filter, update) ? 1 : 0 };
+    },
   };
   const mocks = {
     express: { Router: () => router },
@@ -71,8 +76,9 @@ function harness() {
       promises: {
         mkdir: async () => {},
         stat: async () => {
+          if (state.duringStat) await state.duringStat();
           if (!state.exists) throw Object.assign(new Error("missing"), { code: "ENOENT" });
-          return { isFile: () => true, size: 42 };
+          return { isFile: () => true, size: state.outputSize ?? 42 };
         },
         rm: async (file) => { state.removed.push(file); },
       },
@@ -246,8 +252,8 @@ test("owner cancels a queued job atomically and removes its private copies", asy
   assert.equal(state.request, undefined);
 });
 
-test("processing and terminal jobs cannot be cancelled; missing job returns 404", async () => {
-  for (const status of ["processing", "completed", "failed", "cancelled", null]) {
+test("terminal jobs cannot be cancelled; missing job returns 404", async () => {
+  for (const status of ["completed", "failed", "cancelled", null]) {
     const { routes, state } = harness();
     state.doc = status ? { _id: jid, status } : null;
     const res = response();
@@ -278,4 +284,198 @@ test("cancellation during preparation cleans the completed copy instead of publi
   assert.equal(state.created.status, "cancelled");
   assert.equal(state.request, undefined);
   assert.ok(state.removed.includes(state.created.input_path));
+});
+
+async function cancelJob(routes) {
+  const res = response();
+  await routes.find((r) => r.url.endsWith("/cancel")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, res, (e) => { throw e; });
+  return res;
+}
+
+function activeJob() {
+  return { _id: jid, status: "processing", start_claimed: true, quota_charged: true,
+    ffmpeg_started_at: new Date(), input_path: "/copy.mp4", output_path: "/result.mp4" };
+}
+
+test("processing cancellation waits for worker confirmation before deleting active files", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  const res = await cancelJob(routes);
+  assert.equal(res.statusCode, 202);
+  assert.equal(res.body.status, "processing");
+  assert.equal(res.body.cancelRequested, true);
+  assert.deepEqual(state.removed, []);
+  assert.equal((await cancelJob(routes)).statusCode, 202);
+  await state.handleResult({ jobId: jid, status: "processing", progress: 80 });
+  assert.equal(state.doc.progress, undefined);
+  await state.handleResult({ jobId: jid, status: "cancelled" });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.quota_charged, true);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 409);
+  assert.equal(download.downloaded, undefined);
+});
+
+test("cancellation wins even after the completion consumer read the job", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  state.duringStat = async () => assert.equal((await cancelJob(routes)).statusCode, 202);
+  await state.handleResult({ jobId: jid, status: "completed", result: { sizeBytes: 42 } });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.result, undefined);
+  assert.ok(state.removed.includes("/result.mp4"));
+  for (const status of ["processing", "completed", "failed", "cancelled"]) {
+    await state.handleResult({ jobId: jid, status, progress: 100, result: {} });
+    assert.equal(state.doc.status, "cancelled");
+  }
+});
+
+test("completion wins first: cancellation and late messages preserve its result", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  await state.handleResult({ jobId: jid, status: "completed", result: { width: 160, height: 120 } });
+  assert.equal(state.doc.status, "completed");
+  assert.equal((await cancelJob(routes)).statusCode, 409);
+  for (const status of ["cancelled", "failed", "processing", "completed"]) {
+    await state.handleResult({ jobId: jid, status, progress: 50, result: {} });
+  }
+  assert.equal(state.doc.status, "completed");
+  assert.equal(state.doc.result.width, 160);
+  assert.deepEqual(state.removed, ["/copy.mp4"]);
+});
+
+test("cancellation wins against a failure between its read and atomic update", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  state.beforeUpdate = async () => cancelJob(routes);
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_FAILED" } });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.error, undefined);
+});
+
+test("timeout without pending cancellation becomes failed and blocks late cancellation and download", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_TIMEOUT", message: "Deadline exceeded" } });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "PROCESSING_TIMEOUT");
+  assert.equal(state.doc.quota_charged, true);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+  assert.equal((await cancelJob(routes)).statusCode, 409);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 409);
+  assert.equal(download.downloaded, undefined);
+  await state.handleResult({ jobId: jid, status: "completed", result: {} });
+  await state.handleResult({ jobId: jid, status: "cancelled" });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "PROCESSING_TIMEOUT");
+});
+
+test("accepted cancellation wins over a subsequent PROCESSING_TIMEOUT", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  assert.equal((await cancelJob(routes)).statusCode, 202);
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_TIMEOUT" } });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.error, undefined);
+  assert.equal(state.doc.quota_charged, true);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+});
+
+test("cancellation accepted between timeout read and failure commit still wins atomically", async () => {
+  const { routes, state } = harness();
+  state.doc = activeJob();
+  state.beforeUpdate = async () => assert.equal((await cancelJob(routes)).statusCode, 202);
+  await state.handleResult({ jobId: jid, status: "failed", error: { code: "PROCESSING_TIMEOUT" } });
+  assert.equal(state.doc.status, "cancelled");
+  assert.equal(state.doc.error, undefined);
+  assert.equal(state.doc.quota_charged, true);
+});
+
+test("NO_QUOTA is persisted without a debit or result and its download is blocked", async () => {
+  const { routes, state } = harness();
+  state.doc = { ...activeJob(), quota_charged: false, ffmpeg_started_at: null };
+  await state.handleResult({ jobId: jid, status: "failed", error: {
+    code: "NO_QUOTA", message: "No daily operations remaining.",
+  } });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "NO_QUOTA");
+  assert.equal(state.doc.error.message, "No daily operations remaining.");
+  assert.equal(state.doc.quota_charged, false);
+  assert.equal(state.doc.ffmpeg_started_at, null);
+  assert.equal(state.doc.result, undefined);
+  assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 409);
+  assert.equal(download.downloaded, undefined);
+  await state.handleResult({ jobId: jid, status: "completed", result: {} });
+  assert.equal(state.doc.status, "failed");
+  assert.equal(state.doc.error.code, "NO_QUOTA");
+});
+
+test("a larger result stays completed and downloadable even with rounded zero savings", async () => {
+  const { routes, state } = harness();
+  state.doc = { ...activeJob(), source_name: "original.mp4", quality: "balanced" };
+  state.outputSize = 1_000_001;
+  await state.handleResult({ jobId: jid, status: "completed", result: {
+    originalSizeBytes: 1_000_000, reductionPercent: -0, durationSec: 10, width: 160, height: 120,
+  } });
+  assert.equal(state.doc.status, "completed");
+  assert.equal(state.doc.result.sizeBytes, 1_000_001);
+  assert.equal(state.doc.result.originalSizeBytes, 1_000_000);
+  assert.equal(state.doc.result.reductionPercent, -0);
+  assert.deepEqual(state.removed, ["/copy.mp4"]);
+  const download = response();
+  await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+    { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+  assert.equal(download.statusCode, 200);
+  assert.equal(download.downloaded.file, "/result.mp4");
+  assert.equal(download.downloaded.name, "original-balanced.mp4");
+});
+
+test("NO_CAPACITY cancels active jobs, removes private results and preserves quota state", async () => {
+  for (const [status, charged] of [["queued", false], ["processing", true]]) {
+    const { routes, state } = harness();
+    state.doc = { ...activeJob(), status, quota_charged: charged, start_claimed: charged,
+      ffmpeg_started_at: charged ? new Date() : null, result: { sizeBytes: 42 } };
+    await state.handleResult({ jobId: jid, status: "failed", error: {
+      code: "NO_CAPACITY", message: "Not enough disk space to compress this video.",
+    } });
+    assert.equal(state.doc.status, "cancelled");
+    assert.equal(state.doc.error.code, "NO_CAPACITY");
+    assert.equal(state.doc.error.message, "Not enough disk space to compress this video.");
+    assert.equal(state.doc.quota_charged, charged);
+    assert.equal(state.doc.quota_refund_claimed, undefined);
+    assert.ok(state.doc.finished_at);
+    assert.equal(state.doc.result, undefined);
+    assert.deepEqual(state.removed, ["/copy.mp4", "/result.mp4"]);
+    assert.equal(state.original.toString(), "existing S3 original");
+    const download = response();
+    await routes.find((r) => r.url.endsWith("/result")).handlers[1](
+      { params: { user: uid, project: pid, jobId: jid } }, download, (e) => { throw e; });
+    assert.equal(download.statusCode, 409);
+    assert.equal(download.downloaded, undefined);
+    await state.handleResult({ jobId: jid, status: "completed", result: {} });
+    assert.equal(state.doc.status, "cancelled");
+    assert.equal(state.doc.result, undefined);
+  }
+});
+
+test("late NO_CAPACITY never replaces a terminal state or deletes a completed result", async () => {
+  for (const status of ["completed", "failed", "cancelled"]) {
+    const { state } = harness();
+    state.doc = { ...activeJob(), status, error: { code: "ORIGINAL_ERROR" } };
+    await state.handleResult({ jobId: jid, status: "failed", error: { code: "NO_CAPACITY" } });
+    assert.equal(state.doc.status, status);
+    assert.equal(state.doc.error.code, "ORIGINAL_ERROR");
+    if (status === "completed") assert.deepEqual(state.removed, []);
+  }
 });
