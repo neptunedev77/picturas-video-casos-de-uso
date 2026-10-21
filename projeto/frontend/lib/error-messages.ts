@@ -55,6 +55,21 @@ export function getErrorMessage(
     };
   }
 
+  if (backendMsg && (backendMsg.includes("Formato ou codec de vídeo inválido") || backendMsg.includes("formato suportado (MP4 com vídeo H.264)"))) {
+    return {
+      title: "Formato ou codec de vídeo inválido",
+      description:
+        "Certifique-se de que o ficheiro utiliza um formato suportado (MP4 com vídeo H.264).",
+    };
+  }
+
+  if (backendMsg && backendMsg.includes("A ferramenta de anonimização em contas Gratuitas está limitada")) {
+    return {
+      title: "Limite de vídeo excedido",
+      description: backendMsg,
+    };
+  }
+
   // Ir acrescentando aqui outros códigos específicos do backend
   // if (backendMsg === "Invalid credentials") { ... }
 
@@ -250,6 +265,13 @@ export function getAiErrorMessage(
           title: "Erro na anonimização de vídeo",
           description:
             "Ocorreu um erro ao processar o vídeo de anonimização. Tenta novamente.",
+        };
+
+      case 2304: // privacy_blur timeout
+        return {
+          title: "Tempo limite excedido",
+          description:
+            "O serviço de processamento demorou demasiado tempo a responder. A operação foi cancelada e o seu crédito foi reposto.",
         };
 
       // Se tiveres códigos extra dos outros serviços (people_ai, text_ai), vais só acrescentando aqui.

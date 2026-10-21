@@ -15,7 +15,7 @@ import {
 } from "@/lib/queries/projects";
 import Loading from "@/components/loading";
 import { ProjectProvider } from "@/providers/project-provider";
-import { use, useEffect, useLayoutEffect, useState, useRef } from "react";
+import { use, useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSession } from "@/providers/session-provider";
 import {
@@ -42,7 +42,7 @@ import { ModeToggle } from "@/components/project-page/mode-toggle";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUpdateSession } from "@/lib/mutations/session";
-import { getErrorMessage } from "@/lib/error-messages";
+import { getErrorMessage, getAiErrorMessage } from "@/lib/error-messages";
 import { PresetsDialog } from "@/components/presets/presets-dialog";
 import { AiAssistantDialog } from "@/components/assistant/ai-assistant-dialog";
 
@@ -413,9 +413,14 @@ useEffect(() => {
     setProcessing(false);
     setProcessingProgress(0);
     setProcessingSteps(1);
+
+    const errorCodeNum = Number(payload?.error_code);
+    const aiError = !isNaN(errorCodeNum) ? getAiErrorMessage(errorCodeNum, payload?.error_msg) : null;
+
     toast({
-      title: "Falha no processamento",
+      title: aiError?.title || "Falha no processamento",
       description:
+        aiError?.description ||
         payload?.error_msg ||
         "Ocorreu um erro ao processar o projeto. Tenta novamente.",
       variant: "destructive",
@@ -470,6 +475,127 @@ useEffect(() => {
   toast,
   processing,
 ]);
+
+  const handleCancel = useCallback(() => {
+    // ignorar updates vindos do socket
+    ignoreUpdatesRef.current = true;
+
+    // cancelar medição de tempo e tipo
+    processStartTimeRef.current = null;
+    processIsAiRef.current = false;
+
+    // parar tudo no UI
+    setProcessing(false);
+    setProcessingProgress(0);
+    setProcessingSteps(1);
+
+    // reabrir a sidebar em desktop 
+    if (!isMobile) {
+      sidebar.setOpen(true);
+    }
+
+    // limpar estado de preview (se alguma tool estava a fazer preview)
+    setWaitingForPreview("");
+
+    // cancelar no backend
+    cancelProcess.mutate(
+      {
+        projectVersion: project.data?.version ?? 0,
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({
+            queryKey: ["projectImages", session.user._id, pid, session.token, ownerId, shareId],
+            refetchType: "all",
+          });
+
+          // voltar a ir buscar a sessão para atualizar remaining_operations
+          updateSession.mutate({
+            userId: session.user._id,
+            token: session.token,
+          });
+
+          toast({
+            title: "Processamento cancelado",
+            description:
+              "O processamento deste projeto foi cancelado. Podes ajustar as ferramentas e voltar a tentar.",
+          });
+        },
+        onError: (error) => {
+          const { title, description } = getErrorMessage(
+            "project-cancel-process",
+            error,
+          );
+          toast({
+            title,
+            description,
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  }, [
+    cancelProcess,
+    project.data?.version,
+    qc,
+    session.user._id,
+    session.token,
+    pid,
+    ownerId,
+    shareId,
+    updateSession,
+    toast,
+    isMobile,
+    sidebar,
+  ]);
+
+  // REQ-VID-BLUR-012 / Exceção 4: Monitorização aos 60s e timeout dinâmico (3 * duração + 60s)
+  useEffect(() => {
+    if (!processing) return;
+
+    const hasPrivacyBlur = project.data?.tools.some(
+      (t) => t.procedure === "privacy_blur"
+    );
+
+    if (!hasPrivacyBlur) return;
+
+    let durationSec = currentImage?.duration;
+    if (!durationSec) {
+      const domVideo = document.querySelector("video") as HTMLVideoElement | null;
+      if (domVideo && domVideo.duration && !isNaN(domVideo.duration) && isFinite(domVideo.duration)) {
+        durationSec = domVideo.duration;
+      }
+    }
+    const effectiveDuration = durationSec && durationSec > 0 ? durationSec : 60;
+
+    // Aviso informativo aos 60 segundos
+    const warningTimer = setTimeout(() => {
+      toast({
+        title: "Aviso de Processamento",
+        description:
+          "O processamento de vídeo por IA está a demorar mais de 60 segundos. A operação continua a ser executada em segundo plano.",
+      });
+    }, 60_000);
+
+    // Timeout dinâmico: 3 * duração + 60s
+    const timeoutMs = Math.round((effectiveDuration * 3 + 60) * 1000);
+
+    const timeoutTimer = setTimeout(() => {
+      console.warn(`[Timeout] O processamento de vídeo excedeu o limite dinâmico de ${timeoutMs / 1000}s`);
+      handleCancel();
+      toast({
+        title: "Tempo limite excedido",
+        description:
+          "O serviço de processamento demorou demasiado tempo a responder. A operação foi cancelada e o seu crédito foi reposto.",
+        variant: "destructive",
+      });
+    }, timeoutMs);
+
+    return () => {
+      clearTimeout(warningTimer);
+      clearTimeout(timeoutTimer);
+    };
+  }, [processing, project.data?.tools, currentImage?.duration, toast, handleCancel]);
 
 if (project.isError) {
   // caso especial: projeto aberto via link de partilha
@@ -570,68 +696,6 @@ if (project.isError) {
         <Loading />
       </div>
     );
-
-const handleCancel = () => {
-  // ignorar updates vindos do socket
-  ignoreUpdatesRef.current = true;
-
-  // cancelar medição de tempo e tipo
-  processStartTimeRef.current = null;
-  processIsAiRef.current = false;
-
-  // parar tudo no UI
-  setProcessing(false);
-  setProcessingProgress(0);
-  setProcessingSteps(1);
-
-  // reabrir a sidebar em desktop 
-  if (!isMobile) {
-    sidebar.setOpen(true);
-  }
-
-  // limpar estado de preview (se alguma tool estava a fazer preview)
-  setWaitingForPreview("");
-
-  // cancelar no backend
-  cancelProcess.mutate(
-    {
-      projectVersion: project.data.version
-    },
-    {
-      onSuccess: () => {
-
-      qc.invalidateQueries({
-        queryKey: ["projectImages", session.user._id, pid, session.token, ownerId, shareId],
-        refetchType: "all",
-      });
-
-        // voltar a ir buscar a sessão para atualizar remaining_operations
-        updateSession.mutate({
-          userId: session.user._id,
-          token: session.token,
-        });
-
-        toast({
-          title: "Processamento cancelado",
-          description:
-            "O processamento deste projeto foi cancelado. Podes ajustar as ferramentas e voltar a tentar.",
-        });
-      },
-      
-      onError: (error) => {
-        const { title, description } = getErrorMessage(
-          "project-cancel-process",
-          error,
-        );
-        toast({
-          title,
-          description,
-          variant: "destructive",
-        });
-      },
-    },
-  );
-};
   
   return (
     <ProjectProvider
@@ -674,6 +738,46 @@ const handleCancel = () => {
                     }
                     className="inline-flex"
                     onClick={() => {
+                      const hasPrivacyBlur = project.data.tools.some(
+                        (t) => t.procedure === "privacy_blur"
+                      );
+
+                      // Passo 3 / Exceção 3: Validação de formato e codec logo na submissão
+                      if (hasPrivacyBlur) {
+                        const isMp4 =
+                          (currentImage?.name?.toLowerCase().endsWith(".mp4") ?? false) ||
+                          (currentImage?.url?.toLowerCase().includes(".mp4") ?? false);
+
+                        if (!isMp4) {
+                          toast({
+                            title: "Formato ou codec de vídeo inválido",
+                            description:
+                              "Certifique-se de que o ficheiro utiliza um formato suportado (MP4 com vídeo H.264).",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+
+                        // Validação de limite de duração para contas gratuitas
+                        const isPremium = session.user?.type === "premium";
+                        const domVideo = document.querySelector("video") as HTMLVideoElement | null;
+                        const duration =
+                          currentImage?.duration ||
+                          (domVideo?.duration && !isNaN(domVideo.duration) && isFinite(domVideo.duration)
+                            ? domVideo.duration
+                            : undefined);
+
+                        if (!isPremium && duration && duration > 60) {
+                          toast({
+                            title: "Limite de vídeo excedido",
+                            description:
+                              "A ferramenta de anonimização em contas Gratuitas está limitada a vídeos de até 60 segundos (1080p). O vídeo atual excede este limite.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                      }
+
                       // começa a contar o tempo e limpa flag de cancelamento
                       ignoreUpdatesRef.current = false;
                       processStartTimeRef.current = performance.now();
@@ -697,9 +801,31 @@ const handleCancel = () => {
                         aiProcedures.includes(t.procedure),
                       );
 
+                      const domVideo = document.querySelector("video") as HTMLVideoElement | null;
+                      const videoDur =
+                        currentImage?.duration ||
+                        (domVideo?.duration && !isNaN(domVideo.duration) && isFinite(domVideo.duration)
+                          ? domVideo.duration
+                          : undefined);
+                      const videoW =
+                        (currentImage as any)?.width ||
+                        (domVideo?.videoWidth ? domVideo.videoWidth : undefined);
+                      const videoH =
+                        (currentImage as any)?.height ||
+                        (domVideo?.videoHeight ? domVideo.videoHeight : undefined);
+
                       processProject.mutate(
                         {
-                          projectVersion: project.data.version
+                          projectVersion: project.data.version,
+                          videoMeta: hasPrivacyBlur
+                            ? {
+                                duration: videoDur,
+                                width: videoW,
+                                height: videoH,
+                                format: "mp4",
+                                codec: "h264",
+                              }
+                            : undefined,
                         },
                         {
                           onSuccess: () => {

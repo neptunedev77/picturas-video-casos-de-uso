@@ -509,6 +509,15 @@ class PrivacyBlur:
             err_msg = str(e)
             print(f"[ERROR] privacy_blur failed: {err_msg}", flush=True)
 
+            is_corrupted = isinstance(e, (ValueError, FileNotFoundError)) or any(
+                k in err_msg.lower() for k in ["stream", "dimensions", "corrupt", "open video", "codec", "format"]
+            )
+            err_code = self._codes['corrupted_or_invalid_video'] if is_corrupted else self._codes['error_processing']
+            formatted_err_msg = (
+                "Erro ao ler os fotogramas do vídeo. Certifique-se de que o ficheiro não está corrompido e utiliza um formato válido (MP4/H.264)."
+                if is_corrupted else f"Erro ao processar vídeo de privacidade: {err_msg}"
+            )
+
             self._tool_msg.send_msg(
                 msg_id=msg_id,
                 resp_msg_id=resp_msg_id,
@@ -517,8 +526,8 @@ class PrivacyBlur:
                 processingTime=processing_time,
                 new_img_uri=None,
                 type='video',
-                err_code=self._codes['error_processing'],
-                err_msg=f"Erro ao processar vídeo de privacidade: {err_msg}",
+                err_code=err_code,
+                err_msg=formatted_err_msg,
                 og_img_uri=input_video_path
             )
 
