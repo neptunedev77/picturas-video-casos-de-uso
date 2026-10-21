@@ -36,7 +36,7 @@ def build_command(source, output, quality):
 
 
 def compress(source, output, quality, user_type, progress=lambda value: None, tick=lambda: None,
-             before_start=None, launch_failed=None):
+             before_start=None, launch_failed=None, check_cancel=lambda: None, launched=lambda: None):
     source, output = Path(source).resolve(), Path(output).resolve()
     if source == output or (output.exists() and source.exists() and os.path.samefile(source, output)):
         raise CompressionError("INVALID_PATH", "Input and output must be different files.")
@@ -59,22 +59,22 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
     last_update = started
     percent = 0
     lines = queue.Queue()
+    authorized = False
     try:
         # A file drains stderr continuously and avoids deadlocking FFmpeg's pipes.
         with tempfile.TemporaryFile() as errors:
             if before_start is not None:
                 # Actual ffprobe metadata + current server-side profile/quota, not the queued snapshot.
                 account = before_start(meta)
+                authorized = True
                 check_limits(meta, account["userType"])
+            check_cancel()
             try:
                 proc = subprocess.Popen(build_command(source, partial, quality), stdout=subprocess.PIPE, stderr=errors)
             except OSError as e:
-                if launch_failed is not None:
-                    try:
-                        launch_failed()
-                    except Exception as refund_error:
-                        print(f"[COMPRESSION][REFUND] {refund_error}", flush=True)
                 raise CompressionError("LAUNCH_FAILED", "FFmpeg could not be launched; no video was processed.") from e
+            # From here on no exception, including a lost control response, refunds quota.
+            launched()
             progress(0)
 
             def read_progress():
@@ -83,8 +83,12 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
 
             reader = threading.Thread(target=read_progress, daemon=True)
             reader.start()
+            last_control = time.monotonic()
             while proc.poll() is None:
                 tick()  # Service AMQP heartbeats without sharing Pika across threads.
+                if time.monotonic() - last_control >= 1:
+                    check_cancel()
+                    last_control = time.monotonic()
                 while True:
                     try:
                         line = lines.get_nowait()
@@ -104,6 +108,7 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
                     raise CompressionError("PROCESSING_TIMEOUT", "Compression exceeded its processing time limit.")
                 time.sleep(0.1)
             reader.join(timeout=2)
+            check_cancel()
             if proc.returncode != 0:
                 errors.seek(0)
                 detail = errors.read()[-1500:].decode("utf-8", errors="replace")
@@ -115,6 +120,7 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
             raise CompressionError("INVALID_RESULT", "The output video has an invalid duration.")
         if not result["sizeBytes"]:
             raise CompressionError("INVALID_RESULT", "The output video is empty.")
+        check_cancel()
         # Same filesystem: readers never see the in-progress encode.
         partial.rename(output)
         return {
@@ -122,6 +128,14 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
             "durationSec": result["durationSec"], "width": result["width"], "height": result["height"],
             "reductionPercent": round((1 - result["sizeBytes"] / meta["sizeBytes"]) * 100, 2),
         }
+    except Exception:
+        # Compensation is possible only when this invocation never launched FFmpeg.
+        if proc is None and authorized and launch_failed is not None:
+            try:
+                launch_failed()
+            except Exception as refund_error:
+                print(f"[COMPRESSION][REFUND] {refund_error}", flush=True)
+        raise
     finally:
         if proc is not None:
             if proc.poll() is None:

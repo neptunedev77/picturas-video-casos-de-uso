@@ -49,6 +49,37 @@ class AuthorizationTests(unittest.TestCase):
         self.assertTrue(open_url.call_args_list[0].args[0].full_url.endswith("/start"))
         self.assertTrue(open_url.call_args_list[1].args[0].full_url.endswith("/launch-failed"))
 
+    def test_control_polls_with_job_secret_and_short_timeout(self):
+        with patch("authorization.urlopen", return_value=io.BytesIO(b'{"status":"processing","cancelRequested":false}')) as call:
+            authorization.check_control(self.job)
+        self.assertTrue(call.call_args.args[0].full_url.endswith("/control"))
+        self.assertEqual(call.call_args.args[0].get_header("Authorization"), "Bearer private-token")
+        self.assertEqual(call.call_args.kwargs["timeout"], 2)
+
+    def test_pending_cancellation_and_cancelled_state_stop_processing(self):
+        for state in [{"status": "processing", "cancelRequested": True}, {"status": "cancelled"}]:
+            with self.subTest(state=state):
+                with patch("authorization.urlopen", return_value=io.BytesIO(json.dumps(state).encode())):
+                    with self.assertRaises(CompressionError) as raised:
+                        authorization.check_control(self.job)
+                self.assertEqual(raised.exception.code, "JOB_CANCELLED")
+
+    def test_lost_launch_ack_never_requests_refund(self):
+        with patch("authorization.urlopen", side_effect=URLError("lost ack")) as call:
+            with self.assertRaises(CompressionError):
+                authorization.check_control(self.job, launched=True)
+        call.assert_called_once()
+        self.assertTrue(call.call_args.args[0].full_url.endswith("/launched"))
+
+    def test_unavailable_or_terminal_control_never_allows_success(self):
+        with patch("authorization.urlopen", side_effect=URLError("offline")):
+            with self.assertRaises(CompressionError):
+                authorization.check_control(self.job)
+        with patch("authorization.urlopen", return_value=io.BytesIO(b'{"status":"completed"}')):
+            with self.assertRaises(CompressionError) as raised:
+                authorization.check_control(self.job)
+        self.assertEqual(raised.exception.code, "JOB_NOT_ACTIVE")
+
 
 if __name__ == "__main__":
     unittest.main()

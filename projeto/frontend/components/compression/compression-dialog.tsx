@@ -33,6 +33,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
   // Restore active work first; otherwise show this video's most recent result.
   const job = query.data?.find(isCompressionActive) ?? query.data?.[0];
   const busy = isCompressionActive(job);
+  const cancelling = busy && (cancel.isPending || job?.cancelRequested === true);
   const progress = Math.min(100, Math.max(0, job?.progress || 0));
   const download = useMutation({
     mutationFn: async () => {
@@ -103,14 +104,15 @@ export function CompressionPanel({ target, videoName, open }: Props) {
             <div className="space-y-2">
               <Progress value={progress} aria-label="Progresso da compressão" />
               <p className="text-sm text-muted-foreground">
-                {job.status === "queued" ? "A aguardar processamento" : "A comprimir o vídeo"} · {Math.round(progress)}%
+                {cancelling ? "A aguardar confirmação do cancelamento"
+                  : job.status === "queued" ? "A aguardar processamento" : "A comprimir o vídeo"} · {Math.round(progress)}%
               </p>
               <p className="text-xs text-muted-foreground">Pode fechar este diálogo e consultar o trabalho mais tarde.</p>
-              {job.status === "queued" && (
-                <Button variant="outline" disabled={cancel.isPending} onClick={() => cancel.mutate(job._id)}>
-                  {cancel.isPending ? "A cancelar…" : "Cancelar"}
-                </Button>
-              )}
+              <Button variant="outline" disabled={cancelling} onClick={() => {
+                if (!cancelling) cancel.mutate(job._id);
+              }}>
+                {cancelling ? "A cancelar…" : "Cancelar"}
+              </Button>
             </div>
           )}
           {job.status === "failed" && (

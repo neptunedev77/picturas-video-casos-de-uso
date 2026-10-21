@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// UC-VID-002 only. Cancellation is restricted to queued jobs; no expiration.
+// UC-VID-002 only. Processing cancellation is confirmed after the worker stops.
 const compressionJobSchema = new mongoose.Schema({
   owner_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   project_id: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -12,6 +12,8 @@ const compressionJobSchema = new mongoose.Schema({
   start_claimed: { type: Boolean, default: false },
   quota_charged: { type: Boolean, default: false },
   quota_refund_claimed: { type: Boolean, default: false },
+  cancel_requested_at: { type: Date, default: null },
+  ffmpeg_started_at: { type: Date, default: null },
   status: {
     type: String, enum: ["queued", "processing", "completed", "failed", "cancelled"], default: "queued",
   },

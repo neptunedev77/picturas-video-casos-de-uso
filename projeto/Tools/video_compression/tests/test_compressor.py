@@ -107,9 +107,133 @@ class ContractTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, "LAUNCH_FAILED")
                 launch.assert_called_once()
 
+    def test_cancelled_authorization_never_launches_or_debits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            source.write_bytes(b"original")
+            authorize = Mock(side_effect=CompressionError("JOB_CANCELLED", "Cancelled before start"))
+            refund = Mock()
+            with patch("compressor.probe", return_value={"sizeBytes": 8, "durationSec": 10}), \
+                    patch("compressor.subprocess.Popen") as launch:
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", before_start=authorize, launch_failed=refund)
+            self.assertEqual(raised.exception.code, "JOB_CANCELLED")
+            launch.assert_not_called()
+            refund.assert_not_called()
+            self.assertEqual(source.read_bytes(), b"original")
+            self.assertFalse(output.exists())
+
+    def test_cancel_between_authorization_and_popen_compensates_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            source.write_bytes(b"original")
+            refund = Mock()
+            check = Mock(side_effect=CompressionError("JOB_CANCELLED", "Cancelled before Popen"))
+            with patch("compressor.probe", return_value={"sizeBytes": 8, "durationSec": 10}), \
+                    patch("compressor.subprocess.Popen") as launch:
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", before_start=lambda _: {"userType": "free"},
+                             launch_failed=refund, check_cancel=check)
+            self.assertEqual(raised.exception.code, "JOB_CANCELLED")
+            launch.assert_not_called()
+            refund.assert_called_once()
+            self.assertFalse(output.exists())
+            self.assertFalse(list(Path(tmp).glob("encode-*")))
+
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg/ffprobe not installed")
 class FFmpegTests(unittest.TestCase):
+    def test_running_ffmpeg_is_killed_and_reaped_without_refund_or_partial_result(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            subprocess.run([
+                "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=15",
+                "-t", "5", "-c:v", "libx264", str(source),
+            ], check=True, capture_output=True)
+            original_hash = hashlib.sha256(source.read_bytes()).digest()
+            real_popen = subprocess.Popen
+            for code in ["JOB_CANCELLED", "AUTHORIZATION_UNAVAILABLE"]:
+                with self.subTest(code=code):
+                    processes, heartbeats = [], []
+                    refund = Mock()
+
+                    def launch(cmd, *args, **kwargs):
+                        if "-progress" in cmd:
+                            cmd = list(cmd)
+                            cmd.insert(cmd.index("-i"), "-re") # Keep the real encoder running for cancellation.
+                        proc = real_popen(cmd, *args, **kwargs)
+                        if "-progress" in cmd:
+                            processes.append(proc)
+                        return proc
+
+                    def check():
+                        if processes:
+                            self.assertIsNone(processes[0].poll())
+                            self.assertTrue(list(Path(tmp).glob("encode-*/partial.mp4")))
+                            raise CompressionError(code, "Stop this active encode")
+
+                    with patch("compressor.subprocess.Popen", side_effect=launch):
+                        with self.assertRaises(CompressionError) as raised:
+                            compress(source, output, "balanced", "free", launch_failed=refund,
+                                     before_start=lambda _: {"userType": "free"}, check_cancel=check,
+                                     tick=lambda: heartbeats.append(True))
+                    self.assertEqual(raised.exception.code, code)
+                    self.assertEqual(len(processes), 1)
+                    self.assertIsNotNone(processes[0].returncode)
+                    self.assertNotEqual(processes[0].returncode, 0)
+                    self.assertTrue(processes[0].stdout.closed)
+                    self.assertTrue(heartbeats)
+                    refund.assert_not_called()
+                    self.assertFalse(output.exists())
+                    self.assertFalse(list(Path(tmp).glob("encode-*")))
+                    self.assertEqual(hashlib.sha256(source.read_bytes()).digest(), original_hash)
+
+    def test_lost_launch_ack_stops_ffmpeg_without_refund(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            subprocess.run([
+                "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=15",
+                "-t", "1", "-c:v", "libx264", str(source),
+            ], check=True, capture_output=True)
+            refund = Mock()
+            launched = Mock(side_effect=CompressionError("AUTHORIZATION_UNAVAILABLE", "Lost acknowledgement"))
+            with self.assertRaises(CompressionError):
+                compress(source, output, "balanced", "free", before_start=lambda _: {"userType": "free"},
+                         launch_failed=refund, launched=launched)
+            refund.assert_not_called()
+            self.assertFalse(output.exists())
+            self.assertFalse(list(Path(tmp).glob("encode-*")))
+
+    def test_cancellation_during_final_probe_prevents_result_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source, output = Path(tmp) / "source.mp4", Path(tmp) / "result.mp4"
+            subprocess.run([
+                "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=15",
+                "-t", "0.4", "-c:v", "libx264", str(source),
+            ], check=True, capture_output=True)
+            cancelled = False
+            refund = Mock()
+
+            def inspect(filename):
+                nonlocal cancelled
+                result = probe(filename)
+                if Path(filename).name == "partial.mp4":
+                    cancelled = True
+                return result
+
+            def check():
+                if cancelled:
+                    raise CompressionError("JOB_CANCELLED", "Cancelled during result validation")
+
+            with patch("compressor.probe", side_effect=inspect):
+                with self.assertRaises(CompressionError) as raised:
+                    compress(source, output, "balanced", "free", before_start=lambda _: {"userType": "free"},
+                             launch_failed=refund, check_cancel=check)
+            self.assertEqual(raised.exception.code, "JOB_CANCELLED")
+            refund.assert_not_called()
+            self.assertFalse(output.exists())
+            self.assertFalse(list(Path(tmp).glob("encode-*")))
+
     def test_all_profiles_preserve_source_and_audio(self):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "source.mp4"

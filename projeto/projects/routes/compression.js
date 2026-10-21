@@ -11,7 +11,7 @@ const CompressionJob = require("../models/compressionJob");
 const Project = require("../models/project");
 const { get_image_internal_url } = require("../utils/imageStorage");
 const mq = require("../utils/compression_mq");
-const { authorizeStart, releaseFailedLaunch } = require("../services/compressionAccess");
+const { authorizeStart, releaseFailedLaunch, control, markLaunched } = require("../services/compressionAccess");
 const router = express.Router();
 const base = "/:user/:project/compression";
 const ROOT = path.resolve("images/video_compression");
@@ -43,13 +43,14 @@ function view(job) {
   return {
     _id: job._id, imgId: job.img_id, quality: job.quality, profileVersion: job.profile_version,
     status: job.status, progress: job.progress, sourceName: job.source_name,
+    cancelRequested: Boolean(job.cancel_requested_at),
     result: job.status === "completed" ? job.result : null,
     error: job.error || null, createdAt: job.createdAt, updatedAt: job.updatedAt,
   };
 }
 
 async function fail(jobId, code, message) {
-  await CompressionJob.updateOne({ _id: jobId, status: { $in: ["queued", "processing"] } }, {
+  return CompressionJob.updateOne({ _id: jobId, status: { $in: ["queued", "processing"] }, cancel_requested_at: null }, {
     $set: { status: "failed", error: { code, message }, finished_at: new Date() },
   });
 }
@@ -109,13 +110,15 @@ router.post(base, owner, wrap(async (req, res) => {
 }));
 
 // Worker-only handshake. The per-job secret is never returned by the public API.
-router.post("/internal/video-compression/:jobId/:action(start|launch-failed)", wrap(async (req, res) => {
+router.post("/internal/video-compression/:jobId/:action(start|launch-failed|control|launched)", wrap(async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.jobId)) return res.status(404).json({ code: "NOT_FOUND" });
   const token = /^Bearer (.+)$/.exec(req.headers.authorization || "")?.[1];
   try {
     if (req.params.action === "start") {
       return res.json(await authorizeStart(req.params.jobId, token, req.body?.media));
     }
+    if (req.params.action === "control") return res.json(await control(req.params.jobId, token));
+    if (req.params.action === "launched") return res.json(await markLaunched(req.params.jobId, token));
     await releaseFailedLaunch(req.params.jobId, token);
     res.json({ released: true });
   } catch (e) {
@@ -141,9 +144,14 @@ router.post(`${base}/:jobId/cancel`, owner, wrap(async (req, res) => {
   }, { $set: { status: "cancelled", finished_at: new Date() } }, { new: true })
     .select("+input_path +output_path");
   if (!job) {
+    // Do not unlink files that an active encoder may still be using.
+    const active = await CompressionJob.findOneAndUpdate({
+      _id: req.params.jobId, ...filter(req), status: "processing",
+    }, { $set: { cancel_requested_at: new Date() } }, { new: true });
+    if (active) return res.status(202).set("Cache-Control", "private, no-store").json(view(active));
     const existing = await CompressionJob.findOne({ _id: req.params.jobId, ...filter(req) });
     if (!existing) return res.status(404).json({ code: "NOT_FOUND", message: "Job not found." });
-    return res.status(409).json({ code: "CANNOT_CANCEL", message: "Only a queued job that has not started can be cancelled." });
+    return res.status(409).json({ code: "CANNOT_CANCEL", message: "Only queued or processing jobs can be cancelled." });
   }
   // Best effort; an in-flight preparation retries cleanup when its download finishes.
   await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
@@ -161,21 +169,37 @@ router.get(`${base}/:jobId/result`, owner, wrap(async (req, res) => {
   res.download(job.output_path, name);
 }));
 
+async function removeCopies(job) {
+  await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
+  await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
+}
+
+async function finishCancellation(jobId) {
+  // Called only for a terminal worker message: FFmpeg has exited and been reaped.
+  const cancelled = await CompressionJob.findOneAndUpdate({
+    _id: jobId, status: "processing", cancel_requested_at: { $ne: null },
+  }, { $set: { status: "cancelled", finished_at: new Date() }, $unset: { result: 1, error: 1 } }, { new: true })
+    .select("+input_path +output_path");
+  if (cancelled) await removeCopies(cancelled);
+  return Boolean(cancelled);
+}
+
 async function handleResult(msg) {
   if (!mongoose.isValidObjectId(msg.jobId)) return;
   const job = await CompressionJob.findById(msg.jobId).select("+input_path +output_path");
   if (!job) return;
   if (["completed", "failed", "cancelled"].includes(job.status)) {
     if (job.status === "cancelled" || (job.status === "failed" && msg.status === "failed")) {
-      await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
-      await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
+      await removeCopies(job);
     }
     return;
   }
+  if (["completed", "failed", "cancelled"].includes(msg.status) && await finishCancellation(job._id)) return;
+  if (msg.status === "cancelled") return; // Never accept unsolicited cancellation.
   if (msg.status === "failed") {
-    await fail(job._id, msg.error?.code || "PROCESSING_FAILED", msg.error?.message || "Compression failed.");
-    await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
-    await fs.promises.rm(job.output_path, { force: true }).catch(() => {});
+    const failed = await fail(job._id, msg.error?.code || "PROCESSING_FAILED", msg.error?.message || "Compression failed.");
+    if (failed.matchedCount) await removeCopies(job);
+    else await finishCancellation(job._id);
     return;
   }
   if (!job.start_claimed) {
@@ -185,7 +209,7 @@ async function handleResult(msg) {
   if (msg.status === "processing") {
     const progress = Number(msg.progress);
     if (!Number.isFinite(progress)) return;
-    await CompressionJob.updateOne({ _id: job._id, status: { $in: ["queued", "processing"] } }, {
+    await CompressionJob.updateOne({ _id: job._id, status: { $in: ["queued", "processing"] }, cancel_requested_at: null }, {
       $set: { status: "processing", started_at: job.started_at || new Date() },
       $max: { progress: Math.min(99, Math.max(0, progress)) },
     });
@@ -195,11 +219,13 @@ async function handleResult(msg) {
       throw e;
     });
     if (!stat || !stat.isFile() || !stat.size || !msg.result) {
-      await fail(job._id, "INVALID_RESULT", "Compression produced no valid result.");
+      const failed = await fail(job._id, "INVALID_RESULT", "Compression produced no valid result.");
+      if (failed.matchedCount) await removeCopies(job);
+      else await finishCancellation(job._id);
       return;
     }
     const r = msg.result;
-    await CompressionJob.updateOne({ _id: job._id, status: { $in: ["queued", "processing"] } }, {
+    const completed = await CompressionJob.updateOne({ _id: job._id, status: "processing", cancel_requested_at: null }, {
       $set: {
         status: "completed", progress: 100, finished_at: new Date(),
         result: { sizeBytes: stat.size, originalSizeBytes: r.originalSizeBytes,
@@ -207,7 +233,8 @@ async function handleResult(msg) {
           reductionPercent: r.reductionPercent },
       },
     });
-    await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
+    if (completed.matchedCount) await fs.promises.rm(job.input_path, { force: true }).catch(() => {});
+    else await finishCancellation(job._id);
   }
 }
 

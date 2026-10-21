@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 from media import CompressionError
 
 
-def request(job, action, payload=None):
+def request(job, action, payload=None, timeout=15):
     token = job.get("workerToken")
     if not isinstance(token, str) or not token:
         raise CompressionError("INVALID_WORKER_TOKEN", "This job has no start authorization.")
@@ -18,7 +18,7 @@ def request(job, action, payload=None):
     )
     try:
         # Matches the existing internal self-signed HTTPS service configuration.
-        with urlopen(req, context=ssl._create_unverified_context(), timeout=15) as response:
+        with urlopen(req, context=ssl._create_unverified_context(), timeout=timeout) as response:
             return json.load(response)
     except HTTPError as e:
         try:
@@ -29,7 +29,7 @@ def request(job, action, payload=None):
                                data.get("message", "Compression was not authorized.")) from e
     except (URLError, OSError, ValueError) as e:
         # Never retry a possibly charged start automatically.
-        raise CompressionError("AUTHORIZATION_UNAVAILABLE", "Unable to authorize compression; it was not launched.") from e
+        raise CompressionError("AUTHORIZATION_UNAVAILABLE", "Unable to contact compression control.") from e
 
 
 def authorize_start(job, media):
@@ -47,3 +47,11 @@ def authorize_start(job, media):
 
 def release_failed_launch(job):
     return request(job, "launch-failed")
+
+
+def check_control(job, launched=False):
+    state = request(job, "launched" if launched else "control", timeout=2)
+    if state.get("cancelRequested") or state.get("status") == "cancelled":
+        raise CompressionError("JOB_CANCELLED", "Compression was cancelled.")
+    if state.get("status") != "processing":
+        raise CompressionError("JOB_NOT_ACTIVE", "Compression is no longer active.")

@@ -33,6 +33,7 @@ export interface CompressionJob {
   quality: CompressionQuality;
   profileVersion: number;
   status: CompressionStatus;
+  cancelRequested?: boolean;
   progress: number;
   sourceName: string;
   result?: {

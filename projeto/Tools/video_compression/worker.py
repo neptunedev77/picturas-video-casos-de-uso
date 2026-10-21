@@ -7,7 +7,7 @@ import time
 import pika
 
 import config
-from authorization import authorize_start, release_failed_launch
+from authorization import authorize_start, release_failed_launch, check_control
 from compressor import compress
 from media import CompressionError
 
@@ -25,6 +25,34 @@ def validate_paths(job):
 
 
 class CompressionWorker:
+    def process(self, job, publish, tick, redelivered=False):
+        try:
+            source, output = validate_paths(job)
+            if redelivered:
+                raise CompressionError("WORKER_INTERRUPTED", "The worker was interrupted; create a new job to retry.")
+            result = compress(
+                source, output, job.get("quality"), job.get("userType"),
+                progress=lambda pct: publish({"jobId": job["jobId"], "status": "processing", "progress": pct}),
+                tick=tick,
+                before_start=lambda meta: authorize_start(job, meta),
+                launch_failed=lambda: release_failed_launch(job),
+                check_cancel=lambda: check_control(job),
+                launched=lambda: check_control(job, launched=True),
+            )
+            publish({"jobId": job["jobId"], "status": "completed", "result": result})
+        except pika.exceptions.AMQPError:
+            # Leave delivery unacked: redelivery reports interruption, never re-encodes.
+            raise
+        except Exception as e:
+            print(f"[COMPRESSION][ERROR] {e}", flush=True)
+            if isinstance(e, CompressionError) and e.code == "JOB_CANCELLED":
+                publish({"jobId": job.get("jobId"), "status": "cancelled"})
+            else:
+                publish({"jobId": job.get("jobId"), "status": "failed", "error": {
+                    "code": getattr(e, "code", "PROCESSING_FAILED"),
+                    "message": str(e) if isinstance(e, CompressionError) else "Compression failed.",
+                }})
+
     def run(self):
         while True:
             connection = None
@@ -57,27 +85,7 @@ class CompressionWorker:
                     except (ValueError, UnicodeDecodeError):
                         ch.basic_reject(method.delivery_tag, requeue=False)
                         return
-                    try:
-                        source, output = validate_paths(job)
-                        if method.redelivered:
-                            raise CompressionError("WORKER_INTERRUPTED", "The worker was interrupted; create a new job to retry.")
-                        result = compress(
-                            source, output, job.get("quality"), job.get("userType"),
-                            progress=lambda pct: publish({"jobId": job["jobId"], "status": "processing", "progress": pct}),
-                            tick=lambda: connection.process_data_events(time_limit=0),
-                            before_start=lambda meta: authorize_start(job, meta),
-                            launch_failed=lambda: release_failed_launch(job),
-                        )
-                        publish({"jobId": job["jobId"], "status": "completed", "result": result})
-                    except pika.exceptions.AMQPError:
-                        # Leave delivery unacked: redelivery reports interruption, never re-encodes.
-                        raise
-                    except Exception as e:
-                        print(f"[COMPRESSION][ERROR] {e}", flush=True)
-                        publish({"jobId": job.get("jobId"), "status": "failed", "error": {
-                            "code": getattr(e, "code", "PROCESSING_FAILED"),
-                            "message": str(e) if isinstance(e, CompressionError) else "Compression failed.",
-                        }})
+                    self.process(job, publish, lambda: connection.process_data_events(time_limit=0), method.redelivered)
                     ch.basic_ack(method.delivery_tag)
 
                 channel.basic_consume(queue=config.REQUESTS_QUEUE, on_message_callback=callback, auto_ack=False)
