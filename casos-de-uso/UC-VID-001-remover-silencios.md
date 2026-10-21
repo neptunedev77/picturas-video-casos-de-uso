@@ -131,13 +131,18 @@ Quem grava aulas, podcasts em vídeo, tutoriais ou reuniões perde muito tempo a
 
 | **ID** | **Questão** |
 |--------|-------------|
-| Q1 | O perfil anónimo deve ter acesso a esta funcionalidade, por exemplo apenas em vídeos muito curtos? |
 | Q2 | Em projetos partilhados, a operação deve ser descontada ao dono do projeto ou ao utilizador que aplicou os cortes? |
-| Q3 | Resolvida na assunção A12 e no requisito REQ-VID-SIL-013 (as revisões não aplicadas são guardadas durante 7 dias). |
 | Q4 | O vídeo resultante deve poder ser usado diretamente noutras ferramentas de vídeo (por exemplo, gerar legendas depois de remover os silêncios)? |
 | Q5 | Deve ser possível, no futuro, remover também hesitações como "hum" ou "ah", e não apenas silêncios? |
 | Q6 | Deve ser possível exportar a lista de cortes para usar noutro editor de vídeo? |
 | Q7 | Os limites fixados nas assunções A7 e A8 são adequados, ou devem ser ajustados depois de testes com vídeos reais? |
+
+**Questões encerradas**
+
+| **ID** | **Decisão** |
+|--------|-------------|
+| Q1 | No MVP, o perfil anónimo não tem acesso à remoção de silêncios; a funcionalidade é exclusiva de utilizadores registados (free e premium), como definido na secção 4.1.3 e no REQ-VID-SIL-001. |
+| Q3 | As revisões não aplicadas são guardadas durante 7 dias sem utilização e depois eliminadas (assunção A12 e REQ-VID-SIL-013). |
 
 ---
 
@@ -197,7 +202,7 @@ Quem grava aulas, podcasts em vídeo, tutoriais ou reuniões perde muito tempo a
 | REQ-VID-SIL-018 | O sistema deve colocar os pedidos de utilizadores premium numa fila com prioridade e não lhes descontar operações. | Deve ter | Novo | ALT | UC-VID-001, FA1, RN1 | Materializa a vantagem do plano premium. | Dado um utilizador premium, quando aplica cortes, então o pedido entra na fila prioritária e o saldo não se altera. |
 | REQ-VID-SIL-019 | O sistema deve apresentar o estado do processamento (em fila, a analisar, a processar, concluído, falhado) e a percentagem de progresso, e repor o estado atual quando a ligação em tempo real é restabelecida. | Deve ter | Novo | ALT | UC-VID-001, passos 4 e 8, exceção de perda de ligação, A5 | O processamento demora e o utilizador precisa de saber o que está a acontecer. | Dado um processamento em curso, quando a ligação cai e volta, então a interface mostra o estado e a percentagem atuais sem nova submissão. |
 | REQ-VID-SIL-020 | O sistema deve permitir cancelar o processamento a qualquer momento, interrompendo-o, mantendo o vídeo original e regressando à revisão com os troços intactos. | Deve ter | Novo | ALT | UC-VID-001, passo 8, FA7 | O utilizador não deve ficar preso a uma operação longa nem perder o trabalho de revisão. | Dado um processamento em curso, quando o utilizador cancela, então regressa à revisão em ≤ 2 s com os mesmos troços e nenhum vídeo novo é guardado. |
-| REQ-VID-SIL-021 | O sistema deve remover os troços marcados do som e da imagem com os mesmos tempos e suavizar o som em cada junção (10 ms) para que não se ouçam estalidos. | Deve ter | Novo | NOVO | UC-VID-001, passo 9, RN4 | Cortar só o som, ou cortar som e imagem em tempos diferentes, deixaria o vídeo dessincronizado. | Dado um vídeo de teste com locução e um relógio visível, quando os cortes são aplicados, então não há desfasamento visível entre voz e lábios nem estalidos nas junções. |
+| REQ-VID-SIL-021 | O sistema deve remover os troços marcados do som e da imagem com os mesmos tempos e suavizar o som em cada junção (10 ms) para que não se ouçam estalidos. | Deve ter | Novo | NOVO | UC-VID-001, passo 9, RN4 | Cortar só o som, ou cortar som e imagem em tempos diferentes, deixaria o vídeo dessincronizado. | Dado um vídeo de teste com locução e um relógio visível, quando os cortes são aplicados, então o desfasamento entre som e imagem é ≤ 40 ms (verificado como em REQ-VID-SIL-023) e cada junção do som tem a suavização de 10 ms aplicada. |
 | REQ-VID-SIL-022 | O sistema deve gerar o resultado como um novo vídeo MP4 (H.264/AAC) guardado no projeto, sem alterar o vídeo original. | Deve ter | Novo | NOVO | UC-VID-001, passos 9 e 10, RN5, pós-condição de sucesso | Edição não destrutiva, coerente com o resto do PictuRAS. | Dado um processamento concluído, então o projeto contém o vídeo original (com o mesmo hash SHA-256 de antes) e o novo vídeo. |
 | REQ-VID-SIL-023 | O sistema deve verificar, antes de disponibilizar o novo vídeo, que a diferença entre a duração do som e da imagem não ultrapassa 40 ms e que a duração final corresponde à prevista (com erro ≤ 0,5 s), rejeitando o resultado caso contrário. | Deve ter | Novo | NOVO | UC-VID-001, passo 10, exceção de desfasamento, A10 | Impede que um vídeo dessincronizado seja entregue como bom. | Dado um resultado gerado, quando inspecionado com `ffprobe`, então as durações de som e imagem diferem ≤ 40 ms; num teste com desfasamento forçado, o resultado é rejeitado e a operação devolvida. |
 | REQ-VID-SIL-024 | O sistema deve, quando o processamento falha a meio, marcar o pedido como falhado, não deixar ficheiros parciais acessíveis ao utilizador, apagar os ficheiros temporários e informar o utilizador com o motivo. | Deve ter | Novo | NOVO | UC-VID-001, exceção de falha ou tempo excedido, pós-condição mínima, A6 | O sistema tem de ficar num estado consistente depois de qualquer falha. | Dado um processamento interrompido de propósito a meio, então o estado fica "falhado", o projeto só contém o vídeo original e não restam ficheiros temporários desse pedido. |
@@ -221,7 +226,7 @@ Quem grava aulas, podcasts em vídeo, tutoriais ou reuniões perde muito tempo a
 | REQ-VID-SIL-037 | O sistema deve aceitar e produzir vídeos em formatos reproduzíveis nos browsers atuais. | Compatibilidade | Entrada MP4 e MOV (H.264/AAC); saída MP4 (H.264/AAC) reproduzível em Chrome, Firefox, Safari e Edge | Entrada também em WebM e HEVC | Novo | UC-VID-001, passo 11, RN9 / DQ-010 | Dado um vídeo resultante, quando aberto nos quatro browsers, então é reproduzido sem plugins. |
 | REQ-VID-SIL-038 | A remoção de silêncios deve ser acrescentada como um serviço independente, sem alterar o código das ferramentas existentes. | Manutenibilidade | Serviço próprio ligado à fila de mensagens; nenhuma ferramenta existente alterada | Registo de novas ferramentas de vídeo sem alterar código do resto do sistema | Novo | DQ-011 | Dado o código entregue, então a comparação com a versão base não mostra alterações nas ferramentas de imagem existentes. |
 | REQ-VID-SIL-039 | As dependências de processamento de vídeo (FFmpeg e bibliotecas) devem estar isoladas no contentor do serviço. | Portabilidade | Imagem Docker para `amd64` e `arm64`, arrancada com `docker compose up` | Imagem otimizada para orquestração (Kubernetes) | Novo | DQ-012 | Dado um computador apenas com Docker, quando se arranca o sistema, então o serviço funciona sem instalar FFmpeg no computador. |
-| REQ-VID-SIL-040 | O sistema deve garantir que o vídeo original nunca é alterado por análises, cortes, cancelamentos ou falhas. | Fiabilidade (Integridade) | Original imutável, verificado por hash | Versionamento e cópias de segurança diárias | Novo | UC-VID-001, RN5, pós-condições / DQ-013 | Dado um projeto após análises, um processamento concluído, um cancelado e um falhado, então o hash SHA-256 do original é igual ao inicial. |
+| REQ-VID-SIL-040 | O sistema deve garantir que o vídeo original nunca é alterado por análises, cortes, cancelamentos ou falhas. | Segurança (Integridade) | Original imutável, verificado por hash | Versionamento e cópias de segurança diárias | Novo | UC-VID-001, RN5, pós-condições / DQ-013 | Dado um projeto após análises, um processamento concluído, um cancelado e um falhado, então o hash SHA-256 do original é igual ao inicial. |
 
 #### 4.1.3 Verificação da completude e dos limites do âmbito
 
@@ -231,7 +236,7 @@ Quem grava aulas, podcasts em vídeo, tutoriais ou reuniões perde muito tempo a
 | Estado, progresso, cancelamento e resultado | Sim | Estados e percentagem em tempo real, cancelamento da análise e do processamento, recuperação após perda de ligação e apresentação do resultado com o tempo poupado. | REQ-VID-SIL-009, 019, 020, 025, 034 |
 | Falhas durante o processamento | Sim | Sem retoma no MVP: o pedido fica "falhado", não há ficheiros parciais visíveis, os temporários são apagados e a operação é devolvida; resultados desfasados são rejeitados. | REQ-VID-SIL-017, 023, 024, 031, 040 |
 | Persistência e expiração dos ficheiros | Sim | Original e resultado ficam enquanto existirem no projeto; revisões não aplicadas expiram ao fim de 7 dias (A12); temporários apagados no fim de cada pedido (A6). | REQ-VID-SIL-013, 024, 026 |
-| Perfis e contagem de operações | Sim | Anónimo sem acesso no MVP (Q1); free: 1 operação por aplicação concluída e até 15 análises por dia; premium: ilimitado e com prioridade. | REQ-VID-SIL-006, 017, 018 |
+| Perfis e contagem de operações | Sim | Anónimo sem acesso no MVP (Q1, encerrada); free: 1 operação por aplicação concluída e até 15 análises por dia; premium: ilimitado e com prioridade. | REQ-VID-SIL-006, 017, 018 |
 | Encadeamento de ferramentas e processamento em lote | Não | Fora do âmbito do MVP: a ferramenta é aplicada a um vídeo de cada vez, porque a revisão manual exige que o utilizador acompanhe cada vídeo; o encadeamento e o lote existentes continuam só para imagens. A possibilidade de encadear com outras ferramentas de vídeo fica em aberto (Q4). | N/A |
 
 ### 4.2 Impacto no sistema existente
