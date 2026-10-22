@@ -167,27 +167,18 @@
             "arguments": {}
         },
         {
-            "name": "privacy_blur_queue",
+            "name": "privacy_blur_requests_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
-        },
-        {
-            "name": "high_priority_queue",
-            "vhost": "/",
-            "durable": true,
-            "auto_delete": false,
-            "arguments": {}
+            "arguments": {"x-max-priority": 10}
         },
         {
             "name": "silence_removal_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {
-                "x-max-priority": 10
-            }
+            "arguments": {"x-max-priority": 10}
         },
         {
             "name": "silence_results_queue",
@@ -197,11 +188,11 @@
             "arguments": {}
         },
         {
-            "name": "video_compression_queue",
+            "name": "video_compression_requests_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {"x-max-priority": 10}
         },
         {
             "name": "video_compression_results_queue",
@@ -211,11 +202,11 @@
             "arguments": {}
         },
         {
-            "name": "video_bg_remove_queue",
+            "name": "video_bg_remove_requests_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {"x-max-priority": 10}
         },
         {
             "name": "subtitle_generation_queue",
@@ -233,13 +224,6 @@
         },
         {
             "name": "subtitle_cancel_queue",
-            "vhost": "/",
-            "durable": true,
-            "auto_delete": false,
-            "arguments": {}
-        },
-        {
-            "name": "video_bg_remove_queue_priority",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
@@ -413,17 +397,9 @@
         {
             "source": "picturas",
             "vhost": "/",
-            "destination": "privacy_blur_queue",
+            "destination": "privacy_blur_requests_queue",
             "destination_type": "queue",
-            "routing_key": "privacy_blur_queue",
-            "arguments": {}
-        },
-        {
-            "source": "picturas",
-            "vhost": "/",
-            "destination": "high_priority_queue",
-            "destination_type": "queue",
-            "routing_key": "high_priority_queue",
+            "routing_key": "privacy_blur_requests_queue",
             "arguments": {}
         },
         {
@@ -445,9 +421,9 @@
         {
             "source": "picturas",
             "vhost": "/",
-            "destination": "video_compression_queue",
+            "destination": "video_compression_requests_queue",
             "destination_type": "queue",
-            "routing_key": "video_compression_queue",
+            "routing_key": "video_compression_requests_queue",
             "arguments": {}
         },
         {
@@ -461,9 +437,9 @@
         {
             "source": "picturas",
             "vhost": "/",
-            "destination": "video_bg_remove_queue",
+            "destination": "video_bg_remove_requests_queue",
             "destination_type": "queue",
-            "routing_key": "video_bg_remove_queue",
+            "routing_key": "video_bg_remove_requests_queue",
             "arguments": {}
         },
         {
@@ -488,14 +464,6 @@
             "destination": "subtitle_cancel_queue",
             "destination_type": "queue",
             "routing_key": "subtitle_cancel",
-            "arguments": {}
-        },
-        {
-            "source": "picturas",
-            "vhost": "/",
-            "destination": "video_bg_remove_queue_priority",
-            "destination_type": "queue",
-            "routing_key": "video_bg_remove_queue_priority",
             "arguments": {}
         }
     ]

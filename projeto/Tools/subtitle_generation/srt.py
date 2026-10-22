@@ -67,6 +67,27 @@ def validate_segments(segments, duration):
     return result
 
 
+def fit_to_duration(segments, duration):
+    """Fit raw STT cues to the video timeline before validate_segments.
+
+    Faster-Whisper pads the last audio window, so the last cue can end a few
+    milliseconds after the container duration, and consecutive cues can touch
+    or overlap slightly. Clip ends to the duration and starts to the previous
+    end; drop cues left with no time. Only for STT output: segments edited by
+    the user are still rejected by validate_segments, never adjusted.
+    """
+    result = []
+    previous_end = 0.0
+    for segment in segments:
+        start = max(segment.start, previous_end)
+        end = min(segment.end, duration)
+        if _milliseconds(start) >= _milliseconds(end):
+            continue
+        result.append(Segment(segment.text, start, end))
+        previous_end = end
+    return result
+
+
 def render_srt(segments, duration):
     cues = validate_segments(segments, duration)
     return "\n\n".join(

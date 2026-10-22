@@ -227,8 +227,10 @@ function process_msg() {
           console.error("Error refunding operations on process error:", refErr);
         }
 
+        // The tools send the text in error.message (error.msg kept for older senders).
+        const errorText = msg_content.error?.message ?? msg_content.error?.msg;
         if (/preview/.test(msg_id)) {
-          send_msg_client_preview_error(`update-client-preview-${uuidv4()}`, timestamp, runnerId, msg_content.error.code, msg_content.error.msg)
+          send_msg_client_preview_error(`update-client-preview-${uuidv4()}`, timestamp, runnerId, msg_content.error.code, errorText)
         }
         
         else {
@@ -237,7 +239,7 @@ function process_msg() {
             timestamp,
             runnerId,   
             msg_content.error.code,
-            msg_content.error.msg
+            errorText
           );
         }
         return;

@@ -18,18 +18,21 @@ const queues = {
     'people_ai': 'people_ai_queue',
     'expand_ai': 'expand_ai_queue',
     'watermark': 'watermark_queue',
-    'privacy_blur': 'privacy_blur_queue',
-    'video_bg_remove': 'video_bg_remove_queue',
-    'high_priority': 'high_priority_queue',
+    // Video tools: one request queue each, with priority (must match Tools/utils/tool_msg.py).
+    'privacy_blur': 'privacy_blur_requests_queue',
+    'video_bg_remove': 'video_bg_remove_requests_queue',
     'project': 'project_queue',
     'ws': 'ws_queue'
 }
 
+// Premium requests are processed first (REQ-VID-QUOTA-003, RNG-07). They used to be sent to a
+// shared high_priority_queue that no worker consumed, so they were never processed.
+const PRIORITY_TOOLS = new Set(["privacy_blur", "video_bg_remove"]);
+const PRIORITY_QUEUE_ARGS = { "x-max-priority": 10 };
+const PREMIUM_PRIORITY = 5;
+
 function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params, runnerId, userType) {
-    let queue = queues[tool];
-    if (userType === "premium" && (tool === "privacy_blur" || tool === "video_bg_remove")) {
-        queue = queues['high_priority'] || queue;
-    }
+    const queue = queues[tool];
     const msg = {
         "messageId": msg_id,
         "timestamp": timestamp,
@@ -45,7 +48,14 @@ function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params,
         }
     };
 
-    send_rabbit_msg(msg, queue);
+    if (PRIORITY_TOOLS.has(tool)) {
+        send_rabbit_msg(msg, queue, {
+            queueArguments: PRIORITY_QUEUE_ARGS,
+            priority: userType === "premium" ? PREMIUM_PRIORITY : 0,
+        });
+    } else {
+        send_rabbit_msg(msg, queue);
+    }
 }
 
 function send_msg_client(msg_id, timestamp, user) {

@@ -37,6 +37,9 @@ async function workerJob(jobId, token) {
   return job;
 }
 
+// RNG-05: in a shared project the operation belongs to whoever ran it, not to the owner.
+const runnerOf = (job) => job.runner_id || job.owner_id;
+
 async function authorizeStart(jobId, token, meta) {
   const job = await workerJob(jobId, token);
   if (job.status === "cancelled") throw error(409, "JOB_CANCELLED", "This compression job was cancelled.");
@@ -44,7 +47,7 @@ async function authorizeStart(jobId, token, meta) {
   if (!project?.imgs.id(job.img_id)) throw error(404, "NOT_FOUND", "Source video no longer exists in the owner's project.");
   let user;
   try {
-    user = (await axios.get(`${USERS}/${job.owner_id}`, { httpsAgent, timeout: 5000 })).data;
+    user = (await axios.get(`${USERS}/${runnerOf(job)}`, { httpsAgent, timeout: 5000 })).data;
   } catch (_) { throw error(503, "USERS_UNAVAILABLE", "Unable to verify account and quota."); }
   validateMedia(meta, user?.type);
   // Atomic job claim prevents a duplicate delivery/HTTP retry from charging twice.
@@ -55,7 +58,8 @@ async function authorizeStart(jobId, token, meta) {
   try {
     if (user.type === "free") {
       if (user.remaining_operations === 0) throw error(429, "NO_QUOTA", "No daily operations remaining.");
-      const reservation = await axios.get(`${USERS}/${job.owner_id}/process/1`, {
+      // A reservation: it only stays debited if the job completes (REQ-VID-QUOTA-002).
+      const reservation = await axios.get(`${USERS}/${runnerOf(job)}/process/1`, {
         httpsAgent, timeout: 5000, validateStatus: () => true,
       });
       if (reservation.status !== 200) {
@@ -78,19 +82,27 @@ async function authorizeStart(jobId, token, meta) {
   }
 }
 
-async function releaseFailedLaunch(jobId, token) {
-  const job = await workerJob(jobId, token);
-  // Only the worker's failed Popen path may refund; encode failures remain charged.
+// REQ-VID-QUOTA-002: a reserved operation is returned whenever the job does not complete
+// (failure, timeout, cancellation, no capacity). The atomic claim refunds at most once.
+async function releaseOperation(jobId) {
   const claimed = await CompressionJob.findOneAndUpdate({
-    _id: job._id, status: "processing", quota_charged: true, quota_refund_claimed: { $ne: true },
-    ffmpeg_started_at: null,
+    _id: jobId, status: { $in: ["queued", "processing", "failed", "cancelled"] },
+    quota_charged: true, quota_refund_claimed: { $ne: true },
   }, { $set: { quota_refund_claimed: true } }, { new: true });
-  if (!claimed) return;
-  const response = await axios.post(`${USERS}/${job.owner_id}/process/refund/1`, {}, {
+  if (!claimed) return false;
+  const response = await axios.post(`${USERS}/${runnerOf(claimed)}/process/refund/1`, {}, {
     httpsAgent, timeout: 5000, validateStatus: () => true,
   });
-  if (response.status !== 200) throw error(503, "REFUND_FAILED", "Unable to release the operation for a failed launch.");
-  await CompressionJob.updateOne({ _id: job._id }, { $set: { quota_charged: false } });
+  if (response.status !== 200) throw error(503, "REFUND_FAILED", "Unable to return the reserved operation.");
+  await CompressionJob.updateOne({ _id: jobId }, { $set: { quota_charged: false } });
+  return true;
+}
+
+async function releaseFailedLaunch(jobId, token) {
+  const job = await workerJob(jobId, token);
+  // While FFmpeg runs, the job's outcome decides: projects refunds when it records a failure.
+  if (job.status === "processing" && job.ffmpeg_started_at) return;
+  await releaseOperation(job._id);
 }
 
 async function control(jobId, token) {
@@ -108,4 +120,4 @@ async function markLaunched(jobId, token) {
   return control(jobId, token);
 }
 
-module.exports = { authorizeStart, releaseFailedLaunch, validateMedia, control, markLaunched };
+module.exports = { authorizeStart, releaseFailedLaunch, releaseOperation, validateMedia, control, markLaunched, LIMITS };

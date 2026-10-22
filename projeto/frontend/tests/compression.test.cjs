@@ -46,6 +46,9 @@ function client() {
   const lib = load("lib/compression.ts", {
     axios: { __esModule: true, default: { isAxiosError: (e) => e?.isAxiosError === true } },
     "./axios": { api }, "@tanstack/react-query": hooks,
+    react: { useEffect: (effect) => { state.effect = effect; } },
+    "./queries/projects": { useGetSocket: () => ({ data: state.socket }) },
+    "./video-status": load("lib/video-status.ts", {}),
   });
   return { lib, state };
 }
@@ -77,12 +80,12 @@ test("restore only this video's jobs from persisted REST state", async () => {
   assert.equal(jobs[0]._id, "job");
 });
 
-test("poll every two seconds only while queued/processing, and pause when closed", () => {
+test("fallback poll every five seconds only while queued/processing, and pause when closed", () => {
   const { lib, state } = client();
   lib.useCompressionJobs(target, true);
   for (const status of ["queued", "processing", "completed", "failed", "cancelled"]) {
     assert.equal(state.query.refetchInterval({ state: { data: [job(status)] } }),
-      ["queued", "processing"].includes(status) ? 2000 : false);
+      ["queued", "processing"].includes(status) ? 5000 : false);
   }
   assert.equal(state.query.refetchInterval({ state: {} }), false);
   assert.equal(state.query.refetchOnMount, "always");
@@ -137,7 +140,8 @@ function panel(currentJob, extra = {}) {
   const cancel = { isPending: false, reset() {}, mutate() {}, ...extra.cancel };
   const jsx = (type, props) => ({ type, props });
   const exports = load("components/compression/compression-dialog.tsx", {
-    react: { useState: (value) => [value, (next) => { state.selected = next; }], useRef: (current) => ({ current }) },
+    react: { useState: (value) => [value, (next) => { state.selected = next; }], useRef: (current) => ({ current }),
+      useEffect: () => {} },
     "react/jsx-runtime": { jsx, jsxs: jsx },
     "@tanstack/react-query": { useMutation: () => ({ isPending: false, reset() {}, mutate() {} }) },
     "lucide-react": { AlertTriangle: "AlertTriangle", CheckCircle2: "CheckCircle2", Download: "Download", LoaderCircle: "LoaderCircle" },
@@ -176,13 +180,13 @@ test("active panel shows persisted progress and blocks a duplicate start", () =>
     const { tree } = panel(job(status));
     assert.equal(nodes(tree).find((node) => node.type === "Progress").props.value, 25);
     assert.equal(nodes(tree).find((node) => node.props?.["data-testid"] === "start-compression-button").props.disabled, true);
-    assert.ok(text(tree).includes(status === "queued" ? "Em fila" : "Em processamento"));
+    assert.ok(text(tree).includes(status === "queued" ? "Em fila" : "A processar"));
   }
 });
 
 test("completed panel shows final size, reduction, download and honest negative savings", () => {
   const { tree } = panel(job("completed", { result: { sizeBytes: 2_000_000, originalSizeBytes: 1_904_762, reductionPercent: -5 } }));
-  assert.ok(text(tree).includes("Concluído"));
+  assert.ok(text(tree).includes("Concluída"));
   assert.ok(text(tree).includes("2 MB"));
   assert.ok(text(tree).includes("-5"));
   assert.ok(text(tree).includes("Descarregar resultado"));
@@ -194,7 +198,7 @@ test("a result larger by one byte warns and remains downloadable despite a round
     sizeBytes: 1_000_001, originalSizeBytes: 1_000_000, reductionPercent: -0,
   } });
   const { tree } = panel(completed);
-  assert.ok(text(tree).includes("Concluído"));
+  assert.ok(text(tree).includes("Concluída"));
   assert.ok(text(tree).includes("ficou maior"));
   const download = nodes(tree).find((node) => node.type === "Button" && text(node).includes("Descarregar resultado"));
   assert.equal(download.props.disabled, false);
@@ -217,8 +221,8 @@ test("NO_QUOTA is shown without a result or download and no download request can
   const refused = job("failed", { error: { code: "NO_QUOTA", message: "No daily operations remaining." },
     result: { sizeBytes: 1_000, originalSizeBytes: 2_000, reductionPercent: 50 } });
   const { tree } = panel(refused);
-  assert.ok(text(tree).includes("Falhado"));
-  assert.ok(text(tree).includes("No daily operations remaining."));
+  assert.ok(text(tree).includes("Falhada"));
+  assert.ok(text(tree).includes("Atingiu o limite diário de operações"));
   assert.equal(text(tree).includes("Descarregar resultado"), false);
   assert.equal(text(tree).includes("Tamanho final"), false);
   const { lib, state } = client();
@@ -228,15 +232,16 @@ test("NO_QUOTA is shown without a result or download and no download request can
 
 test("failed panel displays backend error and allows a new job", () => {
   const { tree } = panel(job("failed", { error: { message: "FFmpeg failed" } }));
-  assert.ok(text(tree).includes("Falhado"));
+  assert.ok(text(tree).includes("Falhada"));
   assert.ok(text(tree).includes("FFmpeg failed"));
   assert.equal(Boolean(nodes(tree).find((node) => node.props?.["data-testid"] === "start-compression-button").props.disabled), false);
 });
 
-test("toolbar component compiles without touching colleagues' implementations", () => {
+test("toolbar: registered editors (owner or edit link) can compress; others cannot", () => {
   const jsx = (type, props) => ({ type, props });
+  let canEdit = true;
   const mocks = {
-    react: { useState: () => [false, () => {}] },
+    react: { useState: () => [true, () => {}], useCallback: (fn) => fn },
     "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "next/navigation": { useSearchParams: () => new URLSearchParams() },
     "lucide-react": { FileVideo: "FileVideo" },
@@ -245,14 +250,70 @@ test("toolbar component compiles without touching colleagues' implementations", 
     "@/components/ui/tooltip": Object.fromEntries(["Tooltip", "TooltipContent", "TooltipTrigger"].map((name) => [name, name])),
     "@/providers/session-provider": { useSession: () => ({ user: { _id: "owner", type: "free" }, token: "secret" }) },
     "@/providers/project-provider": { useProjectInfo: () => ({ _id: "project", user_id: "owner" }),
-      useCurrentImage: () => ({ _id: "video", name: "video.mp4" }) },
+      useCurrentImage: () => ({ _id: "video", name: "video.mp4" }), useCanEditProject: () => canEdit },
+    "@/lib/mutations/session": { useUpdateSession: () => ({ mutate() {} }) },
     "@/components/compression/compression-dialog": { CompressionPanel: "CompressionPanel" },
   };
   const tool = load("components/toolbar/video-compression-tool.tsx", mocks).default;
+  const button = (tree) => nodes(tree).find((node) => node.props?.["data-testid"] === "video-compression-button");
   const tree = tool({ disabled: false });
-  assert.equal(Boolean(nodes(tree).find((node) => node.props?.["data-testid"] === "video-compression-button").props.disabled), false);
-  mocks["@/providers/session-provider"].useSession = () => ({ user: { _id: "other", type: "free" }, token: "secret" });
-  assert.equal(nodes(tool({})).find((node) => node.props?.["data-testid"] === "video-compression-button").props.disabled, true);
+  assert.equal(Boolean(button(tree).props.disabled), false);
+  assert.equal(nodes(tree).find((node) => node.type === "CompressionPanel").props.target.shareId, undefined);
+  // An editor opened through a share link works on the owner's project.
+  mocks["@/providers/session-provider"].useSession = () => ({ user: { _id: "editor", type: "free" }, token: "secret" });
+  mocks["next/navigation"].useSearchParams = () => new URLSearchParams("owner=owner&share=edit-link");
+  const shared = tool({});
+  assert.equal(Boolean(button(shared).props.disabled), false);
+  const target = nodes(shared).find((node) => node.type === "CompressionPanel").props.target;
+  assert.equal(target.uid, "editor");
+  assert.equal(target.ownerId, "owner");
+  assert.equal(target.shareId, "edit-link");
+  canEdit = false; // read-only link
+  assert.equal(button(tool({})).props.disabled, true);
+  canEdit = true;
+  mocks["@/providers/session-provider"].useSession = () => ({ user: { _id: "anon", type: "anonymous" }, token: "secret" });
+  assert.equal(button(tool({})).props.disabled, true);
+});
+
+test("shared projects call the owner's project with the share link, never the JWT in the URL", async () => {
+  const { lib, state } = client();
+  const shared = { ...target, uid: "editor", ownerId: "owner", shareId: "edit-link" };
+  state.response = job();
+  await lib.createCompressionJob(shared, "small");
+  const call = state.calls.at(-1);
+  assert.equal(call.args[0], "/projects/owner/project/compression");
+  assert.equal(JSON.stringify(call.args[2].params), JSON.stringify({ share: "edit-link", owner: "owner" }));
+  assert.equal(call.args[0].includes("secret"), false);
+});
+
+test("error codes become Portuguese messages with the cause and an action (REQ-VID-STATUS-002)", async () => {
+  const { lib, state } = client();
+  state.error = { isAxiosError: true, response: { status: 429, data: { code: "NO_QUOTA", message: "No daily operations remaining." } } };
+  await assert.rejects(lib.createCompressionJob(target, "high"), /limite diário de operações/);
+  assert.match(lib.compressionErrorMessage({ code: "PROCESSING_TIMEOUT", message: "Deadline" }), /tempo máximo/);
+  assert.equal(lib.compressionErrorMessage({ code: "UNKNOWN", message: "Detalhe" }), "Detalhe");
+});
+
+test("real-time updates move progress without polling; terminal states and reconnection resync", () => {
+  const { lib, state } = client();
+  const handlers = {};
+  state.socket = { on: (name, fn) => { handlers[name] = fn; }, off: (name) => { delete handlers[name]; } };
+  state.cache = [job("queued", { progress: 0 })];
+  lib.useCompressionJobs(target, true);
+  const cleanup = state.effect();
+  handlers["compression-update"]({ jobId: "job", imgId: "video", status: "processing", progress: 40 });
+  assert.equal(state.cache[0].status, "processing");
+  assert.equal(state.cache[0].progress, 40);
+  handlers["compression-update"]({ jobId: "job", imgId: "other-video", status: "processing", progress: 90 });
+  assert.equal(state.cache[0].progress, 40);
+  assert.equal(state.invalidated, false);
+  handlers["compression-update"]({ jobId: "job", imgId: "video", status: "completed" });
+  assert.equal(state.invalidated, true);
+  state.invalidated = false;
+  handlers.connect();
+  assert.equal(state.invalidated, true);
+  cleanup();
+  assert.deepEqual(Object.keys(handlers), []);
 });
 
 test("cancel sends an authenticated POST and replaces cached queued state", async () => {
@@ -277,7 +338,7 @@ test("cancel button appears for queued and processing jobs and cancelled state i
     const button = nodes(tree).find((node) => node.type === "Button" && text(node) === "Cancelar");
     assert.equal(Boolean(button), ["queued", "processing"].includes(status));
     if (status === "cancelled") {
-      assert.ok(text(tree).includes("Cancelado"));
+      assert.ok(text(tree).includes("Cancelada"));
       assert.equal(nodes(tree).some((node) => node.type === "Progress"), false);
       assert.equal(Boolean(nodes(tree).find((node) => node.props?.["data-testid"] === "start-compression-button").props.disabled), false);
     }
@@ -327,13 +388,13 @@ test("accepted processing cancellation stays cached and polls until cancelled", 
   assert.equal(state.cache[0].status, "processing");
   assert.equal(state.cache[0].cancelRequested, true);
   lib.useCompressionJobs(target, true);
-  assert.equal(state.query.refetchInterval({ state: { data: state.cache } }), 2000);
+  assert.equal(state.query.refetchInterval({ state: { data: state.cache } }), 5000);
 
   state.response = [job("cancelled", { cancelRequested: true })];
   const confirmed = await state.query.queryFn();
   assert.equal(state.query.refetchInterval({ state: { data: confirmed } }), false);
   const { tree } = panel(confirmed[0]);
-  assert.ok(text(tree).includes("Cancelado"));
+  assert.ok(text(tree).includes("Cancelada"));
   assert.equal(text(tree).includes("A cancelar…"), false);
   assert.equal(nodes(tree).some((node) => node.type === "Progress"), false);
 });
@@ -341,7 +402,7 @@ test("accepted processing cancellation stays cached and polls until cancelled", 
 test("cancelled jobs never display or download a result, even with stale result metadata", async () => {
   const cancelled = job("cancelled", { cancelRequested: true, result: { sizeBytes: 2_000_000, reductionPercent: 50 } });
   const { tree } = panel(cancelled);
-  assert.ok(text(tree).includes("Cancelado"));
+  assert.ok(text(tree).includes("Cancelada"));
   assert.equal(text(tree).includes("Descarregar resultado"), false);
   assert.equal(text(tree).includes("Tamanho final"), false);
   const { lib, state } = client();

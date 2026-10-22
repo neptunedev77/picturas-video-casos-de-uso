@@ -158,6 +158,21 @@ function process_msg() {
             }
         }
 
+        // UC-VID-002: estado e progresso da compressão (REQ-VID-STATUS-001)
+        else if (msg_content.type === "compression-update") {
+            if (user) {
+                io.to(user).emit("compression-update", {
+                    jobId: msg_content.jobId,
+                    projectId: msg_content.projectId,
+                    imgId: msg_content.imgId,
+                    status: msg_content.status,
+                    progress: msg_content.progress,
+                    cancelRequested: msg_content.cancelRequested,
+                    error: msg_content.error,
+                });
+            }
+        }
+
         //  project updated
         else if (/project-updated/.test(msg_id) || msg_content.type === "project-updated") {
             const projectId = msg_content.projectId;

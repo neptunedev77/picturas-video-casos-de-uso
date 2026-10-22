@@ -64,8 +64,8 @@ class CompressionWorker:
                 ))
                 channel = connection.channel()
                 channel.exchange_declare(exchange=config.EXCHANGE, exchange_type="direct", durable=True)
-                for name in (config.REQUESTS_QUEUE, config.RESULTS_QUEUE):
-                    channel.queue_declare(queue=name, durable=True)
+                for name, arguments in ((config.REQUESTS_QUEUE, config.REQUESTS_QUEUE_ARGS), (config.RESULTS_QUEUE, None)):
+                    channel.queue_declare(queue=name, durable=True, arguments=arguments)
                     channel.queue_bind(exchange=config.EXCHANGE, queue=name, routing_key=name)
                 channel.confirm_delivery()
                 channel.basic_qos(prefetch_count=1)

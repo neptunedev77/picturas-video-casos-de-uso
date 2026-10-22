@@ -18,6 +18,8 @@ const schema = new mongoose.Schema({
   source_name: { type: String, required: true },
   source_key: { type: String, required: true },
   source_sha256: String,
+  // Duration from the project's metadata: the projects watchdog's time limit before transcription.
+  source_duration: Number,
   language: { type: String, required: true },
   model: { type: String, enum: ["base", "small"], default: "base" },
   // queued covers authorization, download and durable dispatch before worker ACK.

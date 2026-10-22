@@ -39,6 +39,7 @@ import {
   silenceKey,
   useSilenceState,
 } from "@/lib/silence";
+import { VIDEO_REVIEW_LABEL, VIDEO_STATUS_LABELS } from "@/lib/video-status";
 import { SilenceTimeline } from "./silence-timeline";
 
 const PROFILE_LABELS: Record<SilenceProfile, { name: string; hint: string }> = {
@@ -47,11 +48,13 @@ const PROFILE_LABELS: Record<SilenceProfile, { name: string; hint: string }> = {
   agressivo: { name: "Agressivo", hint: "Remove também pausas curtas" },
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  queued: "Em fila",
+// Common state names (RNG-06): the analysis and the cuts are two steps of "A processar".
+const STEP_LABEL: Record<string, string> = {
   analyzing: "A analisar o áudio",
   processing: "A gerar o novo vídeo",
 };
+const statusLabel = (status: string) =>
+  status === "queued" ? VIDEO_STATUS_LABELS.queued : VIDEO_STATUS_LABELS.processing;
 
 type Confirm =
   | { kind: "discard"; message: string }
@@ -99,6 +102,8 @@ export function SilenceRemovalPanel({
   const [playhead, setPlayhead] = useState<number | null>(null);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  // Shown after the user cancels; the job itself returns to the review (REQ-VID-SIL-020).
+  const [cancelledNotice, setCancelledNotice] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopAtRef = useRef<number | null>(null);
@@ -201,6 +206,7 @@ export function SilenceRemovalPanel({
         return;
       }
       const s = await analyzeSilence(target, options, confirmDiscard);
+      setCancelledNotice(false);
       setReviewDirty(false);
       loadedAnalysisRef.current = null;
       setState(s);
@@ -210,6 +216,7 @@ export function SilenceRemovalPanel({
     run("apply", async () => {
       setConfirm(null);
       const s = await applySilenceCuts(target, review, confirmLargeRemoval);
+      setCancelledNotice(false);
       setReviewDirty(false);
       setState(s);
     });
@@ -218,6 +225,7 @@ export function SilenceRemovalPanel({
     run("cancel", async () => {
       const s = await cancelSilence(target);
       setState(s);
+      setCancelledNotice(true);
       loadedAnalysisRef.current = null;
       qc.invalidateQueries({ queryKey: silenceKey(target) });
     });
@@ -315,7 +323,7 @@ export function SilenceRemovalPanel({
       {status === "failed" && state.error && !error && (
         <ErrorBox
           message={state.error.message}
-          title={state.phase === "apply" ? "O processamento não foi concluído" : "A análise falhou"}
+          title={`${VIDEO_STATUS_LABELS.failed}: ${state.phase === "apply" ? "o processamento não foi concluído" : "a análise não foi concluída"}`}
         />
       )}
 
@@ -344,7 +352,8 @@ export function SilenceRemovalPanel({
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 font-medium">
               <LoaderCircle className="h-4 w-4 animate-spin" />
-              {STATUS_LABEL[status] ?? "A processar"}
+              {statusLabel(status)}
+              {STEP_LABEL[status] && <span className="font-normal text-muted-foreground">· {STEP_LABEL[status]}</span>}
             </span>
             <span className="font-mono text-xs">{Math.round(state.progress ?? 0)}%</span>
           </div>
@@ -366,7 +375,7 @@ export function SilenceRemovalPanel({
       {status === "completed" && state.result && !showOptions && (
         <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-4 flex flex-col gap-3">
           <div className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
-            <CheckCircle2 className="h-4 w-4" /> Novo vídeo criado: {state.result.name}
+            <CheckCircle2 className="h-4 w-4" /> {VIDEO_STATUS_LABELS.completed}: novo vídeo criado ({state.result.name})
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <Stat label="Duração original" value={formatTime(state.result.originalSec, 1)} />
@@ -404,9 +413,20 @@ export function SilenceRemovalPanel({
         />
       )}
 
+      {cancelledNotice && !busy && (
+        <div role="status" className="rounded-md border p-3 text-sm flex items-start gap-2">
+          <Info className="h-4 w-4 mt-0.5 shrink-0 text-indigo-500" />
+          <span>
+            <b>{VIDEO_STATUS_LABELS.cancelled}</b>: o pedido foi interrompido sem gastar operações e o vídeo original não foi alterado.
+            {analysis ? " A revisão dos troços mantém-se." : ""}
+          </span>
+        </div>
+      )}
+
       {/* Revisão dos troços (passos 5 e 6) */}
       {showReview && analysis && (
         <div className="flex flex-col gap-3 min-h-0">
+          <span className="text-sm font-medium">{VIDEO_REVIEW_LABEL}</span>
           {noSegments ? (
             <div className="rounded-md border p-4 text-sm flex flex-col gap-3">
               <div className="flex items-start gap-2">

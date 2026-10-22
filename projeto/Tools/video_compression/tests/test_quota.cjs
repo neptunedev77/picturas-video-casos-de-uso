@@ -16,7 +16,8 @@ function setup() {
     user: { type: "free", remaining_operations: 1 }, debits: 0, refunds: 0, project: true,
   };
   const model = {
-    findById: () => ({ select: async () => ({ ...state.job }) }),
+    findById: () => ({ select: async () => ({ ...state.job }),
+      then: (resolve, reject) => Promise.resolve({ ...state.job }).then(resolve, reject) }),
     findOne: async () => ({ ...state.job }),
     findOneAndUpdate: (filter, update) => {
       const execute = async () => {
@@ -35,6 +36,7 @@ function setup() {
   const mocks = {
     axios: {
       get: async (url) => {
+        state.urls = [...(state.urls || []), url];
         if (!url.endsWith("/process/1")) return { data: state.user };
         if (state.reservationFails) return { status: 701, data: "No more daily_operations available" };
         state.debits++;
@@ -42,7 +44,10 @@ function setup() {
         if (state.duringDebit) await state.duringDebit();
         return { status: 200 };
       },
-      post: async () => { state.refunds++; state.user.remaining_operations++; return { status: 200 }; },
+      post: async (url) => {
+        state.urls = [...(state.urls || []), url];
+        state.refunds++; state.user.remaining_operations++; return { status: 200 };
+      },
     },
     "../models/compressionJob": model,
     "../models/project": { findOne: async (filter) => state.project && filter.user_id === state.job.owner_id
@@ -54,14 +59,20 @@ function setup() {
   const routes = [];
   const router = { post: (url, ...handlers) => routes.push({ url, handlers }), get() {} };
   const routeMocks = { ...mocks,
-    express: { Router: () => router }, mongoose: {}, jsonwebtoken: {},
-    "../utils/imageStorage": {}, "../utils/compression_mq": {},
+    express: { Router: () => router }, jsonwebtoken: {},
+    mongoose: { isValidObjectId: (value) => typeof value === "string" && /^[0-9a-f]{24}$/.test(value) },
+    "../utils/imageStorage": {}, "../utils/project_msg": {}, "form-data": class {},
+    "../utils/compression_mq": {
+      consumeResults: (handler) => { state.handleResult = handler; },
+      sendClientUpdate: async () => {},
+    },
     "../services/compressionAccess": context.module.exports,
     fs: { promises: { rm: async () => {} } },
   };
   const routeContext = { module: { exports: {} }, process, console,
     require: (name) => routeMocks[name] || require(name) };
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, "../../../projects/routes/compression.js"), "utf8"), routeContext);
+  routeContext.module.exports.startCompressionConsumer();
   state.cancel = async () => {
     const res = { statusCode: 200, status(n) { this.statusCode = n; return this; },
       set() { return this; }, json(body) { this.body = body; return this; } };
@@ -159,28 +170,32 @@ test("failed process launch refunds once; repeated release is harmless", async (
   assert.equal(state.job.quota_charged, false);
 });
 
-test("failed encoding remains charged after an effective start", async () => {
-  const { state, authorizeStart, releaseFailedLaunch } = setup();
+test("a failed encoding returns the reserved operation exactly once (REQ-VID-QUOTA-002)", async () => {
+  const { state, authorizeStart, markLaunched } = setup();
   await authorizeStart(id, token, validMedia);
-  state.job.status = "failed";
-  await releaseFailedLaunch(id, token);
+  await markLaunched(id, token);
+  await state.handleResult({ jobId: id, status: "failed", error: { code: "PROCESSING_FAILED" } });
+  await state.handleResult({ jobId: id, status: "failed", error: { code: "PROCESSING_FAILED" } });
+  assert.equal(state.job.status, "failed");
   assert.equal(state.debits, 1);
-  assert.equal(state.refunds, 0);
+  assert.equal(state.refunds, 1);
+  assert.equal(state.job.quota_charged, false);
+  assert.equal(state.user.remaining_operations, 1);
 });
 
-test("a PROCESSING_TIMEOUT after FFmpeg launch retains the debit and blocks compensation", async () => {
+test("a PROCESSING_TIMEOUT returns the operation, but the worker cannot refund a running encode", async () => {
   const { state, authorizeStart, markLaunched, releaseFailedLaunch } = setup();
   await authorizeStart(id, token, validMedia);
   await markLaunched(id, token);
-  // Even before the terminal event is persisted, the launch marker prevents refunds.
+  // While FFmpeg runs, only the recorded outcome may refund.
   await releaseFailedLaunch(id, token);
-  state.job.status = "failed";
-  state.job.error = { code: "PROCESSING_TIMEOUT" };
-  await releaseFailedLaunch(id, token);
-  assert.equal(state.debits, 1);
   assert.equal(state.refunds, 0);
-  assert.equal(state.job.quota_charged, true);
-  assert.equal(state.user.remaining_operations, 0);
+  await state.handleResult({ jobId: id, status: "failed", error: { code: "PROCESSING_TIMEOUT" } });
+  assert.equal(state.job.status, "failed");
+  assert.equal(state.debits, 1);
+  assert.equal(state.refunds, 1);
+  assert.equal(state.job.quota_charged, false);
+  assert.equal(state.user.remaining_operations, 1);
 });
 
 test("cancellation winning before authorization prevents any quota debit", async () => {
@@ -206,7 +221,7 @@ test("start and cancel race on the same job: only one transition wins", async ()
   }
 });
 
-test("an active job accepts cancellation and retains quota after FFmpeg starts", async () => {
+test("an active job keeps its reservation until the worker confirms the cancellation, then returns it", async () => {
   const { state, authorizeStart, markLaunched, releaseFailedLaunch } = setup();
   await authorizeStart(id, token, validMedia);
   await markLaunched(id, token);
@@ -217,6 +232,31 @@ test("an active job accepts cancellation and retains quota after FFmpeg starts",
   assert.equal(state.debits, 1);
   await releaseFailedLaunch(id, token);
   assert.equal(state.refunds, 0);
+  await state.handleResult({ jobId: id, status: "cancelled" });
+  assert.equal(state.job.status, "cancelled");
+  assert.equal(state.refunds, 1);
+  assert.equal(state.user.remaining_operations, 1);
+});
+
+test("a shared-link editor is checked and charged, never the project owner (RNG-05)", async () => {
+  const { state, authorizeStart, releaseOperation } = setup();
+  state.job.runner_id = "editor";
+  await authorizeStart(id, token, validMedia);
+  state.job.status = "failed";
+  await releaseOperation(id);
+  assert.ok(state.urls.includes("https://users:10001/editor"));
+  assert.ok(state.urls.includes("https://users:10001/editor/process/1"));
+  assert.ok(state.urls.includes("https://users:10001/editor/process/refund/1"));
+  assert.ok(!state.urls.some((url) => url.includes("/owner")));
+});
+
+test("a completed job is never refunded", async () => {
+  const { state, authorizeStart, releaseOperation } = setup();
+  await authorizeStart(id, token, validMedia);
+  state.job.status = "completed";
+  assert.equal(await releaseOperation(id), false);
+  assert.equal(state.refunds, 0);
+  assert.equal(state.job.quota_charged, true);
 });
 
 test("cancellation during debit survives authorization and permits compensation before Popen", async () => {

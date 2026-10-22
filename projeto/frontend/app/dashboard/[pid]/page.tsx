@@ -43,6 +43,7 @@ import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUpdateSession } from "@/lib/mutations/session";
 import { getErrorMessage, getAiErrorMessage } from "@/lib/error-messages";
+import { VIDEO_STATUS_LABELS, type VideoJobStatus } from "@/lib/video-status";
 import { PresetsDialog } from "@/components/presets/presets-dialog";
 import { AiAssistantDialog } from "@/components/assistant/ai-assistant-dialog";
 
@@ -88,6 +89,8 @@ export default function Project({
   const [currentImage, setCurrentImage] = useState<ProjectImage | null>(null);
   const [processing, setProcessing] = useState<boolean>(false);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  // Common state names (RNG-06): "Em fila" until the first progress event, then "A processar".
+  const [processingStatus, setProcessingStatus] = useState<VideoJobStatus>("queued");
   const [processingSteps, setProcessingSteps] = useState<number>(1);
   const [waitingForPreview, setWaitingForPreview] = useState<string>("");
   const [canEdit, setCanEdit] = useState(true);
@@ -277,6 +280,7 @@ useEffect(() => {
   function onProcessUpdate(msgId: string) {
     // se já cancelámos ou já não estamos em processamento, ignora tudo
     if (ignoreUpdatesRef.current || !processing) return;
+    setProcessingStatus("processing");
 
     setProcessingSteps((prev) => {
       const nextSteps = prev + 1;
@@ -315,6 +319,12 @@ useEffect(() => {
             if (!isMobile) sidebar.setOpen(true);
             setProcessingProgress(0);
             setProcessingSteps(1);
+            if (isCurrentVideo) {
+              toast({
+                title: VIDEO_STATUS_LABELS.completed,
+                description: "O vídeo processado foi acrescentado ao projeto. O original mantém-se inalterado.",
+              });
+            }
 
             // avisar o ProjectProvider que o Apply terminou
             setWaitingForPreview("__APPLY_DONE__");
@@ -418,7 +428,7 @@ useEffect(() => {
     const aiError = !isNaN(errorCodeNum) ? getAiErrorMessage(errorCodeNum, payload?.error_msg) : null;
 
     toast({
-      title: aiError?.title || "Falha no processamento",
+      title: `${VIDEO_STATUS_LABELS.failed}: ${aiError?.title || "não foi possível processar"}`,
       description:
         aiError?.description ||
         payload?.error_msg ||
@@ -430,6 +440,7 @@ useEffect(() => {
   function onVideoProgress(payload: { progress: number; status: string }) {
     if (ignoreUpdatesRef.current) return;
     if (typeof payload?.progress === "number") {
+      setProcessingStatus("processing");
       setProcessingProgress(Math.min(100, Math.max(0, payload.progress)));
     }
   }
@@ -476,7 +487,8 @@ useEffect(() => {
   processing,
 ]);
 
-  const handleCancel = useCallback(() => {
+  // A timeout ends the job as "Falhada" (REQ-VID-TIMEOUT-001); a user cancellation as "Cancelada".
+  const handleCancel = useCallback((reason: "user" | "timeout" = "user") => {
     // ignorar updates vindos do socket
     ignoreUpdatesRef.current = true;
 
@@ -515,11 +527,13 @@ useEffect(() => {
             token: session.token,
           });
 
-          toast({
-            title: "Processamento cancelado",
-            description:
-              "O processamento deste projeto foi cancelado. Podes ajustar as ferramentas e voltar a tentar.",
-          });
+          if (reason === "user") {
+            toast({
+              title: VIDEO_STATUS_LABELS.cancelled,
+              description:
+                "O processamento deste projeto foi interrompido. Podes ajustar as ferramentas e voltar a tentar.",
+            });
+          }
         },
         onError: (error) => {
           const { title, description } = getErrorMessage(
@@ -582,11 +596,11 @@ useEffect(() => {
 
     const timeoutTimer = setTimeout(() => {
       console.warn(`[Timeout] O processamento de vídeo excedeu o limite dinâmico de ${timeoutMs / 1000}s`);
-      handleCancel();
+      handleCancel("timeout");
       toast({
-        title: "Tempo limite excedido",
+        title: `${VIDEO_STATUS_LABELS.failed}: tempo máximo excedido`,
         description:
-          "O serviço de processamento demorou demasiado tempo a responder. A operação foi cancelada e o seu crédito foi reposto.",
+          "O processamento excedeu o tempo máximo (3× a duração do vídeo + 60 s) e foi interrompido. A operação não foi descontada.",
         variant: "destructive",
       });
     }, timeoutMs);
@@ -782,6 +796,7 @@ if (project.isError) {
                       ignoreUpdatesRef.current = false;
                       processStartTimeRef.current = performance.now();
                       setProcessing(true);
+                      setProcessingStatus("queued");
                       setProcessingProgress(0);
                       setProcessingSteps(0);
                       sidebar.setOpen(false);
@@ -831,6 +846,7 @@ if (project.isError) {
                           onSuccess: () => {
                             ignoreUpdatesRef.current = false;
                             setProcessing(true);
+                            setProcessingStatus("queued");
                             sidebar.setOpen(false);
 
                             updateSession.mutate({
@@ -1017,7 +1033,7 @@ if (project.isError) {
         <div className="absolute top-0 left-0 h-screen w-screen bg-black/70 z-50 flex justify-center items-center">
           <Card className="p-4 flex flex-col justify-center items-center gap-4">
             <div className="flex gap-2 items-center text-lg font-semibold">
-              <h1>Processing</h1>
+              <h1>{VIDEO_STATUS_LABELS[processingStatus]}</h1>
               <LoaderCircle className="size-[1em] animate-spin" />
             </div>
             <Progress value={processingProgress} className="w-96" />
@@ -1025,7 +1041,7 @@ if (project.isError) {
             <Button
               variant="outline"
               disabled={cancelProcess.isPending}
-              onClick={handleCancel}
+              onClick={() => handleCancel()}
             >
               {cancelProcess.isPending ? (
                 <LoaderCircle className="size-[1em] animate-spin" />

@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 
 EXCHANGE = "picturas"
-REQUESTS_QUEUE = "video_compression_queue"
+# Priority queue (premium first); must match projects/utils/compression_mq.js.
+REQUESTS_QUEUE = "video_compression_requests_queue"
+REQUESTS_QUEUE_ARGS = {"x-max-priority": 10}
 RESULTS_QUEUE = "video_compression_results_queue"
 ROOT = Path("/app/images/video_compression")
 PROFILE_VERSION = 1

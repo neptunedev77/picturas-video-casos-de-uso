@@ -8,18 +8,29 @@ const exchange = "picturas";
 
 const rabbit_mq_sv = `amqp://${rabbit_username}:${rabbit_password}@${rabbit_host}:${rabbit_port}`;
 
-function send_rabbit_msg(msg, queue) {
+// options (optional): { queueArguments, priority }. With queueArguments the queue is declared and
+// bound before publishing, so a request is never dropped before its worker has started.
+function send_rabbit_msg(msg, queue, options) {
     amqp.connect(rabbit_mq_sv, (err_sv, connection) => {
         if (err_sv) throw err_sv;
-        
+
         connection.createChannel( (err_conn, channel) => {
             if (err_conn) throw err_conn;
-            
+
             channel.assertExchange(exchange, 'direct', {
                 durable: true
             });
 
-            channel.publish(exchange, queue, Buffer.from(JSON.stringify(msg)));
+            const publish = () => channel.publish(exchange, queue, Buffer.from(JSON.stringify(msg)),
+                options ? { persistent: true, priority: options.priority || 0 } : undefined);
+            if (!options?.queueArguments) return publish();
+            channel.assertQueue(queue, { durable: true, arguments: options.queueArguments }, (err_queue) => {
+                if (err_queue) throw err_queue;
+                channel.bindQueue(queue, exchange, queue, {}, (err_bind) => {
+                    if (err_bind) throw err_bind;
+                    publish();
+                });
+            });
         });
         
         setTimeout(() => {

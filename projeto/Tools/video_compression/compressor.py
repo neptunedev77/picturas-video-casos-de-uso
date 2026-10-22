@@ -36,7 +36,8 @@ def build_command(source, output, quality):
 
 
 def processing_timeout(duration_seconds):
-    return max(60, 2 * duration_seconds)
+    # REQ-VID-TIMEOUT-001 (MVP): the same limit as the other video tools.
+    return 3 * duration_seconds + 60
 
 
 def compress(source, output, quality, user_type, progress=lambda value: None, tick=lambda: None,
@@ -78,7 +79,8 @@ def compress(source, output, quality, user_type, progress=lambda value: None, ti
                 proc = subprocess.Popen(build_command(source, partial, quality), stdout=subprocess.PIPE, stderr=errors)
             except OSError as e:
                 raise CompressionError("LAUNCH_FAILED", "FFmpeg could not be launched; no video was processed.") from e
-            # From here on no exception, including a lost control response, refunds quota.
+            # From here on the worker never refunds: projects returns the operation when it
+            # records the failure, timeout or cancellation (REQ-VID-QUOTA-002).
             last_update = started
 
             def check_timeout():

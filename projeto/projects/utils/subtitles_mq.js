@@ -26,7 +26,13 @@ const OPEN = ["queued", "processing"];
 const MAX_BODY = 2 * 1024 * 1024;
 const LEASE_MS = 120_000;
 const QUEUE_MS = Number(process.env.SUBTITLE_QUEUE_TIMEOUT_SEC || 900) * 1000;
+// Fallback while the duration is unknown; otherwise the worker's limit (3x duration + 60 s,
+// REQ-VID-TIMEOUT-001) plus 60 s for the worker to report it first.
 const RUN_MS = (Number(process.env.SUBTITLE_JOB_TIMEOUT_SEC || 1800) + 60) * 1000;
+function runLimitMs(job) {
+  const duration = job.current_operation === "generate_srt" ? job.duration : job.source_duration;
+  return Number(duration) > 0 ? (3 * Number(duration) + 60 + 60) * 1000 : RUN_MS;
+}
 let channelPromise, connection, reconnectTimer, maintenanceTimer;
 let running = false, maintaining = false;
 
@@ -272,7 +278,7 @@ function getChannel() {
   return channelPromise;
 }
 
-async function publish(key, body, requestId) {
+async function publish(key, body, requestId, priority = 0) {
   const ch = await getChannel();
   let returned;
   try {
@@ -284,11 +290,14 @@ async function publish(key, body, requestId) {
       };
       ch.on("return", returned);
       ch.publish(EXCHANGE, key, Buffer.from(JSON.stringify(body)),
-        { persistent: true, mandatory: true, contentType: "application/json", correlationId: body.jobId, messageId: requestId },
+        { persistent: true, mandatory: true, contentType: "application/json", correlationId: body.jobId, messageId: requestId, priority },
         e => e ? reject(e) : resolve());
     }), 10000, "QUEUE_UNAVAILABLE");
   } finally { if (returned) ch.removeListener("return", returned); }
 }
+
+// Premium requests first (REQ-VID-QUOTA-003, RNG-07); the worker keeps the priority on retries.
+const requestPriority = (job) => job.runner_type === "premium" ? 5 : 0;
 
 async function dispatch(jobId) {
   const token = crypto.randomUUID();
@@ -322,7 +331,7 @@ async function dispatch(jobId) {
     }
     job = await SubtitleJob.findOne({ _id: job._id, status: "queued", cancel_requested_at: null, dispatch_claim: token });
     if (!job) return;
-    await publish(REQUESTS, payload(job), job.current_request_id);
+    await publish(REQUESTS, payload(job), job.current_request_id, requestPriority(job));
     await SubtitleJob.updateOne({ _id: job._id, dispatch_claim: token, dispatch_state: "pending" }, {
       $set: { dispatch_state: "sent", dispatched_at: new Date(), dispatch_until: null },
     });
@@ -344,7 +353,7 @@ async function sendCancellation(jobId) {
     // the durable cancel is confirmed, replay the exact request to obtain a
     // terminal cancelled response. Stage 2 checks the tombstone BEFORE STT or
     // output publication; its durable inbox covers cross-queue delivery order.
-    await publish(REQUESTS, payload(job), job.current_request_id);
+    await publish(REQUESTS, payload(job), job.current_request_id, requestPriority(job));
   }
   await SubtitleJob.updateOne({ _id: job._id, cancel_dispatch_state: "pending" }, { $set: { cancel_dispatch_state: "sent" } });
   // An inactive draft has no running worker and the worker does not emit a new
@@ -533,7 +542,7 @@ async function maintain() {
             { $set: { storage_state: "uncertain", storage_cleanup_pending: Boolean(job.storage_key) } });
           if (job.cancel_requested_at) await cancelled(job.job_id);
           else await fail(job.job_id, "STORAGE_INTERRUPTED", "A gravação no armazenamento foi interrompida.");
-        } else if (Date.now() - (job.started_at || job.operation_requested_at).getTime() > (job.started_at ? RUN_MS : QUEUE_MS)) {
+        } else if (Date.now() - (job.started_at || job.operation_requested_at).getTime() > (job.started_at ? runLimitMs(job) : QUEUE_MS)) {
           if (job.cancel_requested_at) await cancelled(job.job_id);
           else await fail(job.job_id, "JOB_TIMEOUT", "O pedido de legendas excedeu o prazo de processamento.");
         } else if (job.dispatch_state === "pending") await dispatch(job.job_id);

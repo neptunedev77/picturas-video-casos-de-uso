@@ -145,7 +145,8 @@ class ContractTests(unittest.TestCase):
 
 class TimeoutTests(unittest.TestCase):
     def test_timeout_formula(self):
-        for duration, expected in [(1, 60), (29.9, 60), (30, 60), (30.5, 61), (120, 240), (540, 1080)]:
+        # REQ-VID-TIMEOUT-001 (MVP): 3x the duration + 60 s, as in the other video tools.
+        for duration, expected in [(1, 63), (10, 90), (30, 150), (30.5, 151.5), (120, 420), (540, 1680)]:
             with self.subTest(duration=duration):
                 self.assertEqual(processing_timeout(duration), expected)
 
@@ -199,26 +200,26 @@ class TimeoutTests(unittest.TestCase):
         return error, proc
 
     def test_below_and_exactly_at_timeout_can_complete(self):
-        for duration, elapsed in [(10, 59.9), (10, 60), (120, 239.9), (120, 240)]:
+        for duration, elapsed in [(10, 89.9), (10, 90), (120, 419.9), (120, 420)]:
             with self.subTest(duration=duration, elapsed=elapsed):
                 error, proc = self.run_encode(duration, elapsed, finishes=True)
                 self.assertIsNone(error)
                 proc.kill.assert_not_called()
 
     def test_performance_target_is_not_a_timeout(self):
-        error, proc = self.run_encode(120, 200, finishes=True) # 1.5x < elapsed < 2x.
+        error, proc = self.run_encode(120, 300, finishes=True) # 1.5x < elapsed < 3x + 60 s.
         self.assertIsNone(error)
         proc.kill.assert_not_called()
 
     def test_exceeding_timeout_kills_active_process_without_result_or_refund(self):
-        for duration, elapsed in [(10, 60.01), (120, 240.01)]:
+        for duration, elapsed in [(10, 90.01), (120, 420.01)]:
             with self.subTest(duration=duration):
                 error, proc = self.run_encode(duration, elapsed, finishes=False)
                 self.assertEqual(error.code, "PROCESSING_TIMEOUT")
                 proc.kill.assert_called_once()
 
     def test_late_process_exit_cannot_publish_success(self):
-        error, proc = self.run_encode(10, 60.01, finishes=True)
+        error, proc = self.run_encode(10, 90.01, finishes=True)
         self.assertEqual(error.code, "PROCESSING_TIMEOUT")
         proc.kill.assert_not_called() # Already exited, but still reaped and discarded.
 
@@ -256,7 +257,7 @@ class FFmpegTests(unittest.TestCase):
                 self.assertTrue(list(Path(tmp).glob("encode-*/partial.mp4")))
 
             def tick():
-                clock["now"] = 60.01
+                clock["now"] = 75.01  # 5 s video: limit 3 x 5 + 60 = 75 s.
 
             with patch("compressor.subprocess.Popen", side_effect=launch), \
                     patch("compressor.time.monotonic", side_effect=lambda: clock["now"]):

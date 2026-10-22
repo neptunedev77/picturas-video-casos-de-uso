@@ -11,6 +11,7 @@ import {
 import { api } from "./axios";
 import { useGetSocket } from "./queries/projects";
 import { useUpdateSession } from "./mutations/session";
+import { VIDEO_REVIEW_LABEL, VIDEO_STATUS_LABELS } from "./video-status";
 
 export const SUBTITLE_LANGUAGES = { pt: "Português", en: "Inglês" } as const;
 export type SubtitleLanguage = keyof typeof SUBTITLE_LANGUAGES;
@@ -86,14 +87,8 @@ export function subtitleStatusLabel(job: SubtitleJob) {
     return "A cancelar…";
   if (isSubtitleActive(job) && job.operation === "generate_srt")
     return "A gerar ficheiro";
-  return {
-    queued: "Em fila",
-    processing: "A processar",
-    transcribed: "Transcrição pronta",
-    completed: "Concluído",
-    failed: "Falhou",
-    cancelled: "Cancelado",
-  }[job.status];
+  // The five states shared by every video tool (RNG-06), plus the review step before the SRT.
+  return job.status === "transcribed" ? VIDEO_REVIEW_LABEL : VIDEO_STATUS_LABELS[job.status];
 }
 export function subtitlePhaseLabel(job: SubtitleJob) {
   const phases: Record<string, string> = {
@@ -144,6 +139,12 @@ export function subtitleErrorMessage(
     return "Não foi possível reconhecer a fala. Pode iniciar uma nova geração.";
   if (code.includes("STORAGE") || code === "UPLOAD_FAILED")
     return "Não foi possível guardar ou obter as legendas. Tente novamente mais tarde.";
+  if (code === "DURATION_LIMIT")
+    return "O vídeo excede a duração máxima de 10 minutos para gerar legendas.";
+  if (code === "SIZE_LIMIT")
+    return "O vídeo excede o tamanho máximo de 100 MB para gerar legendas.";
+  if (code === "JOB_TIMEOUT")
+    return "O processamento excedeu o tempo máximo (3× a duração do vídeo + 60 s) e foi interrompido. A operação não foi descontada; pode iniciar uma nova geração.";
   if (code.includes("TIMEOUT"))
     return "O pedido excedeu o tempo de resposta. Consulte o estado antes de repetir a operação.";
   if (status === 409)

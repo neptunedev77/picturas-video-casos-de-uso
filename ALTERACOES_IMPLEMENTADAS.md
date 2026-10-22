@@ -15,12 +15,12 @@ Este documento descreve as alterações, novos microsserviços e componentes de 
 |---|---|---|---|
 | Base de suporte a vídeo e reorganização do repositório | Diogo Macedo | `diogo/setup-base-picturas` | ✅ Integrado |
 | **UC-VID-003** — Anonimizar rostos e matrículas (`privacy_blur`) | Diogo Macedo | `diogo/setup-base-picturas` | ✅ Integrado |
-| **UC-VID-001** — Remover silêncios e pausas (`silence_removal`) | António Sousa | `antonio/silencio-pausas` | ✅ Implementado |
-| UC-VID-002 — Comprimir e otimizar vídeo | Bruno Sousa | — | ⏳ Por implementar |
-| UC-VID-004 — Gerar legendas automáticas | Bruno Vale | — | ⏳ Por implementar |
-| **UC-VID-005** — Remoção e substituição de fundo por IA (`video_bg_remove`) | Sérgio Vieira | `sergio/remocao-fundo-video` | ✅ Implementado |
+| **UC-VID-001** — Remover silêncios e pausas (`silence_removal`) | António Sousa | `antonio/silencio-pausas` | ✅ Integrado |
+| **UC-VID-002** — Comprimir e otimizar vídeo (`video_compression`) | Bruno Sousa | `bruno/video-compression` | ✅ Integrado |
+| **UC-VID-004** — Gerar legendas automáticas (`subtitle_generation`) | Bruno Vale | `bruno/legendas-automaticas` | ✅ Integrado |
+| **UC-VID-005** — Remoção e substituição de fundo por IA (`video_bg_remove`) | Sérgio Vieira | `sergio/remocao-fundo-video` | ✅ Integrado |
 
-⏳ Por implementar · ❓ Funcionalidade ainda a confirmar pelo responsável · ✅ Implementado / Integrado
+✅ Integrado = a branch foi juntada à `main`. As diferenças que ainda existem entre a implementação e os requisitos estão na secção 5.
 
 ---
 
@@ -28,10 +28,10 @@ Este documento descreve as alterações, novos microsserviços e componentes de 
 
 Para manter o repositório organizado e separar a documentação dos casos de uso da base de código:
 ```text
-picturas-27/
+picturas-video-casos-de-uso/
 ├── casos-de-uso/                 # Documentação e especificações de requisitos da equipa
 ├── projeto/                      # Todo o código-fonte, microsserviços e orquestração Docker
-│   ├── Tools/                    # Ferramentas de processamento (privacy_blur, silence_removal, ...)
+│   ├── Tools/                    # Ferramentas (privacy_blur, silence_removal, video_compression, subtitle_generation, video_bg_remove, ...)
 │   ├── apiGateway/               # Gateway REST
 │   ├── frontend/                 # Aplicação Web (Next.js 15, React 19, Tailwind)
 │   ├── imageStorageService/      # Gestor de armazenamento S3 / SeaweedFS
@@ -77,7 +77,7 @@ Alterações comuns, usadas por todas as funcionalidades de vídeo:
   - Intervalos de tempo ("Todo o Vídeo" ou "Definir Segundos").
   - Alerta âmbar e botão de ajuste automático se o intervalo ultrapassar a duração do vídeo.
 * **Regras de negócio:** Free até 60 s e 1080p; Premium até 300 s e 4K; HTTP 400 se o intervalo ultrapassar a duração do vídeo.
-* **Infraestrutura:** contentor `privacy_blur_tool` e fila `privacy_blur_queue`, com fila prioritária para Premium.
+* **Infraestrutura:** contentor `privacy_blur_tool` e fila `privacy_blur_requests_queue`, com prioridade para pedidos Premium.
 
 ### 3.3. UC-VID-001 — Remover Silêncios e Pausas *(António Sousa)*
 * **Microsserviço `Tools/silence_removal/`** (FFmpeg, Pika):
@@ -103,12 +103,12 @@ Alterações comuns, usadas por todas as funcionalidades de vídeo:
 
 ### 3.4. UC-VID-005 — Remoção e Substituição Automática de Fundo por IA *(Sérgio Vieira)*
 * **Microsserviço `Tools/video_bg_remove/`** (ONNX Runtime, OpenCV, FFmpeg, Pika):
-  - Modelo neural leve `silueta` (43 MB, formato ONNX), com arranque rápido e 4× menos consumo de memória face ao U2Net tradicional.
-  - Inferência contínua frame a frame (sem interpolação com perdas de membros).
+  - Modelo neural leve `u2netp` (4,7 MB, formato ONNX), embutido na imagem Docker (sem descarga no arranque).
+  - A IA corre num fotograma em cada três; os fotogramas intermédios recebem a interpolação das duas máscaras-chave vizinhas. Frame a frame, em CPU, a inferência demorava 6 a 12 vezes a duração do vídeo e esgotava o tempo máximo; agora um vídeo de 10,5 s demora 20 s.
   - *Feathering* localizado: suavização gaussiana seletiva restrita à banda de transição da máscara ($0.05 \le \alpha \le 0.95$), preservando o interior 100% nítido e o fundo limpo.
   - Três modos de substituição: **Chroma Key (verde `#00FF00`)**, **Cor Sólida** (paleta RGB personalizada) e **Desfocagem de Profundidade (*Portrait Bokeh*)** com aproximação multi-escala rápida.
   - Streaming em memória via pipe `stdin` direto para processo FFmpeg em paralelo, eliminando gigabytes de escrita e leitura temporária em SSD.
-  - Remuxing de áudio com preservação de cadência e continuidade de timestamps (PTS), garantindo meta nominal de sincronismo $\le 40\text{ ms}$; codificação H.264 com +faststart (moov no início) e tolerância a vídeos mudos.
+  - Junção do áudio com preservação da cadência e dos timestamps (meta de sincronismo ≤ 40 ms); o áudio é sempre recodificado em AAC; codificação H.264 com `+faststart` (índice no início) e tolerância a vídeos sem áudio.
   - Monitor de timeout de segurança proporcional à duração ($(3\times \text{duração} + 60\text{ s})$), com cancelamento gracioso e registo de deteção de sujeito.
 * **Frontend (`components/toolbar/video-bg-remove-tool.tsx`):**
   - Janela modal com pré-visualização de vídeo e seletores dinâmicos de modo (Chroma Key, Seletor de cor hexadecimal e Slider de intensidade Bokeh).
@@ -122,8 +122,33 @@ Alterações comuns, usadas por todas as funcionalidades de vídeo:
   - Free até 30 s e 720p; Premium até 180 s e 1080p, com prioridade na fila RabbitMQ.
   - Acesso exclusivo a utilizadores autenticados (Anónimos bloqueados com HTTP 401/403 - RN0).
   - Edição estritamente não-destrutiva: o ficheiro gerado é registado como `<nome>_sem_fundo.mp4`; o vídeo original permanece intacto.
-  - Dedução condicional de 1 operação da quota diária apenas após evento de sucesso confirmado, com garantia de idempotência (RN6).
-* **Infraestrutura:** contentor `video_bg_remove_tool`, fila durável `video_bg_remove_queue` e fila prioritária no RabbitMQ (`definitions.json`).
+  - Quota pelo circuito genérico das ferramentas avançadas: a operação é reservada na submissão e devolvida em caso de erro (a especificação pede desconto só no sucesso).
+* **Infraestrutura:** contentor `video_bg_remove_tool` e fila durável `video_bg_remove_requests_queue`, com prioridade para pedidos Premium (`definitions.json`).
+
+### 3.5. UC-VID-002 — Comprimir e Otimizar Vídeo *(Bruno Sousa)*
+* **Microsserviço `Tools/video_compression/`** (FFmpeg, Pika):
+  - Três níveis de qualidade em H.264: **Alta** (CRF 23, resolução original), **Equilibrada** (CRF 28, resolução original) e **Tamanho reduzido** (CRF 32, no máximo 720p, sem aumentar a resolução).
+  - Valida o vídeo real (MP4/H.264, áudio opcional) e o espaço em disco antes de arrancar; nunca altera o original (trabalha numa cópia).
+  - Tempo máximo do FFmpeg de 3× a duração + 60 s (igual às restantes ferramentas); cancelamento em fila e em processamento, com o FFmpeg terminado e os temporários apagados.
+  - Detalhes técnicos em `projeto/Tools/video_compression/README.md`.
+* **Projetos (`projects`):**
+  - Novas rotas `/:user/:project/compression` (criar, listar, estado, transferir resultado, cancelar) para o dono e para quem tem link de partilha (edição para criar e cancelar, leitura só para consultar); anónimos recusados.
+  - Limites por plano: Free até 500 MB e 10 min; Premium até 2 GB e 60 min (na prática limitados pelo _upload_ de 100 MB).
+  - Quota de quem executa o pedido: um Free sem operações é recusado antes de entrar na fila; a operação é reservada quando o FFmpeg arranca e devolvida se o pedido falhar, for cancelado ou exceder o tempo máximo.
+  - O vídeo comprimido é acrescentado ao projeto como `<nome>-comprimido.mp4` (evento `IMAGE_ADDED`) e também pode ser transferido pelo diálogo.
+* **Frontend (`components/compression/compression-dialog.tsx`, `lib/compression.ts`):** escolha da qualidade, estado em tempo real (com os cinco estados comuns), cancelamento, mensagens de erro em português, tamanho final e redução, aviso quando o resultado fica maior do que o original, transferência autenticada e uso em projetos partilhados.
+* **Infraestrutura:** contentor `video_compression_tool`, filas `video_compression_requests_queue` (com prioridade para Premium) e `video_compression_results_queue`, e evento WebSocket `compression-update`.
+
+### 3.6. UC-VID-004 — Gerar Legendas Automáticas *(Bruno Vale)*
+* **Microsserviço `Tools/subtitle_generation/`** (faster-whisper, FFmpeg, Pika):
+  - Extrai o áudio, faz o reconhecimento de fala em CPU (modelos `base` ou `small`) e produz segmentos com tempos; depois da confirmação gera o ficheiro SRT.
+  - Recusa vídeos sem faixa de áudio utilizável e volta a verificar os limites no ficheiro real (10 minutos, 100 MB); tempo máximo de 3× a duração + 60 s, sem repetição automática; um trabalho ativo por vídeo.
+* **Projetos (`projects`):**
+  - Novas rotas `/:user/:project/subtitles` (pedir, estado, confirmar, rejeitar, cancelar), com suporte a projetos partilhados (paga quem executa); idioma (PT ou EN) e duração (até 10 minutos) verificados antes de criar o pedido.
+  - Quota: uma operação reservada ao arrancar e devolvida em falha, cancelamento ou rejeição; o Premium não desconta.
+  - O SRT é guardado no armazenamento do projeto como `<nome>-legendas-<idioma>.srt`, validado contra os segmentos confirmados.
+* **Frontend (`components/subtitles/`, `lib/subtitles.ts`):** escolha do idioma (PT ou EN), acompanhamento do estado, pré-visualização sincronizada com o vídeo (também em ecrã inteiro), confirmar, rejeitar e gerar de novo, e transferência do SRT.
+* **Infraestrutura:** contentor `subtitle_generation_tool`, filas `subtitle_generation_queue` (com prioridade), `subtitle_results_queue` e `subtitle_cancel_queue`, evento WebSocket `subtitle-update` e volumes para a cache do modelo e o estado do serviço.
 
 ### 3.X. Nova funcionalidade (modelo)
 Para acrescentar uma funcionalidade, atualizar a tabela da secção 1 e copiar este modelo:
@@ -172,11 +197,41 @@ docker compose up -d --build
 4. Opcionalmente definir um intervalo temporal (ou aplicar ao vídeo completo) e clicar em **Processar Vídeo**.
 5. Acompanhar a notificação em tempo real via WebSocket e verificar o novo vídeo `<nome>_sem_fundo.mp4` gerado no catálogo com áudio e sincronismo preservados.
 
+### 4.6. Testar o UC-VID-002 (Compressão)
+1. Abrir um vídeo MP4 e clicar em **Comprimir/otimizar vídeo**.
+2. Escolher a qualidade (ex.: **Tamanho reduzido**) e iniciar; acompanhar o estado e experimentar **Cancelar**.
+3. No fim, ver o tamanho final e a redução e transferir o resultado.
+
+### 4.7. Testar o UC-VID-004 (Legendas)
+1. Abrir um vídeo falado e clicar em **Gerar legendas**.
+2. Escolher o idioma (**Português** ou **Inglês**) e confirmar.
+3. Rever a pré-visualização sincronizada, **Confirmar** (ou **Rejeitar** e gerar de novo) e transferir o ficheiro SRT.
+
+### 4.8. Testes automáticos
+A partir de `projeto/` (resultados de 21-10-2026 registados no capítulo 10 do relatório):
+```bash
+node --test Tools/video_compression/tests/test_api.cjs Tools/video_compression/tests/test_quota.cjs
+cd frontend && node --test tests/compression.test.cjs tests/subtitles.test.cjs   # precisa do typescript instalado
+cd Tools/silence_removal && python -m unittest discover -s tests -v && python cli.py demo   # precisa do FFmpeg
+cd Tools/video_compression && python -m unittest discover -s tests -v                    # precisa do FFmpeg e do pika
+cd Tools/subtitle_generation && python -m unittest discover -s tests -v
+cd Tools && python -m unittest discover -s utils/tests -v
+node --test projects/tests/priority_queues.test.cjs
+docker run --rm --entrypoint python -w /app picturas-video_bg_remove_tool -m unittest discover -s tests -v
+```
+Sem FFmpeg no computador, os testes Python correm dentro da imagem do serviço, por exemplo:
+`docker run --rm -v "$PWD/Tools/video_compression:/app" -w /app picturas-video_compression_tool python -m unittest discover -s tests -v`.
+
 ---
 
-## 📌 5. Estado Atual do Git
-* Cada funcionalidade é desenvolvida na sua branch e integrada na `main` à vez, para evitar conflitos.
-* **Diogo Macedo** (`diogo/setup-base-picturas`): base de vídeo e UC-VID-003, integrados na `main`.
-* **António Sousa** (`antonio/silencio-pausas`): UC-VID-001, desenvolvido a partir da `main` com o UC-VID-003, sem alterar o funcionamento do blur.
-* **Sérgio Vieira** (`sergio/remocao-fundo-video`): UC-VID-005, desenvolvido como microsserviço isolado em `Tools/video_bg_remove`, sem dependências externas nem regressão sobre outras ferramentas.
-* Todo o código foi testado e validado em ambiente local antes da integração.
+## 📌 5. Estado Atual do Git e Diferenças Conhecidas
+* As branches `diogo/setup-base-picturas`, `antonio/silencio-pausas`, `sergio/remocao-fundo-video`, `bruno/legendas-automaticas` e `bruno/video-compression` estão todas integradas na `main`.
+* Diferenças entre a implementação e os requisitos comuns, a alinhar quando a equipa fechar as regras comuns (ver o capítulo 6 do relatório, "Conflitos entre funcionalidades"):
+  - **Compressão:** já alinhada com todas as regras comuns (quota, estados, tempo máximo, prioridade, tempo real, resultado no projeto e projetos partilhados).
+  - **Legendas:** já alinhadas com as regras comuns (tempo máximo, estados, limites e idioma verificados antes da fila); falta a marcação de resultados parciais (REQ-VID-LEG-022).
+  - **Estados:** alinhados em todas as ferramentas; a interface usa os cinco nomes comuns (Em fila, A processar, Concluída, Falhada, Cancelada) definidos em `frontend/lib/video-status.ts`, incluindo o painel de processamento do editor usado pela anonimização e pela remoção de fundo.
+  - **Remoção de fundo:** sem classificação de falhas nem repetição automática; sem sujeito humano só regista um aviso.
+  - **Anonimização:** os classificadores Haar não aplicam o limiar de confiança de 0,65.
+  - **Formatos (RNG-02):** a especificação aceita MP4 e MOV em todas as ferramentas, mas o _upload_ (frontend, `imageStorageService`, `projects`) e as ferramentas só aceitam MP4.
+  - **Corrigido depois do teste manual (21-10-2026):** (1) a remoção de fundo esgotava o tempo máximo até num vídeo de 10 s e o erro não chegava à interface (agora `u2netp` com fotogramas-chave e interpolação, e o FFmpeg é terminado sem ficar processo zombie); (2) as mensagens de erro das ferramentas da fila do `projects` (anonimização, remoção de fundo e imagem) traziam o identificador do pedido no campo errado e eram ignoradas, pelo que a interface nunca mostrava "Falhada"; (3) as legendas falhavam quando o reconhecimento fazia acabar o último segmento depois do fim do vídeo; agora esse fim é ajustado à duração.
+  - **Prioridade Premium:** corrigido. Os pedidos Premium da anonimização e da remoção de fundo iam para a `high_priority_queue`, que nenhum serviço consumia; agora cada ferramenta tem uma fila de pedidos com prioridade (`privacy_blur_requests_queue`, `video_bg_remove_requests_queue`) e as legendas passaram a enviar a prioridade com o pedido.

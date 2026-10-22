@@ -7,19 +7,20 @@ const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 const base = "/:user/:project/compression";
 
 async function forward(req, res) {
-  // Compression is owner-only; ignore no owner overrides or share links.
-  if (req.query.share || req.query.owner) {
-    return res.status(403).json({ code: "OWNER_ONLY", message: "Compression is owner-only." });
-  }
+  // Owner/share resolution follows the other video tools: a shared-link editor calls the
+  // owner's project; projects validates the link and its permission.
+  const ownerId = req.query.owner || req.params.user;
   const suffix = req.params.jobId
     ? `/${req.params.jobId}${req.path.endsWith("/result") ? "/result" : req.path.endsWith("/cancel") ? "/cancel" : ""}` : "";
   try {
     const response = await axios({
       method: req.method,
-      url: `https://projects:9001/${req.params.user}/${req.params.project}/compression${suffix}`,
+      url: `https://projects:9001/${encodeURIComponent(ownerId)}/${encodeURIComponent(req.params.project)}/compression${suffix}`,
+      params: req.query.share ? { share: req.query.share } : undefined,
       data: req.method === "POST" ? req.body : undefined,
       headers: {
         Authorization: req.headers.authorization,
+        "X-Caller-Id": req.authUserId,
         ...(req.headers.range ? { Range: req.headers.range } : {}),
       },
       httpsAgent,

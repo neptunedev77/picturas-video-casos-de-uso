@@ -1,8 +1,11 @@
 // Dedicated UC-VID-002 connection: never declares or consumes colleagues' queues.
 const amqp = require("amqplib");
 const EXCHANGE = "picturas";
-const REQUESTS = "video_compression_queue";
+// Priority queue (REQ-VID-QUOTA-003). A new name: a durable queue's arguments cannot change in place.
+const REQUESTS = "video_compression_requests_queue";
 const RESULTS = "video_compression_results_queue";
+const WS_QUEUE = "ws_queue";
+const PRIORITY = { premium: 5, free: 0 };
 let channelPromise;
 
 async function openChannel() {
@@ -18,10 +21,10 @@ async function openChannel() {
   ch.on("error", (e) => console.error("[COMPRESSION][MQ]", e.message));
   ch.on("close", () => { channelPromise = null; });
   await ch.assertExchange(EXCHANGE, "direct", { durable: true });
-  for (const queue of [REQUESTS, RESULTS]) {
-    await ch.assertQueue(queue, { durable: true });
-    await ch.bindQueue(queue, EXCHANGE, queue);
-  }
+  await ch.assertQueue(REQUESTS, { durable: true, arguments: { "x-max-priority": 10 } });
+  await ch.bindQueue(REQUESTS, EXCHANGE, REQUESTS);
+  await ch.assertQueue(RESULTS, { durable: true });
+  await ch.bindQueue(RESULTS, EXCHANGE, RESULTS);
   return ch;
 }
 
@@ -32,13 +35,29 @@ function channel() {
   return channelPromise;
 }
 
-async function sendRequest(body) {
+async function publish(routingKey, body, options = {}) {
   const ch = await channel();
   await new Promise((resolve, reject) => ch.publish(
-    EXCHANGE, REQUESTS, Buffer.from(JSON.stringify(body)),
-    { persistent: true, contentType: "application/json" },
+    EXCHANGE, routingKey, Buffer.from(JSON.stringify(body)),
+    { persistent: true, contentType: "application/json", ...options },
     (err) => err ? reject(err) : resolve(),
   ));
+}
+
+function sendRequest(body) {
+  return publish(REQUESTS, body, { priority: PRIORITY[body.userType] ?? 0 });
+}
+
+// Real-time state for the browser of whoever ran the job, forwarded by wsGateway (REQ-VID-STATUS-001).
+function sendClientUpdate(userId, payload) {
+  if (!userId) return Promise.resolve();
+  return publish(WS_QUEUE, {
+    messageId: `compression-update-${payload.jobId || ""}`,
+    timestamp: new Date().toISOString(),
+    type: "compression-update",
+    user: String(userId),
+    ...payload,
+  }).catch((e) => console.error("[COMPRESSION][MQ] Update not delivered:", e.message));
 }
 
 function consumeResults(handler) {
@@ -73,4 +92,4 @@ function consumeResults(handler) {
   start();
 }
 
-module.exports = { sendRequest, consumeResults };
+module.exports = { sendRequest, sendClientUpdate, consumeResults, REQUESTS };

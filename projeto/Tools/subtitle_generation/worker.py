@@ -212,12 +212,33 @@ def _error(exc):
     kind = exc.kind if isinstance(exc, SubtitleError) else "internal_error"
     return {"code": kind.upper(), "message": str(exc) if isinstance(exc, SubtitleError)
             else "Erro inesperado no processamento de legendas.",
-            "retryable": kind in {"media_timeout", "output_busy", "stt_failed", "job_timeout"}}
+            # No automatic retry after the time limit in the MVP (REQ-VID-TIMEOUT-001).
+            "retryable": kind in {"media_timeout", "output_busy", "stt_failed"}}
 
 
 def _event(job_id, operation, status, **fields):
     return {"jobId": job_id, "type": "subtitle_result", "operation": operation,
             "status": status, "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(), **fields}
+
+
+def check_limits(info):
+    """UC-VID-004/RN6: checked before queueing by projects and again on the actual file."""
+    if info.duration > config.MAX_VIDEO_DURATION_SEC:
+        raise SubtitleError("duration_limit", "O vídeo excede a duração máxima de 10 minutos.")
+    if Path(info.path).stat().st_size > config.MAX_VIDEO_BYTES:
+        raise SubtitleError("size_limit", "O vídeo excede o tamanho máximo de 100 MB.")
+
+
+def deadline(started, workspace, request, current):
+    """Absolute time limit: 3x the duration + 60 s once known; before that, the fallback."""
+    if current is not None:
+        return current
+    if request["operation"] == "generate_srt":
+        return started + config.job_timeout(request["duration"])
+    media_file = Path(workspace) / "media.json"
+    if media_file.exists():
+        return started + config.job_timeout(_json_read(media_file)["duration"])
+    return None
 
 
 def execute_job(directory):
@@ -236,6 +257,9 @@ def execute_job(directory):
         if request["operation"] == "transcribe":
             phase("validating")
             info = media.probe(_inside(request["videoPath"]))
+            check_limits(info)
+            # The parent derives the time limit from the duration (REQ-VID-TIMEOUT-001).
+            _json_write(directory / "media.json", {"duration": info.duration})
             phase("extracting_audio")
             with media.extracted_audio(info, temp_root=temporary) as audio:
                 phase("transcribing")
@@ -243,9 +267,8 @@ def execute_job(directory):
                     model_name=request.get("model", config.DEFAULT_MODEL),
                     model_cache=config.MODEL_CACHE, offline=config.MODEL_OFFLINE,
                 )
-                cues = srt.validate_segments(
-                    recognizer.transcribe(audio, request["language"], offset=info.audio_offset), info.duration,
-                )
+                raw = recognizer.transcribe(audio, request["language"], offset=info.audio_offset)
+                cues = srt.validate_segments(srt.fit_to_duration(raw, info.duration), info.duration)
             result = {"status": "transcribed", "duration": info.duration,
                       "segments": [asdict(cue) for cue in cues]}
         else:
@@ -278,6 +301,7 @@ class ActiveJob:
     cancelled: bool = False
     owned_output: tuple | None = None
     committed: bool = False
+    deadline: float | None = None
 
 
 def stop_process(process):
@@ -610,10 +634,12 @@ class SubtitleWorker:
                 stop_process(state.process)
                 self._finish(tag, state, {"status": "cancelled"})
                 continue
-            if time.monotonic() - state.started > config.JOB_TIMEOUT_SEC:
+            state.deadline = deadline(state.started, directory, state.request, state.deadline)
+            limit = state.deadline if state.deadline is not None else state.started + config.JOB_TIMEOUT_SEC
+            if time.monotonic() > limit:
                 stop_process(state.process)
-                self._finish(tag, state, {"status": "failed", "error": _error(
-                    SubtitleError("job_timeout", "O processamento excedeu o tempo máximo configurado."))})
+                self._finish(tag, state, {"status": "failed", "error": _error(SubtitleError(
+                    "job_timeout", "O processamento excedeu o tempo máximo (3× a duração do vídeo + 60 s)."))})
                 continue
             phase_file = directory / "phase.json"
             if phase_file.exists():

@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 // UC-VID-002 only. Processing cancellation is confirmed after the worker stops.
 const compressionJobSchema = new mongoose.Schema({
   owner_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  // Who ran the job (owner or a shared-link editor): receives updates and pays the operation.
+  runner_id: { type: mongoose.Schema.Types.ObjectId },
   project_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   img_id: { type: mongoose.Schema.Types.ObjectId, required: true },
   quality: { type: String, enum: ["high", "balanced", "small"], required: true },
@@ -14,6 +16,8 @@ const compressionJobSchema = new mongoose.Schema({
   quota_refund_claimed: { type: Boolean, default: false },
   cancel_requested_at: { type: Date, default: null },
   ffmpeg_started_at: { type: Date, default: null },
+  // Set atomically while the result is being added to the project; cancellation then loses.
+  finalizing: { type: Boolean, default: false },
   status: {
     type: String, enum: ["queued", "processing", "completed", "failed", "cancelled"], default: "queued",
   },
@@ -24,6 +28,8 @@ const compressionJobSchema = new mongoose.Schema({
   result: {
     sizeBytes: Number, originalSizeBytes: Number, durationSec: Number,
     width: Number, height: Number, reductionPercent: Number,
+    // The compressed video is a new file of the project (REQ-VID-STORE-001).
+    imgId: String, name: String, key: String,
   },
   error: { code: String, message: String },
   started_at: Date,

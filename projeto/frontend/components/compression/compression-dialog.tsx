@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Download, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   COMPRESSION_QUALITIES,
   COMPRESSION_STATUS,
+  compressionErrorMessage,
   type CompressionQuality,
   type CompressionTarget,
   downloadCompressionResult,
@@ -22,9 +23,11 @@ interface Props {
   target: CompressionTarget;
   videoName: string;
   open: boolean;
+  /** Called when a job ends, e.g. to refresh the remaining daily operations. */
+  onFinished?: () => void;
 }
 
-export function CompressionPanel({ target, videoName, open }: Props) {
+export function CompressionPanel({ target, videoName, open, onFinished }: Props) {
   const [quality, setQuality] = useState<CompressionQuality>("balanced");
   const starting = useRef(false);
   const query = useCompressionJobs(target, open);
@@ -35,6 +38,12 @@ export function CompressionPanel({ target, videoName, open }: Props) {
   const busy = isCompressionActive(job);
   const cancelling = busy && (cancel.isPending || job?.cancelRequested === true);
   const progress = Math.min(100, Math.max(0, job?.progress || 0));
+  const lastStatus = useRef(job?.status);
+  useEffect(() => {
+    const previous = lastStatus.current;
+    lastStatus.current = job?.status;
+    if ((previous === "queued" || previous === "processing") && job && !isCompressionActive(job)) onFinished?.();
+  }, [job, onFinished]);
   const download = useMutation({
     mutationFn: async () => {
       if (!job) throw new Error("Não existe um resultado para descarregar.");
@@ -81,7 +90,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
         </div>
       </fieldset>
 
-      {query.isPending && <p role="status" className="text-sm text-muted-foreground">A consultar os trabalhos de compressão…</p>}
+      {query.isPending && <p role="status" className="text-sm text-muted-foreground">A consultar os pedidos de compressão…</p>}
       {query.error && (
         <div role="alert" className="space-y-2 rounded-md border border-destructive/40 p-3 text-sm">
           <p>{query.error.message}</p>
@@ -107,7 +116,7 @@ export function CompressionPanel({ target, videoName, open }: Props) {
                 {cancelling ? "A aguardar confirmação do cancelamento"
                   : job.status === "queued" ? "A aguardar processamento" : "A comprimir o vídeo"} · {Math.round(progress)}%
               </p>
-              <p className="text-xs text-muted-foreground">Pode fechar este diálogo e consultar o trabalho mais tarde.</p>
+              <p className="text-xs text-muted-foreground">Pode fechar este diálogo: o processamento continua e o resultado fica no projeto.</p>
               <Button variant="outline" disabled={cancelling} onClick={() => {
                 if (!cancelling) cancel.mutate(job._id);
               }}>
@@ -117,11 +126,17 @@ export function CompressionPanel({ target, videoName, open }: Props) {
           )}
           {job.status === "failed" && (
             <p role="alert" className="text-sm text-destructive">
-              {job.error?.message || "Não foi possível comprimir o vídeo. Pode iniciar um novo trabalho."}
+              {compressionErrorMessage(job.error)}
             </p>
+          )}
+          {job.status === "cancelled" && job.error && (
+            <p role="alert" className="text-sm text-muted-foreground">{compressionErrorMessage(job.error)}</p>
           )}
           {job.status === "completed" && job.result && (
             <>
+              {job.result.name && (
+                <p className="text-sm text-muted-foreground">O vídeo comprimido foi acrescentado ao projeto como <span className="font-medium">{job.result.name}</span>.</p>
+              )}
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt className="text-muted-foreground">Tamanho final</dt>
                 <dd>{formatCompressionBytes(job.result.sizeBytes)}</dd>

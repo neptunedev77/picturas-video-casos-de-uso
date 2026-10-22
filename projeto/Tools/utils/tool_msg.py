@@ -27,21 +27,29 @@ class ToolMSG:
         'obj_ai': 'obj_ai_queue',
         'people_ai': 'people_ai_queue',
         'expand_ai': 'expand_ai_queue',
-        'privacy_blur': 'privacy_blur_queue',
-        'video_bg_remove': 'video_bg_remove_queue',
-        'high_priority': 'high_priority_queue',
+        # Video tools: one request queue each, with priority for Premium requests (REQ-VID-QUOTA-003).
+        'privacy_blur': 'privacy_blur_requests_queue',
+        'video_bg_remove': 'video_bg_remove_requests_queue',
         'project': 'project_queue',
         'ws': 'ws_queue'
     }
-    
+    # Must match projects/utils/project_msg.js and rabbitMQ/definitions.json.
+    PRIORITY_TOOLS = {'privacy_blur', 'video_bg_remove'}
+    PRIORITY_QUEUE_ARGS = {'x-max-priority': 10}
+
     def __init__(self, microservice_name, tool_name, rabbit_host, rabbit_port, username, password):
         self._microservice_name = microservice_name
+        self._tool_name = tool_name
         self._queue = self.queues[tool_name]
         self._proj_queue = self.queues['project']
         self._rabbit_mq = Rabbit_MQ(rabbit_host, rabbit_port, username, password)
-    
+
     def read_msg(self, callback):
-        self._rabbit_mq.read_rabbit_msg(self._queue, callback)
+        if self._tool_name in self.PRIORITY_TOOLS:
+            self._rabbit_mq.read_rabbit_msg(self._queue, callback,
+                                            arguments=self.PRIORITY_QUEUE_ARGS, manual_ack=True)
+        else:
+            self._rabbit_mq.read_rabbit_msg(self._queue, callback)
 
     def send_ws_progress(self, msg_id, user, progress, status="processing"):
         if not user:
@@ -82,9 +90,10 @@ class ToolMSG:
                 if err_code is None or err_msg is None or og_img_uri is None:
                     raise Exception("Make sure, in case of error status, err_code, err_msg and og_img_uri are not None")
                 
+                # Same ids as a success: projects finds the request by correlationId.
                 msg = {
-                    "messageId": msg_id,
-                    "correlationId": resp_msg_id,
+                    "messageId": resp_msg_id,
+                    "correlationId": msg_id,
                     "timestamp": timestamp,
                     "status": status,
                     "error": {

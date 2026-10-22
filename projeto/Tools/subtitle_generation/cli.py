@@ -80,7 +80,7 @@ def main(argv=None):
         with media.extracted_audio(info, args.ffmpeg, args.media_timeout, args.temp_dir) as audio:
             print(f"Reconhecimento: modelo {args.model}, idioma {args.language}, CPU/INT8.", file=sys.stderr)
             segments = recognizer.transcribe(audio, args.language, offset=info.audio_offset)
-            cues = srt.validate_segments(segments, info.duration)
+            cues = srt.validate_segments(srt.fit_to_duration(segments, info.duration), info.duration)
         # WAV has been removed before publishing a final output.
         destination = srt.write_srt(output, cues, info.duration, source=info.path)
         print(f"SRT criado: {destination}\nSegmentos: {len(cues)}; tempo total: {time.monotonic() - started:.2f} s.")

@@ -40,6 +40,7 @@ function client() {
   const lib = load("lib/subtitles.ts", {
     axios: { __esModule: true, default: axios }, react: {}, "@tanstack/react-query": {},
     "./axios": { api }, "./queries/projects": {}, "./mutations/session": {},
+    "./video-status": load("lib/video-status.ts", {}),
   }, { window: { location: { origin: "https://picturas.example" } } });
   return { lib, state };
 }
@@ -113,11 +114,16 @@ test("errors retain HTTP semantics and safe structured text, while suppressing i
 
 test("worker and storage failures have actionable messages; generation/cancellation labels reflect persisted states", () => {
   const { lib } = client();
-  for (const [code, expected] of [["NO_AUDIO", "áudio"], ["INVALID_LANGUAGE", "idioma"], ["STT_FAILED", "reconhecer"], ["STORAGE_TIMEOUT", "guardar"]])
+  for (const [code, expected] of [["NO_AUDIO", "áudio"], ["INVALID_LANGUAGE", "idioma"], ["STT_FAILED", "reconhecer"], ["STORAGE_TIMEOUT", "guardar"],
+    ["DURATION_LIMIT", "10 minutos"], ["SIZE_LIMIT", "100 MB"], ["JOB_TIMEOUT", "3× a duração do vídeo + 60 s"]])
     assert.ok(lib.subtitleErrorMessage(code).includes(expected));
+  // The five states shared by every video tool (RNG-06), plus the review step.
+  for (const [status, label] of [["queued", "Em fila"], ["processing", "A processar"], ["transcribed", "Pronta para revisão"],
+    ["completed", "Concluída"], ["failed", "Falhada"], ["cancelled", "Cancelada"]])
+    assert.equal(lib.subtitleStatusLabel(job({ status })), label);
   assert.equal(lib.subtitleStatusLabel(job({ status: "queued", operation: "generate_srt" })), "A gerar ficheiro");
   assert.equal(lib.subtitleStatusLabel(job({ cancellationRequested: true })), "A cancelar…");
-  assert.equal(lib.subtitleStatusLabel(job({ status: "cancelled", cancellationRequested: true })), "Cancelado");
+  assert.equal(lib.subtitleStatusLabel(job({ status: "cancelled", cancellationRequested: true })), "Cancelada");
   assert.equal(lib.isSubtitleActive(job()), false);
   assert.equal(lib.isSubtitleActive(job({ status: "processing" })), true);
 });
@@ -294,6 +300,38 @@ test("textual preview keeps every cue and timestamp alongside the overlay", () =
   assert.ok(serialized.includes("Segmentos reconhecidos"));
 });
 
+test("Project Service refuses other languages and videos over 10 minutes before creating or queueing a job", async () => {
+  const routes = [];
+  const router = { post: (url, ...handlers) => routes.push({ url, handlers }), get() {} };
+  let created = 0;
+  const img = { _id: "a".repeat(24), mime_type: "video/mp4", og_uri: "/p/video.mp4", og_img_key: "video.mp4", duration: 30 };
+  load("../projects/routes/subtitles.js", {
+    express: { Router: () => router }, jsonwebtoken: {}, crypto: { randomUUID: () => jobId }, path: { basename: (p) => p.split("/").pop() },
+    mongoose: { isValidObjectId: (value) => /^[0-9a-f]{24}$/.test(String(value)) },
+    "../models/subtitleJob": { init: async () => {}, create: async () => { created++; throw new Error("must not create"); } },
+    "../models/project": { findOne: async () => ({ imgs: { id: () => img } }) },
+    "../middleware/shareAuth": {}, "../utils/imageStorage": {},
+    "../utils/subtitles_mq": {
+      error: (status, code, message) => Object.assign(new Error(message), { status, code }),
+      account: async () => { throw new Error("must not reach the quota"); },
+    },
+  }, { console: { error() {} } });
+  const create = routes.find((r) => r.url === "/:user/:project/subtitles").handlers.at(-1);
+  async function post(body) {
+    const res = { status(n) { this.statusCode = n; return this; }, json(v) { this.body = v; return this; } };
+    await create({ body, params: { user: "b".repeat(24), project: "c".repeat(24) }, subtitleRunner: "b".repeat(24) }, res);
+    return res;
+  }
+  const language = await post({ imgId: img._id, language: "fr" });
+  assert.equal(language.statusCode, 400);
+  assert.equal(language.body.code, "INVALID_LANGUAGE");
+  img.duration = 600.5;
+  const duration = await post({ imgId: img._id, language: "pt" });
+  assert.equal(duration.statusCode, 400);
+  assert.equal(duration.body.code, "DURATION_LIMIT");
+  assert.equal(created, 0);
+});
+
 test("Project Service serializer exposes existing segments for transcribed/completed without modifying stored job or quota", () => {
   const router = { post() {}, get() {} };
   const { _internal: { view } } = load("../projects/routes/subtitles.js", {
@@ -345,5 +383,21 @@ test("completed panel reuses persisted segments for video/list and keeps downloa
     assert.equal(labels.includes("Rejeitar"), status === "transcribed");
     assert.equal(labels.includes("Descarregar SRT"), status === "completed");
     assert.equal(requests, 0);
+  }
+});
+
+test("every video tool shows the same five state names (RNG-06)", () => {
+  const shared = load("lib/video-status.ts", {});
+  assert.deepEqual(JSON.parse(JSON.stringify(shared.VIDEO_STATUS_LABELS)),
+    { queued: "Em fila", processing: "A processar", completed: "Concluída", failed: "Falhada", cancelled: "Cancelada" });
+  const { lib } = client();
+  for (const status of ["queued", "processing", "completed", "failed", "cancelled"])
+    assert.equal(lib.subtitleStatusLabel(job({ status })), shared.VIDEO_STATUS_LABELS[status]);
+  // The tools without a dedicated module must use the shared names, not their own strings.
+  for (const file of ["components/silence/silence-removal-dialog.tsx", "app/dashboard/[pid]/page.tsx", "lib/compression.ts"]) {
+    const source = fs.readFileSync(path.join(root, file), "utf8");
+    assert.ok(source.includes("VIDEO_STATUS_LABELS"), file);
+    for (const old of ["<h1>Processing</h1>", "\"Concluído\"", "\"Falhado\"", "\"Cancelado\"", "\"Em processamento\"", "Processamento cancelado"])
+      assert.equal(source.includes(old), false, `${file}: ${old}`);
   }
 });

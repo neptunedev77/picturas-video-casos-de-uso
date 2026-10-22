@@ -11,6 +11,9 @@ const mq = require("../utils/subtitles_mq");
 const { get_image_public_url } = require("../utils/imageStorage");
 const router = express.Router();
 const base = "/:user/:project/subtitles";
+// UC-VID-004/RN2 and RN6 (MVP), checked before queueing (RNG-07); the worker checks the real file again.
+const LANGUAGES = ["pt", "en"];
+const MAX_DURATION_SEC = 600;
 const wrap = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
   console.error("[SUBTITLES]", e.code || "INTERNAL", e.message);
   res.status(e.status || 500).json({ code: e.status ? e.code : "INTERNAL", message: e.status ? e.message : "Não foi possível tratar o pedido de legendas.", jobId: e.jobId });
@@ -70,10 +73,16 @@ router.post(base, authenticate, checkSharePermission, requireEditPermission, wra
       body.language === "auto" || !["base", "small"].includes(body.model || "base")) {
     throw mq.error(400, "INVALID_REQUEST", "Indique imgId, um idioma explícito (ex.: pt) e, opcionalmente, model base ou small.");
   }
+  if (!LANGUAGES.includes(body.language)) {
+    throw mq.error(400, "INVALID_LANGUAGE", "No MVP só são suportados Português (pt) e Inglês (en).");
+  }
   const project = await context(req);
   const img = project.imgs.id(body.imgId);
   if (!img) throw mq.error(404, "NOT_FOUND", "Vídeo não encontrado no projeto.");
   if (img.mime_type !== "video/mp4" && !/\.mp4$/i.test(img.og_uri)) throw mq.error(400, "UNSUPPORTED_VIDEO", "Só são suportados vídeos MP4.");
+  if (Number(img.duration) > MAX_DURATION_SEC) {
+    throw mq.error(400, "DURATION_LIMIT", "O vídeo excede a duração máxima de 10 minutos.");
+  }
   const user = await mq.account(req.subtitleRunner);
   await SubtitleJob.init();
   const jobId = crypto.randomUUID();
@@ -82,6 +91,7 @@ router.post(base, authenticate, checkSharePermission, requireEditPermission, wra
     job = await SubtitleJob.create({ job_id: jobId, owner_id: req.params.user, project_id: req.params.project,
       img_id: img._id, runner_id: req.subtitleRunner, runner_type: user.type,
       source_name: path.basename(img.og_uri), source_key: img.og_img_key, source_sha256: img.og_sha256,
+      source_duration: Number(img.duration) > 0 ? Number(img.duration) : undefined,
       language: body.language, model: body.model || "base", current_request_id: `${jobId}:transcribe`,
       quota: { user_id: req.subtitleRunner }, ...mq.paths(jobId) });
   } catch (e) {
