@@ -1,0 +1,19 @@
+# Internal documentation (plan, notes, implementation prompts)
+docs/
+
+# Environments and caches
+.venv/
+__pycache__/
+node_modules/
+
+# Measurements: raw results are committed, temporary files are not
+bench/results/**/tmp/
+bench/data/generated/
+
+# Typst: only the final PDF is versioned
+relatorio/**/*.pdf
+!relatorio/relatorio.pdf
+
+# Playwright
+tests/regression/playwright-report/
+tests/regression/test-results/
