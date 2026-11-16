@@ -1,0 +1,5 @@
+services:
+  seaweedfs:
+    ports: !override
+      - "9000:9000"
+      - "18888:8888"
