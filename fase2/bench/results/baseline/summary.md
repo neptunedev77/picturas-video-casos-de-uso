@@ -1,0 +1,54 @@
+# Summary — baseline
+
+| Metric | Value |
+|---|---|
+| REF-trim duration (s) | {"n": 5, "median": 0.79, "p95": 0.8, "stdev": 0.02, "min": 0.75, "max": 0.8} |
+| REF-subs duration (s) | {"n": 5, "median": 16.53, "p95": 17.02, "stdev": 0.47, "min": 15.7, "max": 17.02} |
+| REF-img10 duration (s) | {"n": 5, "median": 0.63, "p95": 0.65, "stdev": 0.01, "min": 0.62, "max": 0.65} |
+| REF-mixed duration (s) | {"n": 5, "median": 2.29, "p95": 2.32, "stdev": 0.09, "min": 2.11, "max": 2.32} |
+| REF-f4mix duration (s) | {"n": 5, "median": 1.94, "p95": 1.98, "stdev": 0.03, "min": 1.89, "max": 1.98} |
+| E-1 S1 wait of cuts (s) | {"n": 15, "median": 12.27, "p95": 13.03, "stdev": 0.71, "min": 10.94, "max": 13.58} |
+| E-1 S1 total time of cuts (s) | {"n": 15, "median": 12.82, "p95": 13.6, "stdev": 0.74, "min": 11.41, "max": 14.14} |
+| E-2 S2 makespan (s) | {"n": 5, "median": 39.61, "p95": 40.26, "stdev": 0.92, "min": 38.26, "max": 40.26} |
+| E-5 S2 image throughput (jobs/min) | {"n": 5, "median": 41.66, "p95": 41.67, "stdev": 0.0, "min": 41.66, "max": 41.67} |
+| S2 video wait p95 per rep (s) | {"n": 5, "median": 21.5, "p95": 22.04, "stdev": 0.85, "min": 20.23, "max": 22.04} |
+| E-3 S3 max video_queue consumers | {"n": 5, "median": 1, "p95": 1, "stdev": 0.0, "min": 1, "max": 1} |
+| E-4 idle memory, picturas-* (MB) | {"n": 5, "median": 3257.53, "p95": 3662.69, "stdev": 184.56, "min": 3217.19, "max": 3662.69} |
+| E-4 S3 memory before burst (MB) | {"n": 5, "median": 4006.67, "p95": 4448.42, "stdev": 218.72, "min": 3896.67, "max": 4448.42} |
+| E-4 S3 memory during burst (MB) | {"n": 5, "median": 4251.87, "p95": 4720.57, "stdev": 228.67, "min": 4147.76, "max": 4720.57} |
+| E-4 S3 memory after burst, last 60 s (MB) | {"n": 5, "median": 3453.24, "p95": 4226.19, "stdev": 359.53, "min": 3333.3, "max": 4226.19} |
+| F1 jobs | {"n": 5, "hung": 5} |
+| R-1 F1 % final state | 0.0 |
+| R-2 F1 % done | 0.0 |
+| R-3 F1 delay vs REF-img10 (s) | {"n": 0} |
+| R-3 F1 reps that never finished | 5 |
+| R-5 F1 jobs with duplicate results | 0 |
+| F2 jobs | {"n": 5, "done": 5} |
+| R-1 F2 % final state | 100.0 |
+| R-2 F2 % done | 100.0 |
+| R-3 F2 delay vs REF-subs (s) | {"n": 5, "median": 26.06, "p95": 27.1, "stdev": 0.5, "min": 25.96, "max": 27.1} |
+| R-3 F2 reps that never finished | 0 |
+| R-5 F2 jobs with duplicate results | 0 |
+| F3 jobs | {"n": 15, "done": 5, "hung": 10} |
+| R-1 F3 % final state | 33.3 |
+| R-2 F3 % done | 33.3 |
+| R-3 F3 delay vs REF-mixed (s) | {"n": 0} |
+| R-3 F3 reps that never finished | 5 |
+| R-5 F3 jobs with duplicate results | 0 |
+| F4 jobs | {"n": 15, "done": 10, "hung": 5} |
+| R-1 F4 % final state | 66.7 |
+| R-2 F4 % done | 66.7 |
+| R-3 F4 delay vs REF-f4mix (s) | {"n": 0} |
+| R-3 F4 reps that never finished | 5 |
+| R-5 F4 jobs with duplicate results | 0 |
+| F5 jobs | {"n": 10, "error_reported": 5, "hung": 5} |
+| R-1 F5 % final state | 50.0 |
+| R-5 F5 jobs with duplicate results | 0 |
+| F6 jobs | {"n": 10, "done": 10} |
+| R-1 F6 % final state | 100.0 |
+| R-2 F6 % done | 100.0 |
+| R-3 F6 delay vs REF-subs (s) | {"n": 5, "median": 60.7, "p95": 60.78, "stdev": 0.25, "min": 60.16, "max": 60.78} |
+| R-3 F6 reps that never finished | 0 |
+| R-5 F6 jobs with duplicate results | 0 |
+| R-4 F5 % errors reported <= 10 s | 50.0 |
+| R-4 F6 % errors reported <= 10 s | 0.0 |

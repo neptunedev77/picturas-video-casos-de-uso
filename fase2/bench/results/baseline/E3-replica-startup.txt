@@ -1,0 +1,8 @@
+# Origin of the E-3 target: time for a new video_tool replica to consume from video_queue
+# Method: docker compose up -d --no-recreate --scale video_tool=2 video_tool, then poll the
+# RabbitMQ management API until video_queue has 2 consumers; scale back to 1. 2026-11-17, commit a2c0772.
+rep1 consumer_ready_s=5.52
+rep2 consumer_ready_s=4.60
+rep3 consumer_ready_s=4.83
+median=4.83
+# Note: the Whisper model loads lazily on the first captioning job of a new replica (cached volume).

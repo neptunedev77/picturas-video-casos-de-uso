@@ -1,0 +1,22 @@
+{
+  "scenario": "F4",
+  "t_zero": 1794952071.0131538,
+  "timeout": 150.0,
+  "jobs": 3,
+  "chaos": [
+    [
+      0.3,
+      "docker pause picturas-projects-1"
+    ],
+    [
+      4.0,
+      "docker kill picturas-projects-1"
+    ],
+    [
+      6.0,
+      "docker start picturas-projects-1"
+    ]
+  ],
+  "idle_after": 0,
+  "t_finish": 1794952221.5997567
+}
