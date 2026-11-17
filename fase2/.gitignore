@@ -8,7 +8,7 @@ node_modules/
 
 # Measurements: raw results are committed, temporary files are not
 bench/results/**/tmp/
-bench/data/generated/
+# bench/data/generated/ is versioned: the baseline and the golden outputs were made with these exact files
 
 # Typst: only the final PDF is versioned
 relatorio/**/*.pdf
