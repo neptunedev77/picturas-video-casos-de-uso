@@ -6,7 +6,7 @@ same instruments serve the baseline and the final measurement unchanged.
 | Path | What it does |
 |---|---|
 | `env-snapshot.sh` | Commit, kernel, CPU, memory, power profile, Docker versions, containers |
-| `data/make-data.sh` | Generates the fixed inputs into `data/generated/` (60 s speech clip, 10 s video, 10 PNGs) |
+| `data/generated/` | Fixed, versioned inputs (60 s speech clip, 10 s video, 10 PNGs); `data/make-data.sh` checks them against `generated.sha256` and documents how they were made |
 | `sampler/sampler.py` | RabbitMQ queues (1 s) and `docker stats` (~2 s) into `queues.csv` / `docker.csv` |
 | `loadgen/client.py` | Minimal client of the public API |
 | `loadgen/scenarios.py` | S1–S3, F1–F6 and the solo references (REF-*) |
@@ -19,7 +19,7 @@ same instruments serve the baseline and the final measurement unchanged.
 ```bash
 cd fase2/bench
 uv venv .venv && uv pip install --python .venv/bin/python requests "python-socketio[client]==5.11.4" websocket-client
-./data/make-data.sh
+./data/make-data.sh                       # checks the versioned inputs (never regenerate them)
 ./run-measurements.sh baseline 5          # or: ./run-measurements.sh baseline 1 S1 F5
 ```
 
