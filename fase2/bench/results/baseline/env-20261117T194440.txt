@@ -1,0 +1,71 @@
+# env-snapshot 2026-11-17T19:44:40+00:00
+## commit
+a2c0772d18fc29e86a5a24a6f23729bf9859c071
+?? ../bench/README.md
+?? ../bench/analyze/analyze.py
+?? ../bench/data/generated.sha256
+?? ../bench/data/make-data.sh
+?? ../bench/env-snapshot.sh
+?? ../bench/loadgen/client.py
+?? ../bench/loadgen/run.py
+?? ../bench/loadgen/scenarios.py
+?? ../bench/results/baseline/campaign.log
+?? ../bench/results/baseline/env-2026-11-17.txt
+?? ../bench/results/baseline/env-20261117T194440.txt
+?? ../bench/run-measurements.sh
+?? ../bench/sampler/sampler.py
+## kernel
+Linux nitro 7.0.0-43-generic #43-Ubuntu SMP PREEMPT_DYNAMIC Fri Oct 23 13:25:25 UTC 2026 x86_64 GNU/Linux
+## cpu
+CPU(s):                                  16
+Model name:                              13th Gen Intel(R) Core(TM) i7-13620H
+Thread(s) per core:                      2
+Core(s) per socket:                      10
+CPU(s) scaling MHz:                      35%
+CPU max MHz:                             4900.0000
+CPU min MHz:                             400.0000
+## memory
+               total        used        free      shared  buff/cache   available
+Mem:            14Gi       7.4Gi       4.2Gi       429Mi       4.0Gi       7.2Gi
+Swap:          4.0Gi       516Mi       3.5Gi
+## power
+performance
+ac_online=1
+## docker
+client=29.10.0 server=29.10.0
+Docker Compose version v5.7.1
+## containers
+picturas-api_gateway-1	picturas-api_gateway	Up 42 minutes
+picturas-bg_remove_ai_tool-1	picturas-bg_remove_ai_tool	Up 42 minutes
+picturas-binarization_tool-1	picturas-binarization_tool	Up 42 minutes
+picturas-border_tool-1	picturas-border_tool	Up 42 minutes
+picturas-brightness_tool-1	picturas-brightness_tool	Up 42 minutes
+picturas-contrast_tool-1	picturas-contrast_tool	Up 42 minutes
+picturas-cut_ai_tool-1	picturas-cut_ai_tool	Up 42 minutes
+picturas-cut_tool-1	picturas-cut_tool	Up 42 minutes
+picturas-expand_ai_tool-1	picturas-expand_ai_tool	Up 42 minutes
+picturas-frontend-1	picturas-frontend	Up 42 minutes
+picturas-generative-mock-1	picturas-generative-mock	Up 42 minutes (healthy)
+picturas-img_storage-1	picturas-img_storage	Up 42 minutes
+picturas-mongo-backup-1	mongo:4.4	Up 42 minutes
+picturas-nginx-1	nginx:latest	Up 42 minutes
+picturas-obj_ai_tool-1	picturas-obj_ai_tool	Up 42 minutes
+picturas-people_ai_tool-1	picturas-people_ai_tool	Up 42 minutes
+picturas-projects-1	picturas-projects	Up 42 minutes
+picturas-projects_mongoDB-1	mongo:4.4	Up 42 minutes (healthy)
+picturas-rabbitmq-1	picturas-rabbitmq	Up 42 minutes (healthy)
+picturas-resize_tool-1	picturas-resize_tool	Up 12 minutes
+picturas-rotate_tool-1	picturas-rotate_tool	Up 42 minutes
+picturas-saturation_tool-1	picturas-saturation_tool	Up 42 minutes
+picturas-seaweedfs-1	chrislusf/seaweedfs:4.47	Up 42 minutes
+picturas-subscriptions-1	picturas-subscriptions	Up 42 minutes
+picturas-subscriptions_mongoDB-1	mongo:4.4	Up 42 minutes (healthy)
+picturas-text_ai_tool-1	picturas-text_ai_tool	Up 42 minutes
+picturas-upgrade_ai_tool-1	picturas-upgrade_ai_tool	Up 42 minutes
+picturas-users-1	picturas-users	Up 42 minutes
+picturas-users_mongoDB-1	mongo:4.4	Up 42 minutes (healthy)
+picturas-video_tool-1	picturas-video_tool	Up 42 minutes
+picturas-watermark_tool_ms-1	prcsousa/picturas-watermark-tool-ms:latest	Up 42 minutes
+picturas-ws_gateway-1	picturas-ws_gateway	Up 42 minutes
+## loadavg
+0.85 1.13 1.70 1/2346 79274

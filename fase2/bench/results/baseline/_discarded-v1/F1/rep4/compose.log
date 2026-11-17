@@ -1,0 +1,427 @@
+generative-mock-1  | 127.0.0.1 - - [17/Nov/2026 20:48:33] "GET /sdapi/v1/samplers HTTP/1.1" 200 -
+generative-mock-1  | 127.0.0.1 - - [17/Nov/2026 20:48:38] "GET /sdapi/v1/samplers HTTP/1.1" 200 -
+generative-mock-1  | 127.0.0.1 - - [17/Nov/2026 20:48:43] "GET /sdapi/v1/samplers HTTP/1.1" 200 -
+users_mongoDB-1    | {"t":{"$date":"2026-11-17T20:48:31.926+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:44604","connectionId":660,"connectionCount":23}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-17T20:48:31.926+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn660","msg":"client metadata","attr":{"remote":"127.0.0.1:44604","client":"conn660","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-17T20:48:31.928+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn660","msg":"Connection ended","attr":{"remote":"127.0.0.1:44604","connectionId":660,"connectionCount":22}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-17T20:48:41.990+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:42960","connectionId":661,"connectionCount":23}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-17T20:48:41.990+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn661","msg":"client metadata","attr":{"remote":"127.0.0.1:42960","client":"conn661","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-17T20:48:41.992+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn661","msg":"Connection ended","attr":{"remote":"127.0.0.1:42960","connectionId":661,"connectionCount":22}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:31.903+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:40108","connectionId":733,"connectionCount":17}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:31.904+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn733","msg":"client metadata","attr":{"remote":"127.0.0.1:40108","client":"conn733","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:31.905+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn733","msg":"Connection ended","attr":{"remote":"127.0.0.1:40108","connectionId":733,"connectionCount":16}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:41.973+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45730","connectionId":734,"connectionCount":17}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:41.973+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn734","msg":"client metadata","attr":{"remote":"127.0.0.1:45730","client":"conn734","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:41.975+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn734","msg":"Connection ended","attr":{"remote":"127.0.0.1:45730","connectionId":734,"connectionCount":16}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:31.923+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:35732","connectionId":642,"connectionCount":5}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:31.923+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn642","msg":"client metadata","attr":{"remote":"127.0.0.1:35732","client":"conn642","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:31.926+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn642","msg":"Connection ended","attr":{"remote":"127.0.0.1:35732","connectionId":642,"connectionCount":4}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:41.985+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:48154","connectionId":643,"connectionCount":5}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:41.985+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn643","msg":"client metadata","attr":{"remote":"127.0.0.1:48154","client":"conn643","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-17T20:48:41.988+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn643","msg":"Connection ended","attr":{"remote":"127.0.0.1:48154","connectionId":643,"connectionCount":4}}
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:31 +0000] "POST /api-gateway/users/ HTTP/1.1" 201 377 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:31 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b HTTP/1.1" 201 387 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:31 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:31 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:31 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "GET /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab HTTP/1.1" 200 3227 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:32 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:35 +0000] "POST /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/process HTTP/1.1" 201 9 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:37 +0000] "GET /api-gateway/projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/process/url HTTP/1.1" 200 3521 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [17/Nov/2026:20:48:46 +0000] "GET /socket.io/?transport=websocket&EIO=4&t=1794948511.9247744 HTTP/1.1" 101 2637 "-" "-"
+api_gateway-1            | [0mPOST /users/ [32m201[0m 46.503 ms - 377[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b [32m201[0m 4.536 ms - 387[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 18.139 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 16.137 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 14.275 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 12.959 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 13.837 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 12.354 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 14.741 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 13.641 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 13.689 ms - -[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 14.177 ms - -[0m
+api_gateway-1            | [0mGET /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab [32m200[0m 12.445 ms - 3227[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool [32m201[0m 10.605 ms - 2[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool [32m201[0m 10.327 ms - 2[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool [32m201[0m 11.044 ms - 2[0m
+api_gateway-1            | [0mPOST /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/process [32m201[0m 33.697 ms - 9[0m
+api_gateway-1            | [0mGET /projects/6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/process/url [32m200[0m 12.448 ms - 3521[0m
+users-1                  | ---- USERS-MS: REGISTER REQUEST ----
+users-1                  | BODY: {
+users-1                  |   name: 'bench',
+users-1                  |   email: 'bench-2dcdc669c2@bench.test',
+users-1                  |   password: 'bench-pass-123',
+users-1                  |   type: 'premium'
+users-1                  | }
+users-1                  | USER OBJECT BEFORE SAVE: {
+users-1                  |   name: 'bench',
+users-1                  |   email: 'bench-2dcdc669c2@bench.test',
+users-1                  |   type: 'premium',
+users-1                  |   operations: [],
+users-1                  |   password: 'bench-pass-123'
+users-1                  | }
+users-1                  | User object to persist: {
+users-1                  |   name: 'bench',
+users-1                  |   email: 'bench-2dcdc669c2@bench.test',
+users-1                  |   type: 'premium',
+users-1                  |   operations: [],
+users-1                  |   password: 'bench-pass-123'
+users-1                  | }
+users-1                  | [0mPOST / [32m201[0m 42.168 ms - 377[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.875 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 1.269 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 1.002 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.852 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.890 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.754 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.850 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.892 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.951 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.940 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.867 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.778 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.666 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.855 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.691 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.799 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 0.621 ms - 18[0m
+users-1                  | [0mGET /6afcbd9fb76823108f82ba8b/type [32m200[0m 1.087 ms - 18[0m
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b [32m201[0m 1.568 ms - 387[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 14.889 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 13.324 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 11.512 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 10.180 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 11.120 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 9.683 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 11.813 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 10.307 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 11.164 ms - -[0m
+projects-1               | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/img [32m204[0m 11.386 ms - -[0m
+projects-1               | [GET /:user/:project headers] {
+projects-1               |   hasAuth: true,
+projects-1               |   authStart: 'Bearer eyJhbGciOiJIU',
+projects-1               |   caller: '6afcbd9fb76823108f82ba8b'
+projects-1               | }
+projects-1               | [0mGET /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab [32m200[0m 9.919 ms - 3227[0m
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool [32m204[0m 8.416 ms - -[0m
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool [32m204[0m 8.080 ms - -[0m
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/tool [32m204[0m 8.336 ms - -[0m
+projects-1               | [CALLER] {
+projects-1               |   userParam: '6afcbd9fb76823108f82ba8b',
+projects-1               |   forwarded: '6afcbd9fb76823108f82ba8b',
+projects-1               |   hasAuth: true,
+projects-1               |   caller: '6afcbd9fb76823108f82ba8b'
+projects-1               | }
+projects-1               | [ADV DEBUG] project: 6afcbd9f1f09d4c23142ddab adv_ops: 0 totalAdv: 0 charged: 0 newTools: 0 tools: [ 'brightness', 'contrast', 'saturation' ]
+projects-1               | [0mPOST /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/process [32m201[0m 30.363 ms - 7[0m
+projects-1               | [T-03][RABBIT] msg=request-ae8a9644-3bcc-45f1-a708-1f3bfdf01188 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-ae8a9644-3bcc-45f1-a708-1f3bfdf01188 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-b75b7496-9607-43be-82a0-de8c08d4be89 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-b75b7496-9607-43be-82a0-de8c08d4be89 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-35c6b804-4ec3-4228-b950-3e4e3a116c2f status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-35c6b804-4ec3-4228-b950-3e4e3a116c2f curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-cee90498-ed8e-457c-a553-feb7511120a4 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-cee90498-ed8e-457c-a553-feb7511120a4 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-006c758b-389c-490f-b7e8-3eecab10f857 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-006c758b-389c-490f-b7e8-3eecab10f857 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-73922865-c80e-482f-817c-92178dadafa9 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-73922865-c80e-482f-817c-92178dadafa9 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-8e639cba-c823-48ed-9899-ce8f898d6710 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-8e639cba-c823-48ed-9899-ce8f898d6710 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-bfe1a56c-7a50-4a58-b11b-a8ae7043ae09 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-bfe1a56c-7a50-4a58-b11b-a8ae7043ae09 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-f16cbb42-fd49-4115-8995-fe031e22735a status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-f16cbb42-fd49-4115-8995-fe031e22735a curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-e11d5e06-4f5f-4978-b967-a6c944832c6b status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-e11d5e06-4f5f-4978-b967-a6c944832c6b curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-78a1eb5d-a2af-4814-998a-694b3ef4a899 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-78a1eb5d-a2af-4814-998a-694b3ef4a899 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-17265122-c463-4c50-81fc-50f5ed8b711e status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-17265122-c463-4c50-81fc-50f5ed8b711e curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-626a2f43-fa09-4c81-9e91-159a6685a934 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-626a2f43-fa09-4c81-9e91-159a6685a934 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-f8d423b4-74ee-43f5-9fb6-af8e90f1c031 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-f8d423b4-74ee-43f5-9fb6-af8e90f1c031 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-13ceb87e-a1f0-43fa-8934-9a4712646cad status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-13ceb87e-a1f0-43fa-8934-9a4712646cad curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-9eb50e86-e41d-4914-942d-249c851fc79e status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-9eb50e86-e41d-4914-942d-249c851fc79e curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-5480ff66-1796-4bf3-a0b8-4df0caf120e6 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-5480ff66-1796-4bf3-a0b8-4df0caf120e6 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-5d9cd89f-ad94-493b-a4f4-6d8b6be30c5a status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-5d9cd89f-ad94-493b-a4f4-6d8b6be30c5a curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-5efffcbb-8ed5-41f3-9834-92ba255829a1 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-5efffcbb-8ed5-41f3-9834-92ba255829a1 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-73f1f28c-5707-4f63-b6a6-9f71e74a7e77 status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-73f1f28c-5707-4f63-b6a6-9f71e74a7e77 curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-e7a580ef-5aa4-4bc3-9e61-52f9753a1847 status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-e7a580ef-5aa4-4bc3-9e61-52f9753a1847 curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-a8fba1f1-ca7d-46a4-9922-00067880e439 status=success outType=image curPos=0 key=
+projects-1               | [RUN-DEBUG] msg=request-a8fba1f1-ca7d-46a4-9922-00067880e439 curPos=0 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-6adb263d-ec5f-4fe4-ba30-f65cfab3aa8a status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-6adb263d-ec5f-4fe4-ba30-f65cfab3aa8a curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-7f058674-7ba1-4cf1-85b1-2eb51ae514c8 status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-7f058674-7ba1-4cf1-85b1-2eb51ae514c8 curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-85a7debb-fb81-4c42-a511-ff92c75bf03a status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-85a7debb-fb81-4c42-a511-ff92c75bf03a curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-7c5b8a1b-7c87-4b15-a347-e7ded86a4731 status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-7c5b8a1b-7c87-4b15-a347-e7ded86a4731 curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-ca1303f9-225f-47b1-bb48-aa58d1ee64df status=success outType=image curPos=1 key=
+projects-1               | [RUN-DEBUG] msg=request-ca1303f9-225f-47b1-bb48-aa58d1ee64df curPos=1 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-99a918b4-0e32-47c1-99b0-eeb9c50868cc status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-99a918b4-0e32-47c1-99b0-eeb9c50868cc curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-7bfd01b3-2c59-4406-90cc-260c16ec7086 status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-7bfd01b3-2c59-4406-90cc-260c16ec7086 curPos=2 processTok=1 activeTok=1
+projects-1               | [T-03][RABBIT] msg=request-40750c3d-4c4c-4d4b-960d-233a9b74599c status=success outType=image curPos=2 key=
+projects-1               | [RUN-DEBUG] msg=request-40750c3d-4c4c-4d4b-960d-233a9b74599c curPos=2 processTok=1 activeTok=1
+projects-1               | [COMMIT] project=6afcbd9f1f09d4c23142ddab committedToken=1
+projects-1               | [0mGET /6afcbd9fb76823108f82ba8b/6afcbd9f1f09d4c23142ddab/process/url [32m200[0m 9.370 ms - 3521[0m
+ws_gateway-1             | a user connected
+ws_gateway-1             | Connecting to room: 6afcbd9fb76823108f82ba8b
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6afcbd9f1f09d4c23142ddab","ownerId":"6afcbd9fb76823108f82ba8b","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6afcbd9fb76823108f82ba8b","baseVersion":10,"newVersion":11,"payload":{"tools":[{"position":0,"procedure":"brightness","params":{"brightness":1.3},"_id":"6afcbda01f09d4c23142deca"}]}},"timestamp":1794948512119,"status":"success"}
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6afcbd9f1f09d4c23142ddab","ownerId":"6afcbd9fb76823108f82ba8b","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6afcbd9fb76823108f82ba8b","baseVersion":11,"newVersion":12,"payload":{"tools":[{"position":0,"procedure":"brightness","params":{"brightness":1.3},"_id":"6afcbda01f09d4c23142deca"},{"position":1,"procedure":"contrast","params":{"contrastFactor":1.4},"_id":"6afcbda01f09d4c23142defb"}]}},"timestamp":1794948512130,"status":"success"}
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6afcbd9f1f09d4c23142ddab","ownerId":"6afcbd9fb76823108f82ba8b","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6afcbd9fb76823108f82ba8b","baseVersion":12,"newVersion":13,"payload":{"tools":[{"position":0,"procedure":"brightness","params":{"brightness":1.3},"_id":"6afcbda01f09d4c23142deca"},{"position":1,"procedure":"contrast","params":{"contrastFactor":1.4},"_id":"6afcbda01f09d4c23142defb"},{"position":2,"procedure":"saturation","params":{"saturationFactor":1.5},"_id":"6afcbda01f09d4c23142df30"}]}},"timestamp":1794948512142,"status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-3f0922e2-67d9-4053-a364-8a119df21b63","timestamp":"2026-11-17T20:48:35.258Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-04b07ff8-198f-45fa-bb74-7b2b1a22d56f","timestamp":"2026-11-17T20:48:35.290Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-70694216-4e2d-4273-b42e-aa7bf381b2e5","timestamp":"2026-11-17T20:48:35.323Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-87928f75-b55c-4bf4-8a44-a9b70e66130e","timestamp":"2026-11-17T20:48:35.336Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-81972c3b-3610-4502-b996-7af8ea6c04f8","timestamp":"2026-11-17T20:48:35.358Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-51da8f5d-f39f-40c0-92e4-c84f024d5b3b","timestamp":"2026-11-17T20:48:35.368Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-2c604299-77c7-4bef-b609-81768bd488d7","timestamp":"2026-11-17T20:48:35.394Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-f1a9b1ed-2dd3-49df-8e55-65f07acdada3","timestamp":"2026-11-17T20:48:35.404Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-5b596025-29a3-4d01-96a5-f9a295445d19","timestamp":"2026-11-17T20:48:35.410Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-232222c0-9d8f-47d5-b874-4884582496c8","timestamp":"2026-11-17T20:48:35.428Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-6476c93b-a36c-4873-958d-6a0aa13c319b","timestamp":"2026-11-17T20:48:35.438Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-cb1883e4-3bdc-4833-bbf1-b44018898b1e","timestamp":"2026-11-17T20:48:35.444Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-1491a2fe-bbde-4a81-bdcb-fb6a2ef8561e","timestamp":"2026-11-17T20:48:35.458Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-b5b17eb2-9cbb-4e07-97d8-cd20a62618b9","timestamp":"2026-11-17T20:48:35.469Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-befa6b81-7b85-4490-99d9-02976a119de5","timestamp":"2026-11-17T20:48:35.482Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-42399ef9-3473-4894-99a8-28c906714fc8","timestamp":"2026-11-17T20:48:35.491Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-f06ed1ae-3f44-4e31-929e-eb8af1914187","timestamp":"2026-11-17T20:48:35.506Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-5823bb7a-d937-4af2-ab8b-b28b68336aeb","timestamp":"2026-11-17T20:48:35.517Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-95f62531-21a1-4aca-93ab-fdecf26a4d07","timestamp":"2026-11-17T20:48:35.525Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-adf9844b-1ef8-4b60-a061-502bb3597e11","timestamp":"2026-11-17T20:48:35.536Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-c60555be-5525-440a-bab6-9f04654ac3af","timestamp":"2026-11-17T20:48:35.546Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-c7c76270-a290-452c-a5d9-03a97e76c8c6","timestamp":"2026-11-17T20:48:35.558Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-bd43f5b9-8d9f-4aa9-8e4d-7b55609b2b9c","timestamp":"2026-11-17T20:48:35.569Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-e5af63ea-3cfa-4c1d-bf39-09f59313c517","timestamp":"2026-11-17T20:48:35.582Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-3a9d152f-37aa-4e93-8728-4d83d3dd4f9a","timestamp":"2026-11-17T20:48:35.602Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-c308783c-09c8-4b26-8483-353460e3a099","timestamp":"2026-11-17T20:48:35.610Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-53c81521-0a61-4472-80bc-34b6864c4d5d","timestamp":"2026-11-17T20:48:35.638Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-ef87d0e4-e57f-498e-a525-e472326edb7c","timestamp":"2026-11-17T20:48:35.646Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-cefbbc25-7bf2-43ab-98b2-acb0baf77cdd","timestamp":"2026-11-17T20:48:35.676Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-780d801f-d5bb-49fb-97cf-b13026f50d0d","timestamp":"2026-11-17T20:48:35.712Z","user":"6afcbd9fb76823108f82ba8b","status":"success"}
+ws_gateway-1             | A user disconnected
+rabbitmq-1               | 2026-11-17 20:48:32.119772+00:00 [info] <0.14859.0> accepting AMQP connection 172.19.0.13:35598 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:32.131044+00:00 [info] <0.14866.0> accepting AMQP connection 172.19.0.13:35610 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:32.143234+00:00 [info] <0.14873.0> accepting AMQP connection 172.19.0.13:35624 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:32.161914+00:00 [info] <0.14859.0> connection 172.19.0.13:35598 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:32.171939+00:00 [info] <0.14866.0> connection 172.19.0.13:35610 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:32.184950+00:00 [info] <0.14873.0> connection 172.19.0.13:35624 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:32.664104+00:00 [info] <0.14859.0> closing AMQP connection (172.19.0.13:35598 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '545ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:32.673286+00:00 [info] <0.14866.0> closing AMQP connection (172.19.0.13:35610 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:32.685945+00:00 [info] <0.14873.0> closing AMQP connection (172.19.0.13:35624 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.179874+00:00 [info] <0.14923.0> accepting AMQP connection 172.19.0.13:35634 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.179891+00:00 [info] <0.14927.0> accepting AMQP connection 172.19.0.13:35630 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180113+00:00 [info] <0.14931.0> accepting AMQP connection 172.19.0.13:35646 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180237+00:00 [info] <0.14935.0> accepting AMQP connection 172.19.0.13:35660 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180345+00:00 [info] <0.14939.0> accepting AMQP connection 172.19.0.13:35670 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180515+00:00 [info] <0.14943.0> accepting AMQP connection 172.19.0.13:35676 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180574+00:00 [info] <0.14947.0> accepting AMQP connection 172.19.0.13:35680 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180794+00:00 [info] <0.14953.0> accepting AMQP connection 172.19.0.13:35688 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180866+00:00 [info] <0.14964.0> accepting AMQP connection 172.19.0.13:35696 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.180912+00:00 [info] <0.14968.0> accepting AMQP connection 172.19.0.13:35702 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221115+00:00 [info] <0.14931.0> connection 172.19.0.13:35646 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221115+00:00 [info] <0.14923.0> connection 172.19.0.13:35634 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221126+00:00 [info] <0.14927.0> connection 172.19.0.13:35630 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221889+00:00 [info] <0.14939.0> connection 172.19.0.13:35670 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221890+00:00 [info] <0.14947.0> connection 172.19.0.13:35680 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221891+00:00 [info] <0.14968.0> connection 172.19.0.13:35702 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221892+00:00 [info] <0.14964.0> connection 172.19.0.13:35696 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221893+00:00 [info] <0.14935.0> connection 172.19.0.13:35660 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221952+00:00 [info] <0.14953.0> connection 172.19.0.13:35688 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.221970+00:00 [info] <0.14943.0> connection 172.19.0.13:35676 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.260990+00:00 [info] <0.15063.0> accepting AMQP connection 172.19.0.13:35712 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.261331+00:00 [info] <0.15067.0> accepting AMQP connection 172.19.0.13:35714 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.292809+00:00 [info] <0.15077.0> accepting AMQP connection 172.19.0.13:35724 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.293124+00:00 [info] <0.15081.0> accepting AMQP connection 172.19.0.13:35734 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.301918+00:00 [info] <0.15063.0> connection 172.19.0.13:35712 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.302971+00:00 [info] <0.15067.0> connection 172.19.0.13:35714 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.326757+00:00 [info] <0.15105.0> accepting AMQP connection 172.19.0.13:35748 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.327123+00:00 [info] <0.15109.0> accepting AMQP connection 172.19.0.13:35764 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.333927+00:00 [info] <0.15081.0> connection 172.19.0.13:35734 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.333985+00:00 [info] <0.15077.0> connection 172.19.0.13:35724 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.338612+00:00 [info] <0.15133.0> accepting AMQP connection 172.19.0.13:35776 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.338911+00:00 [info] <0.15137.0> accepting AMQP connection 172.19.0.13:35790 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.361451+00:00 [info] <0.15147.0> accepting AMQP connection 172.19.0.13:35798 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.361703+00:00 [info] <0.15151.0> accepting AMQP connection 172.19.0.13:35812 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.367969+00:00 [info] <0.15105.0> connection 172.19.0.13:35748 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.367969+00:00 [info] <0.15109.0> connection 172.19.0.13:35764 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.371587+00:00 [info] <0.15175.0> accepting AMQP connection 172.19.0.13:35826 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.372006+00:00 [info] <0.15179.0> accepting AMQP connection 172.19.0.13:35832 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.379918+00:00 [info] <0.15137.0> connection 172.19.0.13:35790 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.379918+00:00 [info] <0.15133.0> connection 172.19.0.13:35776 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.397685+00:00 [info] <0.15203.0> accepting AMQP connection 172.19.0.13:35834 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.397883+00:00 [info] <0.15207.0> accepting AMQP connection 172.19.0.13:35836 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.402928+00:00 [info] <0.15151.0> connection 172.19.0.13:35812 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.402952+00:00 [info] <0.15147.0> connection 172.19.0.13:35798 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.406634+00:00 [info] <0.15231.0> accepting AMQP connection 172.19.0.13:35852 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.407022+00:00 [info] <0.15235.0> accepting AMQP connection 172.19.0.13:35866 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.413014+00:00 [info] <0.15179.0> connection 172.19.0.13:35832 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.413023+00:00 [info] <0.15175.0> connection 172.19.0.13:35826 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.419382+00:00 [info] <0.15259.0> accepting AMQP connection 172.19.0.13:35870 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.431962+00:00 [info] <0.15266.0> accepting AMQP connection 172.19.0.13:35882 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.432176+00:00 [info] <0.15270.0> accepting AMQP connection 172.19.0.13:35896 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.438959+00:00 [info] <0.15207.0> connection 172.19.0.13:35836 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.439007+00:00 [info] <0.15203.0> connection 172.19.0.13:35834 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.441131+00:00 [info] <0.15294.0> accepting AMQP connection 172.19.0.13:35908 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.441370+00:00 [info] <0.15298.0> accepting AMQP connection 172.19.0.13:35916 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.448039+00:00 [info] <0.15235.0> connection 172.19.0.13:35866 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.448041+00:00 [info] <0.15231.0> connection 172.19.0.13:35852 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.451793+00:00 [info] <0.15322.0> accepting AMQP connection 172.19.0.13:35926 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.460921+00:00 [info] <0.15259.0> connection 172.19.0.13:35870 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.461023+00:00 [info] <0.15331.0> accepting AMQP connection 172.19.0.13:35940 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.461227+00:00 [info] <0.15339.0> accepting AMQP connection 172.19.0.13:35950 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.472262+00:00 [info] <0.15350.0> accepting AMQP connection 172.19.0.13:35958 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.472617+00:00 [info] <0.15354.0> accepting AMQP connection 172.19.0.13:35972 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.472870+00:00 [info] <0.15270.0> connection 172.19.0.13:35896 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.472996+00:00 [info] <0.15266.0> connection 172.19.0.13:35882 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.483966+00:00 [info] <0.15298.0> connection 172.19.0.13:35916 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.484051+00:00 [info] <0.15294.0> connection 172.19.0.13:35908 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.491017+00:00 [info] <0.15392.0> accepting AMQP connection 172.19.0.13:35984 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.493953+00:00 [info] <0.15322.0> connection 172.19.0.13:35926 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.494087+00:00 [info] <0.15401.0> accepting AMQP connection 172.19.0.13:35998 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.494434+00:00 [info] <0.15410.0> accepting AMQP connection 172.19.0.13:36012 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.502931+00:00 [info] <0.15339.0> connection 172.19.0.13:35950 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.502944+00:00 [info] <0.15331.0> connection 172.19.0.13:35940 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.509145+00:00 [info] <0.15434.0> accepting AMQP connection 172.19.0.13:36014 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.509540+00:00 [info] <0.15438.0> accepting AMQP connection 172.19.0.13:36028 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.513975+00:00 [info] <0.15354.0> connection 172.19.0.13:35972 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.513977+00:00 [info] <0.15350.0> connection 172.19.0.13:35958 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.524907+00:00 [info] <0.15462.0> accepting AMQP connection 172.19.0.13:36036 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.528255+00:00 [info] <0.15469.0> accepting AMQP connection 172.19.0.13:36052 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.528507+00:00 [info] <0.15473.0> accepting AMQP connection 172.19.0.13:36056 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.532916+00:00 [info] <0.15392.0> connection 172.19.0.13:35984 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.535942+00:00 [info] <0.15401.0> connection 172.19.0.13:35998 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.535992+00:00 [info] <0.15410.0> connection 172.19.0.13:36012 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.539010+00:00 [info] <0.15504.0> accepting AMQP connection 172.19.0.13:36068 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.539258+00:00 [info] <0.15508.0> accepting AMQP connection 172.19.0.13:36080 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.551075+00:00 [info] <0.15434.0> connection 172.19.0.13:36014 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.551178+00:00 [info] <0.15438.0> connection 172.19.0.13:36028 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.554677+00:00 [info] <0.15532.0> accepting AMQP connection 172.19.0.13:36094 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.562481+00:00 [info] <0.15539.0> accepting AMQP connection 172.19.0.13:36110 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.562796+00:00 [info] <0.15543.0> accepting AMQP connection 172.19.0.13:36116 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.565925+00:00 [info] <0.15462.0> connection 172.19.0.13:36036 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.569849+00:00 [info] <0.15473.0> connection 172.19.0.13:36056 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.569899+00:00 [info] <0.15469.0> connection 172.19.0.13:36052 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.572603+00:00 [info] <0.15574.0> accepting AMQP connection 172.19.0.13:36124 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.573023+00:00 [info] <0.15578.0> accepting AMQP connection 172.19.0.13:36140 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.579967+00:00 [info] <0.15508.0> connection 172.19.0.13:36080 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.579976+00:00 [info] <0.15504.0> connection 172.19.0.13:36068 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.590070+00:00 [info] <0.15602.0> accepting AMQP connection 172.19.0.13:36152 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.595938+00:00 [info] <0.15532.0> connection 172.19.0.13:36094 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.603909+00:00 [info] <0.15543.0> connection 172.19.0.13:36116 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.603912+00:00 [info] <0.15539.0> connection 172.19.0.13:36110 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.605025+00:00 [info] <0.15630.0> accepting AMQP connection 172.19.0.13:36166 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.605395+00:00 [info] <0.15634.0> accepting AMQP connection 172.19.0.13:36172 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.614053+00:00 [info] <0.15578.0> connection 172.19.0.13:36140 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.614193+00:00 [info] <0.15574.0> connection 172.19.0.13:36124 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.617690+00:00 [info] <0.15658.0> accepting AMQP connection 172.19.0.13:36180 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.630969+00:00 [info] <0.15602.0> connection 172.19.0.13:36152 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.641016+00:00 [info] <0.15672.0> accepting AMQP connection 172.19.0.13:36182 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.641294+00:00 [info] <0.15676.0> accepting AMQP connection 172.19.0.13:36194 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.645914+00:00 [info] <0.15630.0> connection 172.19.0.13:36166 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.647908+00:00 [info] <0.15634.0> connection 172.19.0.13:36172 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.654246+00:00 [info] <0.15700.0> accepting AMQP connection 172.19.0.13:36210 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.658937+00:00 [info] <0.15658.0> connection 172.19.0.13:36180 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.683000+00:00 [info] <0.15676.0> connection 172.19.0.13:36194 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.683058+00:00 [info] <0.15672.0> connection 172.19.0.13:36182 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.686950+00:00 [info] <0.15728.0> accepting AMQP connection 172.19.0.13:36216 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.695935+00:00 [info] <0.15700.0> connection 172.19.0.13:36210 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.721835+00:00 [info] <0.14927.0> closing AMQP connection (172.19.0.13:35630 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.721834+00:00 [info] <0.14931.0> closing AMQP connection (172.19.0.13:35646 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.721834+00:00 [info] <0.14923.0> closing AMQP connection (172.19.0.13:35634 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722753+00:00 [info] <0.14935.0> closing AMQP connection (172.19.0.13:35660 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722754+00:00 [info] <0.14953.0> closing AMQP connection (172.19.0.13:35688 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722777+00:00 [info] <0.14968.0> closing AMQP connection (172.19.0.13:35702 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722814+00:00 [info] <0.14943.0> closing AMQP connection (172.19.0.13:35676 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722831+00:00 [info] <0.14939.0> closing AMQP connection (172.19.0.13:35670 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722824+00:00 [info] <0.14964.0> closing AMQP connection (172.19.0.13:35696 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.722840+00:00 [info] <0.14947.0> closing AMQP connection (172.19.0.13:35680 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.723032+00:00 [info] <0.15782.0> accepting AMQP connection 172.19.0.13:36232 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:35.728007+00:00 [info] <0.15728.0> connection 172.19.0.13:36216 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.764066+00:00 [info] <0.15782.0> connection 172.19.0.13:36232 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m
+rabbitmq-1               | 2026-11-17 20:48:35.802321+00:00 [info] <0.15063.0> closing AMQP connection (172.19.0.13:35712 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.804028+00:00 [info] <0.15067.0> closing AMQP connection (172.19.0.13:35714 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.834834+00:00 [info] <0.15077.0> closing AMQP connection (172.19.0.13:35724 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.834921+00:00 [info] <0.15081.0> closing AMQP connection (172.19.0.13:35734 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.868538+00:00 [info] <0.15109.0> closing AMQP connection (172.19.0.13:35764 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.868584+00:00 [info] <0.15105.0> closing AMQP connection (172.19.0.13:35748 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.881166+00:00 [info] <0.15137.0> closing AMQP connection (172.19.0.13:35790 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.881216+00:00 [info] <0.15133.0> closing AMQP connection (172.19.0.13:35776 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.903851+00:00 [info] <0.15151.0> closing AMQP connection (172.19.0.13:35812 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.903910+00:00 [info] <0.15147.0> closing AMQP connection (172.19.0.13:35798 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.913184+00:00 [info] <0.15179.0> closing AMQP connection (172.19.0.13:35832 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.913246+00:00 [info] <0.15175.0> closing AMQP connection (172.19.0.13:35826 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.939739+00:00 [info] <0.15207.0> closing AMQP connection (172.19.0.13:35836 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.939790+00:00 [info] <0.15203.0> closing AMQP connection (172.19.0.13:35834 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.948137+00:00 [info] <0.15235.0> closing AMQP connection (172.19.0.13:35866 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.948147+00:00 [info] <0.15231.0> closing AMQP connection (172.19.0.13:35852 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.961634+00:00 [info] <0.15259.0> closing AMQP connection (172.19.0.13:35870 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.974037+00:00 [info] <0.15270.0> closing AMQP connection (172.19.0.13:35896 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.974084+00:00 [info] <0.15266.0> closing AMQP connection (172.19.0.13:35882 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.984447+00:00 [info] <0.15298.0> closing AMQP connection (172.19.0.13:35916 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.984513+00:00 [info] <0.15294.0> closing AMQP connection (172.19.0.13:35908 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:35.995019+00:00 [info] <0.15322.0> closing AMQP connection (172.19.0.13:35926 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '544ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.003577+00:00 [info] <0.15339.0> closing AMQP connection (172.19.0.13:35950 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.003659+00:00 [info] <0.15331.0> closing AMQP connection (172.19.0.13:35940 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.015053+00:00 [info] <0.15350.0> closing AMQP connection (172.19.0.13:35958 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.015094+00:00 [info] <0.15354.0> closing AMQP connection (172.19.0.13:35972 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.033483+00:00 [info] <0.15392.0> closing AMQP connection (172.19.0.13:35984 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.036765+00:00 [info] <0.15401.0> closing AMQP connection (172.19.0.13:35998 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.036825+00:00 [info] <0.15410.0> closing AMQP connection (172.19.0.13:36012 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.051383+00:00 [info] <0.15434.0> closing AMQP connection (172.19.0.13:36014 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.051507+00:00 [info] <0.15438.0> closing AMQP connection (172.19.0.13:36028 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.067221+00:00 [info] <0.15462.0> closing AMQP connection (172.19.0.13:36036 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.070746+00:00 [info] <0.15473.0> closing AMQP connection (172.19.0.13:36056 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.070823+00:00 [info] <0.15469.0> closing AMQP connection (172.19.0.13:36052 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.080467+00:00 [info] <0.15508.0> closing AMQP connection (172.19.0.13:36080 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.080476+00:00 [info] <0.15504.0> closing AMQP connection (172.19.0.13:36068 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.096630+00:00 [info] <0.15532.0> closing AMQP connection (172.19.0.13:36094 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.104327+00:00 [info] <0.15539.0> closing AMQP connection (172.19.0.13:36110 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.104386+00:00 [info] <0.15543.0> closing AMQP connection (172.19.0.13:36116 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.114878+00:00 [info] <0.15578.0> closing AMQP connection (172.19.0.13:36140 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.114946+00:00 [info] <0.15574.0> closing AMQP connection (172.19.0.13:36124 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.131699+00:00 [info] <0.15602.0> closing AMQP connection (172.19.0.13:36152 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.146270+00:00 [info] <0.15630.0> closing AMQP connection (172.19.0.13:36166 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.149080+00:00 [info] <0.15634.0> closing AMQP connection (172.19.0.13:36172 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '544ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.159667+00:00 [info] <0.15658.0> closing AMQP connection (172.19.0.13:36180 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | [38;5;214m2026-11-17 20:48:36.170637+00:00 [warning] <0.748.0> closing AMQP connection <0.748.0> (172.19.0.14:42096 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '16M, 30s'):[0m
+rabbitmq-1               | [38;5;214m2026-11-17 20:48:36.170637+00:00 [warning] <0.748.0> client unexpectedly closed TCP connection[0m
+rabbitmq-1               | 2026-11-17 20:48:36.183222+00:00 [info] <0.15676.0> closing AMQP connection (172.19.0.13:36194 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.183311+00:00 [info] <0.15672.0> closing AMQP connection (172.19.0.13:36182 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.197019+00:00 [info] <0.15700.0> closing AMQP connection (172.19.0.13:36210 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '543ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.228706+00:00 [info] <0.15728.0> closing AMQP connection (172.19.0.13:36216 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '542ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:36.264272+00:00 [info] <0.15782.0> closing AMQP connection (172.19.0.13:36232 -> 172.19.0.16:5672, vhost: '/', user: 'user', duration: '541ms')[0m
+rabbitmq-1               | 2026-11-17 20:48:46.297315+00:00 [info] <0.16047.0> accepting AMQP connection 172.19.0.14:54162 -> 172.19.0.16:5672[0m
+rabbitmq-1               | 2026-11-17 20:48:46.298447+00:00 [info] <0.16047.0> connection 172.19.0.14:54162 -> 172.19.0.16:5672: user 'user' authenticated and granted access to vhost '/'[0m

@@ -1,0 +1,22 @@
+{
+  "scenario": "F1",
+  "t_zero": 1794953239.1195412,
+  "timeout": 150.0,
+  "jobs": 1,
+  "chaos": [
+    [
+      0.5,
+      "docker pause picturas-contrast_tool-1"
+    ],
+    [
+      4.0,
+      "docker kill picturas-contrast_tool-1"
+    ],
+    [
+      6.0,
+      "docker start picturas-contrast_tool-1"
+    ]
+  ],
+  "idle_after": 0,
+  "t_finish": 1794953391.6802645
+}
