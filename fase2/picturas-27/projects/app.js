@@ -37,6 +37,8 @@ app.use("/", projectsRouter);
 process_msg();
 // Report jobs that exhausted their deliveries (DA-R3)
 require("./utils/dead_letter").start_dead_letter_consumer();
+// Fail steps that never get an answer (DA-R4)
+require("./utils/watchdog").start_watchdog();
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

@@ -269,3 +269,57 @@ e F3 foram executados pelo agente. A primeira execução da regressão falhou de
 descarregamento inicial do modelo `u2net`; a segunda execução completa terminou com
 `ALL PASSED` e código 0. A migração nas máquinas dos colegas continua pendente de
 coordenação.
+
+---
+
+## 2026-11-19 · Fiabilidade · Claude Code (Opus 5.5)
+
+**Tarefa:** DA-R4 — watchdog no `projects`.
+
+**Prompt:** Pedido de um plano conciso do DA-R4 e aprovação com condições: prazos de 30 s para
+imagem e máximo(120 s, fator × duração) para vídeo, configuráveis, documentando que o watchdog mede
+o tempo desde o despacho; reutilizar a reposição de operações do cancelamento sem reposições
+duplicadas, com testes de três condições (aviso falhado, reembolso falhado, dois ciclos); não
+alterar `routes/projects.js`, contratos de mensagens nem o `bench/`.
+
+**Resultado (feito pelo agente):**
+- Verificação prévia: a duração do vídeo está em `project.imgs[].video.duration` (segundos, lida
+  no upload, obrigatória); cada passo cria um `Process` que não é atualizado durante o
+  processamento, por isso o `projects` não recebe progresso periódico.
+- `projects/utils/watchdog.js` (novo): a cada 10 s, um processo cujo prazo desde o despacho
+  expirou (imagem 30 s; vídeo máximo(120 s, 1 × duração); nos projetos com vídeos e extração de
+  fotogramas, os passos de imagem, que são barreiras da execução, usam o prazo do vídeo) é
+  reportado ao utilizador (`process-error`/`preview-error`, código 30002), as operações avançadas
+  reservadas são repostas uma vez e o processo é apagado. Ordem: aviso confirmado pelo broker →
+  reposição reclamada com a versão otimista do projeto (`updateIfVersion`), anulada se o pedido ao
+  serviço `users` falhar → remoção. Uma falha em qualquer passo mantém o processo para o ciclo
+  seguinte. Valores configuráveis (`WATCHDOG_IMAGE_S`, `WATCHDOG_VIDEO_MIN_S`,
+  `WATCHDOG_VIDEO_FACTOR`, `WATCHDOG_INTERVAL_S`); ciclos sem sobreposição.
+- `projects/utils/dead_letter.js`: o aviso passa a uma função partilhada (`notify_failure`), que
+  espera a confirmação do broker antes de o processo ser apagado; mesmo formato e eventos.
+  `projects/app.js`: arranque do watchdog.
+- Testes: `watchdog.test.js` (novo, 7 testes, incluindo aviso não confirmado, reembolso falhado com
+  reposição e dois ciclos com uma só reposição) e `dead_letter.test.js` atualizado.
+- Verificações feitas pelo agente: 19/19 testes específicos; `projects` reconstruído; `run-all.sh`
+  com `ALL PASSED` e código 0 (`projects` 27/27, worker de vídeo 90 e 1 ignorado, regressão 30/30;
+  o watchdog não disparou). Verificação preliminar `dev` do F6 (1 repetição): o lote de imagem
+  parado foi reportado aos 38,4 s (5 avisos, um por imagem); a legendagem concluiu (93,8 s), sem
+  duplicados.
+
+**Limitações e observações:**
+- O watchdog mede o tempo desde o despacho, não a ausência real de progresso; o prazo adaptativo
+  do vídeo reduz, mas não elimina, falsos alarmes em vídeos longos. Os workers congelados ou mortos
+  continuam a ser tratados pelo heartbeat e pela reentrega (DA-R1).
+- Um passo de imagem reportado como falhado pode ainda terminar mais tarde (no F6 o brilho volta
+  ao fim de 60 s); o resultado tardio é ignorado. Num lote, o utilizador recebe um aviso por imagem.
+- Uma reposição pela rota de cancelamento em simultâneo com o watchdog pode ainda duplicar a
+  reposição (`routes/projects.js` fora do âmbito). O `projects` tem uma só instância.
+- Métrica do R-4 no F6: o `analyze.py` só conta erros até 10 s depois da submissão, pelo que dá
+  sempre 0 % com prazos de 30 s ou mais; não foi alterado o `bench/`. Fica para o António.
+- Os resultados `dev` são preliminares (portátil do Sérgio); a validação fica para a medição final.
+
+**Validação (Sérgio):** Aprovei o plano do DA-R4 e as decisões W1 a W4, incluindo as condições
+técnicas esclarecidas depois. Revi o relatório final e os resultados apresentados pelo agente;
+os testes específicos, o `run-all.sh` e o F6 preliminar foram executados pelo agente. Tomei
+conhecimento das limitações relativas ao prazo adaptativo, à métrica R-4 do F6 e à possível
+concorrência com o cancelamento.
