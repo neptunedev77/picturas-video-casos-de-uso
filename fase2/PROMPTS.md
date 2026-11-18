@@ -162,3 +162,48 @@ o caminho da imagem original), E2 (identificadores com a mesma convenção da re
 **Validação (Sérgio):** Aprovei as decisões E1, E2 e E3, acompanhei a implementação e revi o
 relatório final e os resultados apresentados pelo agente: o `run-all.sh` e as verificações
 preliminares F5 e F1, todos executados pelo agente.
+
+---
+
+## 2026-11-18 · Fiabilidade · Claude Code (Opus 5.5)
+
+**Tarefa:** DA-R2 — ligação longa, mensagens persistentes e confirmações no `projects`.
+
+**Prompt:** Pedido de um plano conciso do DA-R2 e aprovação com condições: ack depois do handler
+e da confirmação das publicações, verificado com os chamadores atuais (que não fazem `await`);
+fila em memória durante desconexões, com a limitação documentada; a política para handlers que
+falham (R2-b) fica para aprovação separada, sem `nack` sem requeue nem ciclos de reentrega.
+
+**Resultado (feito pelo agente):**
+- `projects/utils/rabbit_mq.js` reescrito com a mesma API (`send_rabbit_msg`, `read_rabbit_msg`):
+  uma ligação longa e reutilizada com reconexão com backoff (antes: uma ligação por mensagem e
+  `throw` em caso de erro); publicação persistente num canal com confirmações; publicações
+  guardadas em memória durante desconexões e enviadas depois de reconectar; uma mensagem consumida
+  só leva ack depois de o handler assíncrono terminar e de `waitForConfirms()` confirmar as
+  publicações feitas entretanto. As 6 publicações do `process_msg` não usam `await`, mas são feitas
+  antes de o handler terminar, por isso ficam cobertas. Nenhum chamador foi alterado.
+- R2-b (opção 1, decisão provisória): um handler que falha mantém o comportamento anterior (ack,
+  com o erro no log), sem reentregas. Uma falha não tratada pode perder a mensagem; a política
+  definitiva (retries limitados e DLQ) fica para o DA-R3.
+- `projects/tests/rabbit_mq.test.js` (novo): 5 testes com um amqplib simulado.
+- Verificações feitas pelo agente: 5/5 testes do DA-R2; `projects` reconstruído; `run-all.sh` com
+  `ALL PASSED` e código 0 (`projects` 13/13, worker de vídeo 90 e 1 ignorado, regressão 30/30).
+  Verificação preliminar `dev` (1 repetição cada): F3, reinício do RabbitMQ, 3/3 trabalhos
+  concluídos (baseline: 5/15) e recuperação em +15,8 s; F4, reinício do `projects`, 3/3
+  concluídos (baseline: 10/15) e +4,9 s; sem duplicados.
+
+**Limitações e observações:**
+- As publicações em memória perdem-se se o próprio `projects` morrer enquanto o RabbitMQ está em
+  baixo; não há outbox persistente (fora do plano).
+- Uma publicação não confirmada é reenviada, o que pode gerar duplicados: a idempotência é tratada
+  no restante DA-R5.
+- O `projects` continua a apagar o processo antes de tratar o resultado (`routes/projects.js`);
+  uma reentrega depois de uma falha nesse intervalo é ignorada. Fica para o watchdog (DA-R4) e
+  para a idempotência (DA-R5); nesta corrida do F4 não aconteceu.
+- Os resultados `dev` são preliminares (portátil do Sérgio, 1 repetição); a validação fica para a
+  medição final na máquina de referência.
+
+**Validação (Sérgio):** Aprovei o plano e as decisões R2-a e R2-c. Analisei a proposta R2-b
+e escolhi a opção 1, deixando a política definitiva para o DA-R3. Revi o relatório e os
+resultados apresentados pelo agente; os testes unitários, o `run-all.sh` e as verificações
+preliminares F3 e F4 foram executados pelo agente.
