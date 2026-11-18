@@ -5,20 +5,19 @@ processes it with video_processor and replies to the projects orchestrator on
 project_queue. Progress is sent straight to the WebSocket gateway (ws_queue),
 as a percentage.
 
-Unlike the image tools, the message is only acknowledged after the job ends:
-if the worker dies midway, RabbitMQ redelivers it.
+Messages are consumed through utils.reliable_consumer (DA-R1): the job runs in
+a worker thread with heartbeats on, and the message is only acknowledged after
+the reply is published; if the worker dies midway, RabbitMQ redelivers it.
 """
 import datetime
 import json
 import os
-import time
 import uuid
 
-import pika
 import pytz
-from pika.exchange_type import ExchangeType
 
 import utils.env as env
+from utils.reliable_consumer import PublishError, ReliableConsumer
 from effects import UnsupportedEffect
 from video_processor import InvalidSpeed, InvalidTrim, InvalidVideo, process_video
 
@@ -44,34 +43,13 @@ def now():
 
 class VideoWorker:
     def __init__(self):
-        self._connection = self._connect()
-        self._channel = self._connection.channel()
-        self._channel.exchange_declare(exchange=EXCHANGE,
-                                       exchange_type=ExchangeType.direct, durable=True)
-        self._channel.queue_declare(queue=VIDEO_QUEUE, durable=True)
-        self._channel.queue_bind(queue=VIDEO_QUEUE, exchange=EXCHANGE, routing_key=VIDEO_QUEUE)
-        # one video at a time per replica; parallelism comes from replicas
-        self._channel.basic_qos(prefetch_count=1)
-
-    @staticmethod
-    def _connect():
-        credentials = pika.PlainCredentials(env.RABBITMQ_USERNAME, env.RABBITMQ_PASSWORD)
-        params = pika.ConnectionParameters(
-            env.RABBITMQ_HOST, int(env.RABBITMQ_PORT), "/", credentials,
-            # processing a video blocks this thread for minutes; without a
-            # heartbeat the broker does not drop the connection midway
-            heartbeat=0,
-        )
-        for attempt in range(30):
-            try:
-                return pika.BlockingConnection(params)
-            except pika.exceptions.AMQPConnectionError:
-                time.sleep(2)
-        raise RuntimeError("Could not connect to RabbitMQ")
+        # one video at a time per replica (prefetch 1); parallelism comes from replicas
+        self._consumer = ReliableConsumer(VIDEO_QUEUE, self.callback, env.RABBITMQ_HOST,
+                                          env.RABBITMQ_PORT, env.RABBITMQ_USERNAME,
+                                          env.RABBITMQ_PASSWORD)
 
     def _publish(self, queue, msg):
-        self._channel.basic_publish(exchange=EXCHANGE, routing_key=queue,
-                                    body=json.dumps(msg))
+        self._consumer.publish(queue, json.dumps(msg))
 
     def _reply_success(self, msg_id, started, output_uri, video_info):
         output = {"type": video_info.get("output_type", "video"),
@@ -137,7 +115,6 @@ class VideoWorker:
             progress = params.get("progress") or {}
         except (ValueError, KeyError) as e:
             print(f"[video] invalid message discarded: {e}", flush=True)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         print(f"[video] msg={msg_id} preview={preview} tools={[t.get('procedure') for t in tools]}",
@@ -163,17 +140,16 @@ class VideoWorker:
                 self._reply_error(msg_id, started, CODES["invalid_speed"], str(e), input_uri)
             except InvalidVideo as e:
                 self._reply_error(msg_id, started, CODES["invalid_video"], str(e), input_uri)
+            except PublishError:
+                raise  # reply not published: the consumer requeues the job
             except Exception as e:  # noqa: BLE001 - any other failure is reported
                 self._reply_error(msg_id, started, CODES["error_processing"], str(e), input_uri)
 
-        # manual ack only at the end
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        # the consumer acks the message once this callback returns
 
     def run(self):
-        self._channel.basic_consume(queue=VIDEO_QUEUE, on_message_callback=self.callback,
-                                    auto_ack=False)
         print("[video] waiting for jobs on video_queue", flush=True)
-        self._channel.start_consuming()
+        self._consumer.run()  # returns after SIGTERM: the process then exits with code 0
 
 
 if __name__ == "__main__":
