@@ -31,7 +31,8 @@ class FakeChannel:
         self.fail_publish = fail_publish
 
     def exchange_declare(self, **kw): pass
-    def queue_declare(self, **kw): pass
+    def queue_declare(self, **kw):
+        self.queue_arguments = kw.get("arguments")
     def queue_bind(self, **kw): pass
 
     def basic_qos(self, prefetch_count):
@@ -116,6 +117,7 @@ def test_consumes_with_manual_ack_and_prefetch_one():
     consumer, _, channel, runner = start(lambda *a: None)
     assert channel.auto_ack is False
     assert channel.prefetch == 1
+    assert channel.queue_arguments == {"x-queue-type": "quorum"}   # as in definitions.json
     consumer.stop()
     runner.join(5)
 
@@ -134,13 +136,14 @@ def test_reply_is_published_persistent_before_the_ack():
     runner.join(5)
 
 
-def test_handler_exception_rejects_without_requeue():
+def test_handler_exception_requeues_the_message():
+    # the retries are bounded by the queue's delivery limit (DA-R3), then dead-lettered
     def handler(*a):
         raise ValueError("poison")
 
     consumer, connection, channel, runner = start(handler)
     connection.inject(b"job")
-    assert wait_until(lambda: ("nack", 1, False) in channel.ops)
+    assert wait_until(lambda: ("nack", 1, True) in channel.ops)
     assert not any(op[0] == "ack" for op in channel.ops)
     consumer.stop()
     runner.join(5)

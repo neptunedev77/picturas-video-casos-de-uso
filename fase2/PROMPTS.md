@@ -207,3 +207,65 @@ falham (R2-b) fica para aprovação separada, sem `nack` sem requeue nem ciclos 
 e escolhi a opção 1, deixando a política definitiva para o DA-R3. Revi o relatório e os
 resultados apresentados pelo agente; os testes unitários, o `run-all.sh` e as verificações
 preliminares F3 e F4 foram executados pelo agente.
+
+---
+
+## 2026-11-18 · Fiabilidade · Claude Code (Opus 5.5)
+
+**Tarefa:** DA-R3 — dead-letter e reentregas limitadas.
+
+**Prompt:** Pedido de um plano conciso do DA-R3 e aprovação das decisões R3-a a R3-e (filas
+quorum, limite de 5 reentregas, aviso ao utilizador pelo `projects`, declaração explícita do tipo
+de fila, `watermark` de fora), com condições: validar a policy no RabbitMQ 4.0, explicar a garantia
+de entrega, não descartar mensagens em silêncio, e não fazer operações destrutivas sem aprovação
+explícita do procedimento de migração.
+
+**Resultado (feito pelo agente):**
+- `rabbitMQ/definitions.json`: as 17 filas de trabalho passam a quorum; exchange `picturas.dlx`,
+  fila `picturas.dlq` e policy `work-queues-dead-letter` (`delivery-limit: 5`,
+  `dead-letter-strategy: at-least-once`, `overflow: reject-publish`). `ws_queue` e
+  `watermark_queue` ficam clássicas.
+- `Tools/utils/reliable_consumer.py` e `projects/utils/rabbit_mq.js`: declaram as filas como
+  quorum; um handler que falha passa a fazer `nack` com requeue, limitado pela policy (a decisão
+  R2-b definitiva).
+- `projects/utils/dead_letter.js` (novo) e `projects/app.js`: consumidor da `picturas.dlq`, que
+  identifica o processo (`correlationId` ou `messageId`), envia `process-error` ou `preview-error`
+  ao utilizador, apaga o processo e só depois confirma a mensagem; uma falha transitória volta a
+  ser tentada após 5 s em vez de a mensagem ser descartada. Garantia at-least-once (pode haver
+  avisos repetidos).
+- `README.md`: secção sobre as reentregas, a DLQ e a migração única do volume `rabbitmq_data`, a
+  coordenar com o grupo.
+- Testes: unitários atualizados e `dead_letter.test.js` (novo).
+- Verificações feitas pelo agente: testes unitários (Python 11/11, Node 11/11); policy validada
+  num RabbitMQ 4.0.5 temporário e isolado (6 entregas e depois `picturas.dlq`, com
+  `x-death: delivery_limit`); migração aprovada executada na máquina de desenvolvimento do Sérgio,
+  com todas as verificações a zero (mensagens, processos, ligações) e remoção apenas do volume
+  `picturas_rabbitmq_data`; teste de integração na stack (mensagem venenosa na `border_queue`:
+  6 entregas, consumida da `picturas.dlq` pelo `projects`); `run-all.sh` com `ALL PASSED` e código
+  0 (`projects` 19/19, worker de vídeo 90 e 1 ignorado, regressão 30/30). Verificação preliminar
+  `dev` (1 repetição cada): F1 1/1, F2 1/1 e F3 3/3 concluídos, sem duplicados e sem mensagens na
+  DLQ.
+
+**Limitações e observações:**
+- A primeira execução do `run-all.sh` deu 29/30: o `bg_remove_ai` descarrega o modelo `u2net`
+  (176 MB) no primeiro pedido depois de o contentor ser recriado, e excedeu o tempo limite com a
+  rede lenta. Repetido o caso isolado (1/1) e depois o `run-all.sh` completo (`ALL PASSED`).
+- A migração tem de ser feita uma vez em cada máquina (incluindo a de referência), coordenada com
+  o António e os Brunos; uma nova fila de trabalho (por exemplo, a da Elasticidade) também tem de
+  ser quorum e estar coberta pela policy.
+- Uma mensagem na DLQ sem processo associado só fica registada no log. A `watermark` não está
+  coberta.
+- O teste de integração da DLQ demonstrou o encaminhamento e o consumo da mensagem, mas não a
+  entrega ponta a ponta de um `process-error` a um utilizador com processo associado (coberta
+  apenas pelos testes unitários do `dead_letter.js`).
+- Os resultados `dev` são preliminares (portátil do Sérgio); a validação fica para a medição final
+  na máquina de referência.
+
+**Validação (Sérgio):** Aprovei o plano do DA-R3 e as decisões R3-a a R3-e. Autorizei a
+migração exclusivamente no meu ambiente de desenvolvimento, condicionada às verificações de
+segurança, e revi o relatório da migração e dos testes apresentados pelo agente. Os testes
+unitários, o teste de integração da DLQ, o `run-all.sh` e as verificações preliminares F1, F2
+e F3 foram executados pelo agente. A primeira execução da regressão falhou devido ao
+descarregamento inicial do modelo `u2net`; a segunda execução completa terminou com
+`ALL PASSED` e código 0. A migração nas máquinas dos colegas continua pendente de
+coordenação.

@@ -10,6 +10,9 @@
 // - A consumed message is acked only after its (async) handler has finished and
 //   the publishes made meanwhile are confirmed, so a result is never acked before
 //   the next pipeline step is safely on the broker.
+// - A handler that fails gets its message requeued (DA-R3): the work queues are
+//   quorum queues whose policy limits the deliveries and then dead-letters the
+//   message to picturas.dlq.
 const amqp = require('amqplib');
 
 const rabbit_host = process.env.RABBITMQ_HOST;
@@ -27,7 +30,7 @@ let state = null;        // { conn, pubCh } while connected
 let connecting = null;   // pending connect() promise
 let backoff_ms = 1000;
 const pending = [];      // publishes waiting for a connection
-const consumers = [];    // { queue, callback } to (re)start on every connection
+const consumers = [];    // { queue, callback, queueType } to (re)start on every connection
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -85,10 +88,11 @@ function send_rabbit_msg(msg, queue) {
     });
 }
 
-async function startConsumer(s, { queue, callback }) {
+async function startConsumer(s, { queue, callback, queueType }) {
     const ch = await s.conn.createChannel();
     await ch.assertExchange(exchange, 'direct', { durable: true });
-    await ch.assertQueue(queue, { durable: true });
+    // the type must match rabbitMQ/definitions.json, or RabbitMQ refuses the declaration
+    await ch.assertQueue(queue, { durable: true, arguments: { 'x-queue-type': queueType } });
     await ch.consume(queue, async (msg) => {
         if (msg == null) return;
         let failed = null;
@@ -101,11 +105,12 @@ async function startConsumer(s, { queue, callback }) {
             // every publish the handler made is on the broker before the ack
             await s.pubCh.waitForConfirms();
             if (failed) {
-                // Same outcome as before DA-R2 (the message was always acked): no
-                // redelivery loop. The failure policy is decided separately (R2-b).
-                console.error(`[rabbit] handler failed on ${queue}: ${failed.message}`);
+                // requeue; the delivery limit of the queue policy bounds the retries
+                console.error(`[rabbit] handler failed on ${queue}, requeueing: ${failed.message}`);
+                ch.nack(msg, false, true);
+            } else {
+                ch.ack(msg);
             }
-            ch.ack(msg);
         } catch (err) {
             // connection lost: no ack, the broker redelivers the message
             console.error(`[rabbit] message on ${queue} left for redelivery: ${err.message}`);
@@ -113,8 +118,8 @@ async function startConsumer(s, { queue, callback }) {
     }, { noAck: false });
 }
 
-function read_rabbit_msg(queue, callback) {
-    const c = { queue, callback };
+function read_rabbit_msg(queue, callback, { queueType = 'quorum' } = {}) {
+    const c = { queue, callback, queueType };
     consumers.push(c);
     if (state) startConsumer(state, c).catch((err) => console.error(`[rabbit] consume failed: ${err.message}`));
     else connect();

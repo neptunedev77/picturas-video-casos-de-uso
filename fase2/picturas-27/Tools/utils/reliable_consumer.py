@@ -19,10 +19,11 @@ Guarantees, compared with the old auto-ack consumer:
 - SIGTERM: stop taking jobs, wait up to `grace_s` for the current one,
   otherwise requeue it, then return so the process can exit with code 0.
 
-A handler that raises is treated as a poison message: it is rejected
-without requeue (no infinite redelivery loop). Expected failures must be
-reported by the handler itself, as an error reply. If the reply itself
-cannot be published, the job is requeued so that it is done again.
+A handler that raises gets its message requeued (DA-R3): the work queues are
+quorum queues whose policy limits the deliveries and then dead-letters the
+message to picturas.dlq, so a poison message cannot loop forever. Expected
+failures must be reported by the handler itself, as an error reply. If the
+reply itself cannot be published, the job is requeued as well.
 """
 import os
 import signal
@@ -34,6 +35,8 @@ from pika.exceptions import AMQPChannelError, AMQPConnectionError
 from pika.exchange_type import ExchangeType
 
 EXCHANGE = "picturas"
+# must match rabbitMQ/definitions.json, or RabbitMQ refuses the declaration
+QUEUE_ARGUMENTS = {"x-queue-type": "quorum"}
 PERSISTENT = pika.BasicProperties(delivery_mode=2)
 
 # under Docker's default 10 s stop timeout, so the requeue happens before SIGKILL
@@ -138,7 +141,8 @@ class ReliableConsumer:
         self._channel = self._connection.channel()
         self._channel.exchange_declare(exchange=EXCHANGE, exchange_type=ExchangeType.direct,
                                        durable=True)
-        self._channel.queue_declare(queue=self._queue, durable=True)
+        self._channel.queue_declare(queue=self._queue, durable=True,
+                                    arguments=QUEUE_ARGUMENTS)
         self._channel.queue_bind(queue=self._queue, exchange=EXCHANGE, routing_key=self._queue)
         self._channel.basic_qos(prefetch_count=self._prefetch)
         self._consumer_tag = self._channel.basic_consume(
@@ -191,8 +195,8 @@ class ReliableConsumer:
             outcome = "requeue"
         except Exception as e:  # noqa: BLE001 - poison message
             self._log(f"[consumer:{self._queue}] handler failed ({e!r}), "
-                      f"message rejected", flush=True)
-            outcome = "reject"
+                      f"requeueing (bounded by the delivery limit)", flush=True)
+            outcome = "requeue"
 
         def _settle():
             if self._job != (method.delivery_tag, generation) \

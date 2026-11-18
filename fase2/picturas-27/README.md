@@ -387,6 +387,41 @@ Named Docker volumes: `user_data`, `project_data`, `subscription_data`, `image_d
 `seaweedfs_data`, `rabbitmq_data`, `whisper_models` (speech model weights). Database dumps are
 written to the host at `./backups/mongo` (git-ignored). `docker compose down -v` deletes every volume — the dumps survive.
 
+### Message delivery, retries and the dead-letter queue
+
+Work messages are delivered at least once: workers and `projects` ack a message only after
+handling it, so a job interrupted by a crash or a restart is delivered again (a job may
+therefore be processed twice). The 17 work queues (`project_queue`, `video_queue` and the
+image tool queues) are **quorum queues**. A policy in `rabbitMQ/definitions.json`
+(`work-queues-dead-letter`) limits each message to **5 redeliveries** (`delivery-limit`);
+after that it is dead-lettered through the `picturas.dlx` exchange to the **`picturas.dlq`**
+queue. `projects` consumes `picturas.dlq` and reports the job to its user with the existing
+`process-error` (or `preview-error`) event, then removes the process. `ws_queue` and
+`watermark_queue` stay classic queues and are not covered.
+
+To change the limit, edit `delivery-limit` in the policy and recreate the broker as below
+(or update the policy at runtime with `rabbitmqctl set_policy`).
+
+#### One-time migration of existing RabbitMQ data
+
+Changing a queue's type or arguments is refused by RabbitMQ (`PRECONDITION_FAILED`), and
+the definitions are only applied to queues that do not exist yet. A stack created before
+this change keeps classic queues in the `rabbitmq_data` volume, so that volume must be
+recreated **once**. It only holds queue state and in-flight messages (users, queues and
+bindings come back from `definitions.json`); databases, files and images are not touched.
+**Coordinate it with the whole group** (the reference machine included), since every
+checkout needs the same broker definitions; any new work queue must also be a quorum queue
+matched by the policy.
+
+```bash
+# 1. make sure no job is running: every queue must show 0 messages (RabbitMQ UI :15672)
+docker compose stop rabbitmq
+docker compose rm -f rabbitmq
+docker volume rm picturas_rabbitmq_data      # only this volume; never `down -v`
+docker compose build rabbitmq projects       # plus every service built from ./Tools
+docker compose up -d
+```
+
 ### Scaling
 
 - Run more instances of a busy tool: `docker compose up -d --scale brightness_tool=3`

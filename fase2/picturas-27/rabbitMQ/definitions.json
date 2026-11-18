@@ -38,35 +38,45 @@
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "border_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "brightness_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "contrast_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "cut_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "scale_queue",
@@ -80,70 +90,90 @@
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "binarization_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "rotate_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "resize_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "cut_ai_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "upgrade_ai_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "bg_remove_ai_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "text_ai_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "obj_ai_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "people_ai_queue",
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "watermark_queue",
@@ -157,7 +187,9 @@
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
         },
         {
             "name": "ws_queue",
@@ -171,7 +203,18 @@
             "vhost": "/",
             "durable": true,
             "auto_delete": false,
-            "arguments": {}
+            "arguments": {
+                "x-queue-type": "quorum"
+            }
+        },
+        {
+            "name": "picturas.dlq",
+            "vhost": "/",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {
+                "x-queue-type": "classic"
+            }
         }
     ],
     "exchanges": [
@@ -179,6 +222,15 @@
             "name": "picturas",
             "vhost": "/",
             "type": "direct",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "picturas.dlx",
+            "vhost": "/",
+            "type": "fanout",
             "durable": true,
             "auto_delete": false,
             "internal": false,
@@ -345,6 +397,29 @@
             "destination_type": "queue",
             "routing_key": "video_queue",
             "arguments": {}
+        },
+        {
+            "source": "picturas.dlx",
+            "vhost": "/",
+            "destination": "picturas.dlq",
+            "destination_type": "queue",
+            "routing_key": "",
+            "arguments": {}
+        }
+    ],
+    "policies": [
+        {
+            "vhost": "/",
+            "name": "work-queues-dead-letter",
+            "pattern": "^(project|border|brightness|contrast|cut|saturation|binarization|rotate|resize|cut_ai|upgrade_ai|bg_remove_ai|text_ai|obj_ai|people_ai|expand_ai|video)_queue$",
+            "apply-to": "quorum_queues",
+            "priority": 0,
+            "definition": {
+                "dead-letter-exchange": "picturas.dlx",
+                "dead-letter-strategy": "at-least-once",
+                "overflow": "reject-publish",
+                "delivery-limit": 5
+            }
         }
     ]
 }

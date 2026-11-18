@@ -6,7 +6,7 @@ const { EventEmitter } = require('node:events');
 const rabbit = require('../utils/rabbit_mq');
 
 function fakeBroker({ failFirstConnects = 0, confirmFails = false } = {}) {
-  const broker = { connects: 0, published: [], acks: [], log: [], consumers: {} };
+  const broker = { connects: 0, published: [], acks: [], nacks: [], log: [], consumers: {}, queueTypes: {} };
   broker.connect = async () => {
     broker.connects += 1;
     if (broker.connects <= failFirstConnects) throw new Error('broker down');
@@ -26,9 +26,10 @@ function fakeBroker({ failFirstConnects = 0, confirmFails = false } = {}) {
     });
     conn.createChannel = async () => ({
       assertExchange: async () => {},
-      assertQueue: async () => {},
+      assertQueue: async (queue, opts) => { broker.queueTypes[queue] = opts.arguments['x-queue-type']; },
       consume: async (queue, onMsg, opts) => { broker.consumers[queue] = { onMsg, opts }; },
       ack: (msg) => { broker.acks.push(msg.id); broker.log.push(`ack:${msg.id}`); },
+      nack: (msg, allUpTo, requeue) => { broker.nacks.push([msg.id, requeue]); },
     });
     return conn;
   };
@@ -67,6 +68,7 @@ test('a result is acked only after its async handler and its publishes are done'
   });
   await until(() => broker.consumers.project_queue);
   assert.strictEqual(broker.consumers.project_queue.opts.noAck, false);
+  assert.strictEqual(broker.queueTypes.project_queue, 'quorum');   // as in definitions.json
   broker.deliver('project_queue', 'm1');
   await until(() => broker.acks.length === 1);
   assert.deepStrictEqual(broker.log, ['publish:contrast_queue', 'confirmed', 'ack:m1']);
@@ -82,14 +84,23 @@ test('no ack when the publishes cannot be confirmed (left for redelivery)', asyn
   assert.deepStrictEqual(broker.acks, []);
 });
 
-test('a failing handler does not cause a redelivery loop (behaviour kept from before DA-R2)', async () => {
+test('a failing handler gets its message requeued (bounded by the queue delivery limit)', async () => {
   const broker = fakeBroker();
   rabbit._setConnectForTests(broker.connect);
   rabbit.read_rabbit_msg('project_queue', async () => { throw new Error('boom'); });
   await until(() => broker.consumers.project_queue);
   broker.deliver('project_queue', 'm1');
-  await until(() => broker.acks.length === 1);
-  assert.deepStrictEqual(broker.acks, ['m1']);
+  await until(() => broker.nacks.length === 1);
+  assert.deepStrictEqual(broker.nacks, [['m1', true]]);
+  assert.deepStrictEqual(broker.acks, []);
+});
+
+test('the dead-letter queue can be consumed as a classic queue', async () => {
+  const broker = fakeBroker();
+  rabbit._setConnectForTests(broker.connect);
+  rabbit.read_rabbit_msg('picturas.dlq', async () => {}, { queueType: 'classic' });
+  await until(() => broker.consumers['picturas.dlq']);
+  assert.strictEqual(broker.queueTypes['picturas.dlq'], 'classic');
 });
 
 test('publishes made while the broker is down are sent after reconnecting', async () => {
