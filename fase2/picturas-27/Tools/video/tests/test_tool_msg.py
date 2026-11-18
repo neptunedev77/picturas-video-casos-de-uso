@@ -74,16 +74,18 @@ def test_success_reply_is_published_to_project_queue_unchanged(tool):
     }
 
 
-def test_error_reply_keeps_its_current_format(tool):
-    # format kept as in the base on purpose: the error replies are fixed in a later step
+def test_error_reply_is_correlated_with_the_request_and_carries_msg(tool):
+    # same id convention as the success reply: correlationId is the request's messageId,
+    # which is how projects finds the process; error.msg is the field projects reads
     def handler(ch, method, properties, body):
         tool.send_msg("msg-1", "border-0-msg-1", "t", "error", 1.0, None,
                       err_code=1201, err_msg="boom", og_img_uri="/images/in.png")
 
     with pytest.raises(SystemExit):
         tool.read_msg(handler)
-    _, msg = FakeConsumer.instances[0].published[0]
+    routing_key, msg = FakeConsumer.instances[0].published[0]
+    assert routing_key == "project_queue"
     assert msg["status"] == "error"
-    assert (msg["messageId"], msg["correlationId"]) == ("msg-1", "border-0-msg-1")
-    assert msg["error"] == {"code": 1201, "message": "boom",
+    assert (msg["messageId"], msg["correlationId"]) == ("border-0-msg-1", "msg-1")
+    assert msg["error"] == {"code": 1201, "message": "boom", "msg": "boom",
                             "details": {"inputFileURI": "/images/in.png"}}

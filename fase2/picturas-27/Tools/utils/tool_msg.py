@@ -69,13 +69,14 @@ class ToolMSG:
                     raise Exception("Make sure, in case of error status, err_code, err_msg and og_img_uri are not None")
                 
                 msg = {
-                    "messageId": msg_id,
-                    "correlationId": resp_msg_id,
+                    "messageId": resp_msg_id,
+                    "correlationId": msg_id,
                     "timestamp": timestamp,
                     "status": status,
                     "error": {
                         "code": err_code,
                         "message": err_msg,
+                        "msg": err_msg,  # the orchestrator reads error.msg
                         "details": {
                             "inputFileURI": og_img_uri
                         }

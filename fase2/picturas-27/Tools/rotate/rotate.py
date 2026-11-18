@@ -46,7 +46,7 @@ class Rotate:
             processing_time = (cur_timestamp - timestamp).total_seconds() * 1000
             cur_timestamp = cur_timestamp.isoformat()
 
-            self._tool_msg.send_msg(msg_id, resp_msg_id, cur_timestamp, 'error', processing_time, None, self._codes['wrong_procedure'], "The procedure received does not fit into this tool", img_path)
+            self._tool_msg.send_msg(msg_id, resp_msg_id, cur_timestamp, 'error', processing_time, None, err_code=self._codes['wrong_procedure'], err_msg="The procedure received does not fit into this tool", og_img_uri=img_path)
             return
 
         try:
@@ -62,7 +62,7 @@ class Rotate:
             processing_time = (cur_timestamp - timestamp).total_seconds() * 1000
             cur_timestamp = cur_timestamp.isoformat()
             
-            self._tool_msg.send_msg(msg_id, resp_msg_id, cur_timestamp, 'error', processing_time, None, self._codes['error_processing'], "An error occurred while processing the image", img_path)
+            self._tool_msg.send_msg(msg_id, resp_msg_id, cur_timestamp, 'error', processing_time, None, err_code=self._codes['error_processing'], err_msg="An error occurred while processing the image", og_img_uri=img_path)
 
     def exec(self, args):
         while True:

@@ -93,7 +93,8 @@ implementar as etapas 2 e 3.
 - A ferramenta `watermark` é uma imagem externa e fica fora do DA-R1.
 - Diagnóstico para uma etapa posterior da Fiabilidade, ainda não corrigido: em 12 das 15
   ferramentas de imagem, a resposta de erro chama `send_msg` com argumentos posicionais desalinhados e
-  `tool_msg.py` lança uma exceção em vez de enviar o erro ao utilizador.
+  `tool_msg.py` lança uma exceção em vez de enviar o erro ao utilizador. Corrigido depois:
+  ver a entrada «DA-R5 (parte 1)».
 
 **Validação (Sérgio):** Analisei e aprovei o plano da DA-R1 e as decisões D1–D3. Acompanhei a
 revisão guiada da etapa 1 e autorizei a correção do problema identificado e a simplificação do
@@ -112,3 +113,52 @@ correção das permissões do `test_tool_msg.py`. Analisei o relatório e aprove
 funcionais apresentados pelo agente (`run-all.sh`, SIGTERM, F2 e F6). Decidi não reconstruir
 a versão original no meu computador para comparar a legendagem, deixando a comparação para a
 medição final na máquina de referência.
+
+---
+
+## 2026-11-18 · Fiabilidade · Claude Code (Opus 5.5)
+
+**Tarefa:** DA-R5 (parte 1) — correção das respostas de erro das ferramentas de imagem. A
+idempotência (restante DA-R5) fica para depois, conforme o plano do grupo.
+
+**Prompt:** Pedido de um plano curto para corrigir as respostas de erro das ferramentas, seguido
+da aprovação das decisões E1 (argumentos nomeados nas chamadas afetadas, confirmando caso a caso
+o caminho da imagem original), E2 (identificadores com a mesma convenção da resposta de sucesso e
+`error.msg`, mantendo `error.message`) e E3 (este registo).
+
+**Resultado (feito pelo agente):**
+- Diagnóstico por análise estática (AST) das 30 chamadas de erro das 15 ferramentas: 23 chamadas
+  em 12 ferramentas passavam os argumentos de erro por posição, desalinhados (o código de erro caía
+  em `type` e o `og_img_uri` ficava vazio), e o `ToolMSG` lançava uma exceção em vez de responder.
+- `Tools/utils/tool_msg.py`: na resposta de erro, `messageId`/`correlationId` passam a seguir a
+  convenção da resposta de sucesso (o `projects` encontra o processo pelo `correlationId`); passa
+  a enviar `error.msg`, o campo lido pelo `projects`, mantendo `error.message`.
+- 12 ferramentas (`bg_remove_ai`, `binarization`, `border`, `brightness`, `contrast`, `cut`,
+  `cut_ai`, `resize`, `rotate`, `saturation`, `text_ai`, `upgrade_ai`): as 23 chamadas passam
+  `err_code=`, `err_msg=` e `og_img_uri=img_path` por nome. Em todas, `img_path` é o
+  `inputImageURI` da própria função. Em `cut.py`, que passava duas mensagens, ficou
+  `err_msg=str(e)`, como nas outras ferramentas que usam a exceção. As restantes 7 chamadas já
+  estavam corretas e não foram alteradas.
+- Testes: `test_tool_msg.py` passa a exigir os identificadores corretos e o `error.msg`;
+  `test_tool_error_calls.py` (novo) verifica por AST que nenhuma chamada de erro fica desalinhada
+  (falha no código anterior, passa no corrigido; é ignorado no contentor, que não tem o código das
+  ferramentas, e corrido à parte no WSL).
+- Verificações feitas pelo agente: teste AST e testes do `ToolMSG` no WSL (4/4); 16 imagens
+  reconstruídas; `run-all.sh` com `ALL PASSED` e código 0 (`projects` 8/8, worker de vídeo 90 e
+  1 ignorado, regressão 30/30). Verificação preliminar `dev` (1 repetição): F5 com os 2 erros
+  comunicados ao cliente em ≤ 10 s (imagem 0,18 s, código 1501; vídeo 0,32 s, código 2003), R-4
+  de 100 % (baseline: 50 %); F1 continua a recuperar (10/10 resultados).
+
+**Limitações e observações:**
+- Alteração visível prevista no plano: os erros das ferramentas de imagem passam a chegar à
+  interface.
+- A ferramenta `watermark` é uma imagem externa e não foi alterada.
+- A primeira execução do `run-all.sh` falhou porque o teste AST não era ignorado no contentor
+  (encontrava ficheiros que não são ferramentas); corrigida a condição do teste, sem tocar no
+  código das ferramentas.
+- Os resultados `dev` são preliminares (portátil do Sérgio); a validação fica para a medição final
+  na máquina de referência.
+
+**Validação (Sérgio):** Aprovei as decisões E1, E2 e E3, acompanhei a implementação e revi o
+relatório final e os resultados apresentados pelo agente: o `run-all.sh` e as verificações
+preliminares F5 e F1, todos executados pelo agente.
