@@ -1,6 +1,7 @@
 import json
+import sys
 
-from .rabbit_mq import Rabbit_MQ
+from .reliable_consumer import ReliableConsumer
 
 """
 # Callback example for those who need it
@@ -33,10 +34,15 @@ class ToolMSG:
         self._microservice_name = microservice_name
         self._queue = self.queues[tool_name]
         self._proj_queue = self.queues['project']
-        self._rabbit_mq = Rabbit_MQ(rabbit_host, rabbit_port, username, password)
+        self._rabbit = (rabbit_host, rabbit_port, username, password)
+        self._consumer = None
     
     def read_msg(self, callback):
-        self._rabbit_mq.read_rabbit_msg(self._queue, callback)
+        # manual ack, heartbeats and graceful SIGTERM (DA-R1); returns only on SIGTERM
+        self._consumer = ReliableConsumer(self._queue, callback, *self._rabbit)
+        self._consumer.run()
+        # stopped: exit instead of going back to the tool's consume loop
+        sys.exit(0)
 
     def send_msg(self, msg_id, resp_msg_id, timestamp, status, processingTime, new_img_uri, type="image", err_code=None, err_msg=None, og_img_uri=None):
 
@@ -84,6 +90,6 @@ class ToolMSG:
                 
         msg = json.dumps(msg)    
             
-        self._rabbit_mq.send_rabbit_msg(msg, self._proj_queue)
+        self._consumer.publish(self._proj_queue, msg)
         
     
