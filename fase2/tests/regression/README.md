@@ -28,5 +28,12 @@ every case twice. Outputs are compared by SHA-256; `img-watermark` was not byte-
 between the two runs, so it is compared by metadata (dimensions, streams). `golden/files/`
 keeps the image and text outputs for visual inspection.
 
+**Platform.** The golden outputs were captured on the reference machine (Ubuntu, x86-64).
+On another CPU architecture, e.g. a Mac with Apple Silicon (arm64), ffmpeg encodes and the AI
+models produce slightly different bytes, so the video cases, the mixed project and
+`bg_remove_ai`, `upgrade_ai` and `obj_ai` fail even on the untouched base (19/30 on arm64).
+There, compare a branch with `main` run on the same machine: the same cases must pass. Only a
+run on the reference machine can show 30/30. The suite also needs `ffprobe` on the host.
+
 **Never re-capture the golden outputs after a change** (`--capture` is only for the base):
 a failing case means the change altered a result, which must be fixed or justified.

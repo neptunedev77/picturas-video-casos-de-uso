@@ -314,8 +314,8 @@ Fica para a análise do relatório.
 
 ## Estado
 
-As DA-R1 a DA-R5 estão implementadas no ramo `feat/reliability`, incluindo a correção B
-(`25d868b`). A revisão do Diogo está no ramo `feat/reliability-review` (`5101189`, `a0ed568`), com
-PR para `feat/reliability`. Falta: o merge da revisão, o PR
-para `main`, a migração do RabbitMQ nas máquinas do grupo e as medições oficiais na máquina de
-referência.
+As DA-R1 a DA-R5, a correção B (`25d868b`) e a revisão do Diogo (`5101189`, `a0ed568`) estão na
+`main` desde `cbd1290` (merge fast-forward de `feat/reliability-review`). O `AGENTS.md` descreve
+as novas regras de mensagens. Falta: a migração do RabbitMQ nas máquinas do grupo, a confirmação
+da regressão 30/30 e as medições oficiais (`after-reliability`) na máquina de referência, e
+acordar com o António o cálculo do R-4 do F6.

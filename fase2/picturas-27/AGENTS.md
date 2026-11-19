@@ -50,6 +50,17 @@ Behind the gateway:
   MP4/H.264 + AAC, keeping the audio. It reports progress as `video-progress` events on
   `ws_queue`, acks only at the end and leaves no partial output on failure. Preview mode
   renders only the first `VIDEO_PREVIEW_SECONDS` (3 s).
+- **Message reliability** (phase 2): every worker, image tools and video, consumes through
+  `Tools/utils/reliable_consumer.py` (manual ack after the reply is confirmed by the broker,
+  heartbeats while a job runs, reconnection, SIGTERM: stop taking jobs, wait up to
+  `WORKER_SHUTDOWN_GRACE_S` (8 s) for the current one, otherwise requeue it). `projects` keeps
+  one connection, publishes persistent confirmed messages and acks only after its handler
+  (`projects/utils/rabbit_mq.js`). Work queues are quorum queues limited to 5 deliveries by the
+  `work-queues-dead-letter` policy, then dead-lettered to `picturas.dlq`, which `projects`
+  reports to the user (`utils/dead_letter.js`). A watchdog (`utils/watchdog.js`) fails a step
+  with no answer in time (image 30 s, video max(120 s, duration), `WATCHDOG_*` env vars). Both
+  refund the reserved operations once (`utils/refund.js`). Replies are handled idempotently
+  (`utils/idempotency.js`), because redeliveries happen.
 
 ### Media types
 
@@ -86,6 +97,10 @@ Replacing an older (e.g. Phase 1) checkout: it shares the Compose project name `
 its volumes, whose S3 layout (one bucket per user) is incompatible. Run
 `docker compose down -v --remove-orphans` once before the first `up`.
 
+A stack created before the quorum queues keeps classic queues in the `rabbitmq_data` volume and
+RabbitMQ refuses them (`PRECONDITION_FAILED`). Recreate only that volume, once, as the README
+explains ("One-time migration of existing RabbitMQ data"); never `down -v` for this.
+
 Video worker tests run on the host (needs ffmpeg/ffprobe on the PATH, no Docker):
 
 ```bash
@@ -108,7 +123,9 @@ cd Tools/video && python3 -m venv .venv && .venv/bin/pip install -r requirements
   unrelated code.
 - Never commit secrets, `.env`, `node_modules/`, generated media or `backups/`.
 - To add a tool: create `Tools/<tool>/` from a simple tool (e.g. `border`), register its queue in
-  `rabbitMQ/definitions.json`, add the service to `docker-compose.yaml`
+  `rabbitMQ/definitions.json` as a **quorum** queue and add it to the regex of the
+  `work-queues-dead-letter` policy (otherwise it has no delivery limit and no DLQ), consume it
+  with `ReliableConsumer`, add the service to `docker-compose.yaml`
   (`depends_on: rabbitmq: service_healthy`, `image_data` volume), then expose it in `projects`
   and in the frontend toolbar.
 
@@ -119,8 +136,12 @@ cd Tools/video && python3 -m venv .venv && .venv/bin/pip install -r requirements
 - Internal service-to-service TLS certificates are expired and not validated
   (`rejectUnauthorized: false`); several secrets are committed. Known issues, not patterns.
 - RabbitMQ consumers must survive broker restarts.
-- The image tools auto-acknowledge messages and swap `messageId`/`correlationId` in their error
-  replies, so their errors do not reach the user.
+- `watermark_tool_ms` is a prebuilt external image: it still uses the old auto-ack consumer and
+  its `watermark_queue` (like `ws_queue`) stays classic, outside the dead-letter policy. A lost
+  watermark job is only caught by the watchdog.
+- The watchdog measures time since dispatch, so time waiting in a long `video_queue` counts
+  towards the deadline. Stopping a worker gives its current job only 8 s before it is requeued
+  and redone from the start: remove idle video replicas when scaling in.
 - The users service answers errors with a non-standard 701 status (including "daily limit
   reached"); `projects` maps that case to 403 before replying.
 - Image/video handling is branched in the orchestrator, PIL effects are duplicated in
