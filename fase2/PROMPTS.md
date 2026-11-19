@@ -281,8 +281,8 @@ sem mexer em `bench/` nem nos golden outputs.
   `bench/` não foi alterado.
 
 **Verificações (agente):** `node --test` do `projects` com 41/41 (35 anteriores e 6 novos); os
-testes novos falham com o código anterior; testes do consumidor Python 14/14. Não corrido:
-`run-all.sh` com a stack (sem Docker no ambiente do agente) nem as falhas F1–F6.
+testes novos falham com o código anterior; testes do consumidor Python 14/14. Não corrido pelo
+agente: `run-all.sh` com a stack (sem Docker no ambiente do agente) nem as falhas F1–F6.
 
 **Limitações:** o F6 passa a dar erro no lote de imagem parado 60 s (prazo de 30 s), que na
 baseline acabava com sucesso aos 59,5 s: o utilizador é avisado, mas tem de repetir o pedido.
@@ -302,7 +302,13 @@ Fica para a análise do relatório.
 - Decidi que a correção da métrica R-4 do F6 é combinada com o António, responsável pelas medições,
   e não feita por nós em `bench/`, para respeitar a regra de não mudar os instrumentos entre a
   baseline e a medição final.
-- Por fazer antes do PR: correr `tests/run-all.sh` com a stack neste ramo.
+- Corri `tests/run-all.sh` com a stack no meu Mac (Apple Silicon, arm64), primeiro na `main` como
+  controlo e depois neste ramo, depois da migração do volume `rabbitmq_data` para filas quorum.
+  Na `main`: `projects` 8/8, worker de vídeo 74/74, regressão 19/30. Neste ramo: `projects` 41/41,
+  worker de vídeo 93 (1 ignorado), regressão 19/30, com os mesmos 11 casos a falhar nos dois
+  (vídeo, `bg_remove_ai`, `upgrade_ai`, `obj_ai`). Estes casos falham por diferenças de bytes entre
+  arm64 e a máquina de referência x86 onde os golden outputs foram capturados, e não por
+  regressão. A regressão 30/30 tem de ser confirmada na máquina de referência.
 
 ---
 
@@ -310,6 +316,6 @@ Fica para a análise do relatório.
 
 As DA-R1 a DA-R5 estão implementadas no ramo `feat/reliability`, incluindo a correção B
 (`25d868b`). A revisão do Diogo está no ramo `feat/reliability-review` (`5101189`, `a0ed568`), com
-PR para `feat/reliability`. Falta: o merge da revisão, `run-all.sh` com a stack depois dele, o PR
+PR para `feat/reliability`. Falta: o merge da revisão, o PR
 para `main`, a migração do RabbitMQ nas máquinas do grupo e as medições oficiais na máquina de
 referência.
