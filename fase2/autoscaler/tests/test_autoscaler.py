@@ -132,6 +132,51 @@ class ObserverTests(unittest.TestCase):
         self.assertEqual(error.exception.code, 2)
         runtime.assert_not_called()
 
+    def test_observe_never_constructs_an_actuator_or_writes_state(self):
+        runtime = Mock(spec=["collect"])
+        runtime.collect.return_value = observations(heavy_ready=10)
+        with patch.object(autoscaler, "Runtime", return_value=runtime), \
+                patch("fase2.autoscaler.actuator.Actuator") as actuator, redirect_stdout(io.StringIO()):
+            self.assertEqual(autoscaler.main(["--mode", "observe", "--once"]), 0)
+        actuator.assert_not_called()
+
+    def test_scale_out_requires_cli_opt_in_and_uses_the_separate_actuator(self):
+        runtime = Mock()
+        report = {"mode": "scale-out", "status": "ok", "actions_executed": 1,
+                  "actuation": {"status": "ready", "ready": True}}
+        output = io.StringIO()
+        with patch.object(autoscaler, "Runtime", return_value=runtime), \
+                patch("fase2.autoscaler.actuator.Actuator") as actuator, redirect_stdout(output):
+            actuator.return_value.step.return_value = (report, {})
+            self.assertEqual(autoscaler.main(["--mode", "scale-out", "--once"]), 0)
+        actuator.return_value.step.assert_called_once()
+        self.assertEqual(json.loads(output.getvalue())["mode"], "scale-out")
+
+    def test_active_degraded_once_returns_nonzero(self):
+        with patch.object(autoscaler, "Runtime"), \
+                patch("fase2.autoscaler.actuator.Actuator") as actuator, redirect_stdout(io.StringIO()):
+            actuator.return_value.step.return_value = ({"status": "degraded"}, {})
+            self.assertEqual(autoscaler.main(["--mode", "scale-out", "--once"]), 1)
+
+    def test_configuration_cannot_silently_enable_actuation(self):
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        data["mode"] = "scale-out"
+        with patch.object(Path, "read_text", return_value=json.dumps(data)), self.assertRaises(ValueError):
+            autoscaler.load_config(CONFIG_PATH)
+
+    def test_compose_path_is_resolved_against_the_config_file(self):
+        config = autoscaler.load_config(CONFIG_PATH)
+        self.assertEqual(config.compose_file, CONFIG_PATH.parents[1] / "picturas-27" / "docker-compose.yaml")
+
+    def test_invalid_actuation_timeouts_are_rejected(self):
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        for name, value in (("actuation_timeout_s", 0), ("readiness_timeout_s", float("nan")),
+                            ("readiness_timeout_s", True), ("compose_file", ""), ("state_dir", 3)):
+            with self.subTest(name=name):
+                variant = {**data, name: value}
+                with patch.object(Path, "read_text", return_value=json.dumps(variant)), self.assertRaises(ValueError):
+                    autoscaler.load_config(CONFIG_PATH)
+
 
 if __name__ == "__main__":
     unittest.main()

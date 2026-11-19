@@ -1,9 +1,11 @@
-# Video autoscaler — observation mode
+# Video autoscaler — observation and guarded scale-out
 
 This block reads RabbitMQ and Docker, evaluates a policy and prints one JSON object per
-observation. It implements no container creation, start, stop, removal or scaling action.
-Only `observe` mode is accepted. The runtime's Docker commands are `ps` and `inspect`;
-RabbitMQ access uses HTTP GET.
+observation. `observe` is still the default and performs no mutations. Explicit
+`--mode scale-out` enables the separate `actuator.py`; scale-in is never executed.
+The observation runtime still allows only Docker `ps` and `inspect`; RabbitMQ access
+uses HTTP GET. The actuator additionally reads the Docker context/daemon identity and
+resolved Compose configuration, and may issue one guarded Compose scale-out request.
 
 Run from the repository root with Python 3.11+ and Docker CLI access. No Python packages
 need to be installed. Use the credentials of the existing broker through environment
@@ -43,10 +45,10 @@ The policy waits while a pool is transitioning or consumers do not match its run
 replicas. Capacity changes, work and degraded observations restart the idle window.
 There is no per-container idle selection in this block.
 
-Cooldowns are tracked for **intentions** in memory. Each new observation reconciles against
+In observation mode, cooldowns are tracked for **intentions** in memory. Each new observation reconciles against
 real containers; unexecuted proposals never become virtual replicas. Restarting the observer
-resets cooldowns and the idle window. Actual actuation and its acknowledgements belong to
-later blocks.
+resets those intention cooldowns and the idle window. Active mode also persists actual
+attempt cooldowns, so restarting an actuator does not bypass them.
 
 ## Observation and failures
 
@@ -66,9 +68,118 @@ Docker counts may be reported with errors, but cannot authorize decisions. Witho
 valid Docker observation, capacity is `null`, never a fabricated zero. Preexisting capacity
 above a limit is reported as degraded and held; it is not silently clamped in the report.
 
-Reports include real counts, metrics, proposed desired counts, reasons, budget, errors and
-`actions_executed: 0`. State and logs stay in memory/stdout; benchmark instruments, inputs
-and golden outputs are unchanged.
+Observation reports include real counts, metrics, proposed desired counts, reasons, budget,
+errors and `actions_executed: 0`. Observation state/logs stay in memory/stdout;
+benchmark instruments, inputs and golden outputs are unchanged in both modes.
+
+## Enable scale-out explicitly
+
+From the repository root, with the existing stack running and credentials set:
+
+```console
+python -B -m fase2.autoscaler.autoscaler --mode observe --once
+python -B -m fase2.autoscaler.autoscaler --mode scale-out --once
+python -B -m fase2.autoscaler.autoscaler --mode scale-out
+```
+
+Stop the active process with Ctrl+C, then run without `--mode`, or with `--mode observe`,
+to return to read-only observation. This does not stop/remove existing workers. The JSON
+configuration must keep `"mode": "observe"`: a config file alone cannot enable mutations.
+`apply` and scale-in modes remain invalid.
+
+`compose_file` is resolved relative to the selected configuration file, not the current
+working directory. The supplied file selects `../picturas-27/docker-compose.yaml`.
+`actuation_timeout_s` (30 s) bounds each Compose call; `readiness_timeout_s` (60 s) marks
+overdue startup as uncertain. Neither timeout frees a pending reservation.
+
+### Safety boundary and startup confirmation
+
+- Approved pools/limits are enforced again by the actuator: normal 1–2, heavy 0–2, total 3.
+- A lock covers observation, reobservation, reservation, Compose and reconciliation. At most
+  one pool gains one replica per step. Only a fresh `scale_out` decision can invoke Compose.
+- The Docker context is pinned and the daemon ID is checked. The Compose project, file and
+  directory are explicit; only `video_tool` or `video_heavy_tool` can be targeted.
+- Resolved Compose must preserve image, queue, CPU/RAM limits, network, volumes and broker
+  dependency. Existing containers must have matching Compose file/directory labels.
+- All existing video containers must be running and stable before an addition. Stopped
+  containers block actuation too: otherwise Compose could restart/remove an unexpected
+  container while reconciling its absolute target. Fix such deployment state separately.
+- The only mutating command is `compose up -d --no-deps --no-recreate --no-build --pull never
+  --scale SERVICE=N SERVICE`. Dependencies, other services, builds, pulls, removals and
+  explicit scale-in are outside this actuator. Existing IDs must remain present.
+  The subprocess environment explicitly disables `COMPOSE_REMOVE_ORPHANS`, including
+  when the parent shell or an environment file enables automatic orphan removal.
+- A successful command is **not** readiness. Confirmation requires exactly one additional
+  container ID in the requested pool, its running state, and the expected +1 consumers on
+  that pool's RabbitMQ queue. This consumer check is aggregate, not a per-connection identity
+  check. Pending startup is revisited by the normal observation loop, without another create.
+- A reservation not represented by an occupied Docker container counts as one slot.
+  A visible starting/running/paused container already occupies its slot and is not counted
+  twice. No observation error authorizes capacity or releases a reservation.
+
+Active reports add `actions_attempted`, `actuation` and `occupied_with_reservations`.
+`actions_executed` counts Compose calls returning zero in that step, **not** ready replicas.
+Check `actuation.ready` and `actuation.container_id`. Pending valid observations can exit
+`--once` with code 0 without readiness; blocked/uncertain/failed steps exit with code 1.
+Further invocations resume reconciliation from the journal.
+
+### Persistent state and uncertain operations
+
+An atomic, fsynced JSON journal records the reservation **before** Docker is invoked. Its
+key combines the daemon ID and Compose project. Defaults:
+
+- Windows: `%LOCALAPPDATA%/picturas-autoscaler/`;
+- POSIX: `~/.local/state/picturas-autoscaler/`.
+
+Optional `state_dir` selects a directory relative to the configuration file. All actuators
+for the same daemon/project **must share the same directory and OS lock namespace**. OS
+locks are released on process death; lock files are kept to avoid inode races. No database,
+media volume or model volume is used. `observe` does not create this directory.
+
+A timeout, nonzero Compose result, missing container, exited new container, or absent
+consumer keeps the operation pending/uncertain and blocks further mutations in both pools.
+Only a missing-executable launch error releases the reservation immediately; other
+OS/I/O errors keep it uncertain because the CLI may already have sent the request.
+Cooldown still applies. Once valid observations establish the exact new running capacity
+and consumer count, reconciliation can finish even after a CLI timeout or process restart.
+
+If an operation never becomes observable, it intentionally stays blocked rather than
+blindly retrying after a TTL. Stop all actuators, inspect both pools and the journal IDs,
+confirm no old Compose process/request can still create capacity, and reconcile the
+deployment before an operator archives/resets the journal. Do not delete it merely because
+a timeout elapsed. Corrupt journals and backwards wall clocks also block mutations.
+
+This is a single-host controller. Locks cannot coordinate separate hosts, OS users with
+different state directories, or manual/external scale commands. Use one designated
+controller/shared state location and prohibit concurrent deployment changes while active.
+Docker limits are preserved but do not prove the host has spare RAM/CPU. Whisper is loaded
+lazily on the first transcription, so an available consumer is not a warmed speech model.
+
+## Real Docker validation (not performed by unit tests)
+
+Read-only preflight, from the repository root:
+
+```console
+docker info
+docker compose -p picturas -f fase2/picturas-27/docker-compose.yaml config --quiet
+docker compose -p picturas -f fase2/picturas-27/docker-compose.yaml ps -a video_tool video_heavy_tool
+python -B -m fase2.autoscaler.autoscaler --mode observe --once
+```
+
+Ensure this stack was deployed from that exact Compose directory/file, workers are stable,
+the image is already built, the queues retain their quorum/DLQ policy, and the host has room
+for up to three workers (each capped at 2 CPUs/3 GiB). With deliberate existing test load,
+run `--mode scale-out` in one terminal and compare before/after container IDs, labels,
+mounts, network, resource limits, queue consumers and successful job completion. Verify
+repeated steps never exceed 3, `--mode observe` performs no further changes, and queued
+startup/consumer delays do not cause duplicate creates.
+
+Use the existing instruments in a separate `dev` campaign, never overwrite `baseline`:
+on the prepared POSIX benchmark host, `fase2/bench/run-measurements.sh dev 1 S1 S2 S3`.
+The existing campaign recovery can start stopped workers: ensure none exist before the
+run and do not run concurrent recovery/deployment commands during actuator safety tests.
+Run the existing reliability/API regression suite afterwards. No scale-in or post-burst
+memory reduction is promised in this block. Never delete volumes for these validations.
 
 ## Unit tests
 

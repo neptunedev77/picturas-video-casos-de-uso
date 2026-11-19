@@ -106,6 +106,8 @@ class Runtime:
         self.username, self.password = username, password
         self._run, self._http_get = command_runner, http_get
         self._last_replicas = None
+        self.inventory = None
+        self.docker_context = None
 
     def _docker(self, arguments):
         # This adapter exposes only the two read operations needed by this block.
@@ -113,7 +115,8 @@ class Runtime:
             raise ReadError("Only Docker ps and inspect are allowed")
         try:
             result = self._run(
-                ["docker", *arguments], capture_output=True, text=True,
+                ["docker", *(["--context", self.docker_context] if self.docker_context else []),
+                 *arguments], capture_output=True, text=True,
                 encoding="utf-8", timeout=self.config.timeout_s, check=False,
             )
         except (OSError, subprocess.SubprocessError) as error:
@@ -122,7 +125,7 @@ class Runtime:
             raise ReadError(f"Docker {arguments[0]} failed: {result.stderr.strip()}")
         return result.stdout
 
-    def read_replicas(self):
+    def read_inventory(self):
         identifiers, services = [], {}
         for pool in self.config.policy.pools:
             output = self._docker([
@@ -138,7 +141,7 @@ class Runtime:
         if len(set(identifiers)) != len(identifiers):
             raise ReadError("Duplicate containers returned for distinct pools")
         if not identifiers:
-            return {pool.name: ReplicaCounts() for pool in self.config.policy.pools}
+            return []
         try:
             payload = json.loads(self._docker(["inspect", *identifiers]))
         except (ValueError, TypeError) as error:
@@ -157,7 +160,16 @@ class Runtime:
             if not isinstance(labels, dict) or labels.get("com.docker.compose.project") != self.config.project \
                     or labels.get("com.docker.compose.service") != services[container["Id"]]:
                 raise ReadError("Docker inspect labels do not match the requested pools")
-        return parse_containers(payload, self.config.project, self.config.policy.pools)
+        parse_containers(payload, self.config.project, self.config.policy.pools)
+        return [c for c in payload if
+                str(c["Config"]["Labels"].get("com.docker.compose.oneoff", "false")).lower() != "true"]
+
+    def read_replicas(self):
+        self.inventory = None
+        inventory = self.read_inventory()
+        counts = parse_containers(inventory, self.config.project, self.config.policy.pools)
+        self.inventory = inventory
+        return counts
 
     def read_queues(self):
         if not self.password:

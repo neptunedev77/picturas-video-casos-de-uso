@@ -1,7 +1,7 @@
-"""Observe the video pools and print intentions; no Docker actions are implemented."""
+"""Observe video pools, or explicitly enable guarded Compose scale-out only."""
 
 import argparse
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 import json
 import os
@@ -26,6 +26,10 @@ class Config:
     timeout_s: float
     interval_s: float
     policy: PolicyConfig
+    compose_file: Path | None = None
+    actuation_timeout_s: float = 30
+    readiness_timeout_s: float = 60
+    state_dir: Path | None = None
 
 
 def load_config(path):
@@ -39,12 +43,21 @@ def load_config(path):
         raise ValueError("The Compose project name is required")
     if not isinstance(config.rabbit_vhost, str) or not config.rabbit_vhost:
         raise ValueError("The RabbitMQ vhost is required")
-    for period in (config.interval_s, config.timeout_s):
+    for period in (config.interval_s, config.timeout_s,
+                   config.actuation_timeout_s, config.readiness_timeout_s):
         if type(period) not in (int, float) or not 0 < period < float("inf"):
             raise ValueError("Observation interval and timeout must be finite positive numbers")
     url = urlsplit(config.rabbit_api)
     if url.scheme not in ("http", "https") or not url.netloc or url.username or url.password:
         raise ValueError("Use an HTTP(S) RabbitMQ API URL without embedded credentials")
+    paths = {}
+    for name in ("compose_file", "state_dir"):
+        value = getattr(config, name)
+        if value is not None:
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"{name} must be a nonempty path")
+            paths[name] = (Path(path).resolve().parent / value).resolve()
+    config = replace(config, **paths)
     return config
 
 
@@ -81,7 +94,7 @@ def observe(config, runtime, memory, now=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path(__file__).with_name("config.json"))
-    parser.add_argument("--mode", choices=("observe",), default="observe")
+    parser.add_argument("--mode", choices=("observe", "scale-out"), default="observe")
     parser.add_argument("--once", action="store_true", help="print one observation and exit")
     args = parser.parse_args(argv)
     try:
@@ -89,11 +102,24 @@ def main(argv=None):
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.error(str(error))
     runtime = Runtime(config, os.getenv("RABBIT_USER", "user"), os.getenv("RABBIT_PASS"))
+    actuator = None
+    if args.mode == "scale-out":
+        if __package__:
+            from .actuator import Actuator
+        else:
+            from actuator import Actuator
+        try:
+            actuator = Actuator(config)
+        except ValueError as error:
+            parser.error(str(error))
     memory = {}
     try:
         while True:
             started = time.monotonic()
-            report, memory = observe(config, runtime, memory)
+            if actuator is None:
+                report, memory = observe(config, runtime, memory)
+            else:
+                report, memory = actuator.step(runtime, memory, observe)
             print(json.dumps(report, allow_nan=False), flush=True)
             if args.once:
                 return 1 if report["status"] == "degraded" else 0

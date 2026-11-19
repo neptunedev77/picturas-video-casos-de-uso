@@ -5,6 +5,9 @@
   "rabbit_vhost": "/",
   "timeout_s": 2,
   "interval_s": 1,
+  "compose_file": "../picturas-27/docker-compose.yaml",
+  "actuation_timeout_s": 30,
+  "readiness_timeout_s": 60,
   "policy": {
     "max_total": 3,
     "scale_out_cooldown_s": 5,

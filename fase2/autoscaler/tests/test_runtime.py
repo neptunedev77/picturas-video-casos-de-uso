@@ -215,6 +215,33 @@ class RuntimeTests(unittest.TestCase):
                 runtime._docker([operation])
         self.assertEqual(self.commands, [])
 
+    def test_inventory_is_from_the_same_valid_snapshot_as_counts(self):
+        runtime = self.runtime()
+        observations = runtime.collect()
+        self.assertEqual(runtime.inventory, self.documents)
+        self.assertEqual(observations["normal"].replicas.running, 1)
+        self.docker_failure = True
+        runtime.collect()
+        self.assertIsNone(runtime.inventory)
+
+    def test_inventory_excludes_compose_oneoff_containers(self):
+        self.documents[0]["Config"]["Labels"]["com.docker.compose.oneoff"] = "True"
+        runtime = self.runtime()
+        observations = runtime.collect()
+        self.assertEqual(runtime.inventory, self.documents[1:])
+        self.assertEqual(observations["normal"].replicas.occupied, 0)
+
+    def test_actuation_can_pin_read_commands_to_one_context(self):
+        commands = []
+        def command(arguments, **kwargs):
+            commands.append(arguments)
+            self.assertEqual(arguments[:3], ["docker", "--context", "pinned-context"])
+            return self.run_command(["docker", *arguments[3:]], **kwargs)
+        runtime = Runtime(self.config, password="test-password", command_runner=command, http_get=self.get_http)
+        runtime.docker_context = "pinned-context"
+        self.assertEqual(runtime.collect()["normal"].replicas.running, 1)
+        self.assertEqual(len(commands), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
