@@ -215,8 +215,45 @@ broker nos consumidores Python) fica para um commit separado.
 
 ---
 
+## 2026-11-20 · Fiabilidade · Claude Code (Opus 5.5)
+
+**Tarefa:** Correção do problema B da revisão técnica — confirmações do broker nas respostas
+publicadas pelos workers Python.
+
+**Prompt:** Correção mínima e localizada em `Tools/utils/reliable_consumer.py`: ativar
+`confirm_delivery()`, avaliar `mandatory=True` face aos destinos atuais, garantir que `NackError`,
+`UnroutableError` e falhas de ligação não levam a ack do trabalho, e verificar que a espera pela
+confirmação dentro do callback do pika não afeta o heartbeat, a reconexão nem o SIGTERM; sem
+mudanças de arquitetura nem novos benchmarks.
+
+**Resultado (agente):** `confirm_delivery()` ativado em cada (re)ligação e `mandatory=True` nas
+publicações (os workers só publicam para `project_queue` e `ws_queue`, ambas com binding). Uma
+resposta recusada (`NackError`), sem destino (`UnroutableError`) ou perdida por falha de ligação
+lança uma exceção já tratada: o trabalho volta à fila sem ack. 3 testes novos em
+`test_reliable_consumer.py`.
+
+**Verificações (agente):** 14/14 testes afetados; 15 ferramentas e `video_tool` reconstruídos, com
+os 16 consumidores ativos; `run-all.sh` com `ALL PASSED` e código 0 (`projects` 35/35, worker de
+vídeo 93 e 1 ignorado, regressão 30/30), com 0 erros de publicação ou de ligação nos logs dos
+workers. Sem benchmarks novos.
+
+**Limitações:** a espera pela confirmação dentro do callback foi validada pela regressão com o
+RabbitMQ real, não por um cenário de falha do broker (o F3 não foi repetido); cada publicação passa
+a esperar a confirmação do broker (custo de milissegundos por mensagem, não medido).
+
+**Contributo e validação (Sérgio):** Autorizei a correção do problema B antes de abrir o PR, com as
+condições acima, e aprovei o uso de `confirm_delivery()` e `mandatory=True` depois da verificação
+de compatibilidade com as filas de destino atuais, mantendo a correção localizada, sem alterar a
+arquitetura nem o tratamento existente das exceções. Revi os resultados apresentados pelo agente
+(14/14 testes específicos, reconstrução dos consumidores afetados e `run-all.sh` com `ALL
+PASSED`, código 0), executados pelo agente. Reconheço as limitações: validação com o broker real
+apenas em condições normais, sem repetir o F3, e impacto das confirmações no desempenho não
+medido.
+
+---
+
 ## Estado
 
 As DA-R1 a DA-R5 estão implementadas no ramo `feat/reliability`, com as verificações locais do agente
-a passar. Falta: o problema B, a revisão do pull request pelo Diogo, a migração do RabbitMQ nas
+a passar. Falta: o commit da correção B, a revisão do pull request pelo Diogo, a migração do RabbitMQ nas
 máquinas do grupo e as medições oficiais na máquina de referência.

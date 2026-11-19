@@ -12,7 +12,9 @@ Guarantees, compared with the old auto-ack consumer:
   (publish, ack, nack) runs on the connection thread. The worker thread hands
   them over with add_callback_threadsafe.
 - prefetch_count=1: a replica holds at most one unacked job.
-- Persistent publishes (delivery_mode=2).
+- Persistent publishes (delivery_mode=2), confirmed by the broker and published
+  as mandatory: a reply the broker refuses (NackError) or cannot route to any queue
+  (UnroutableError) raises, so its job is requeued instead of being acked.
 - Reconnection with exponential backoff when the broker goes away. Unacked
   deliveries are redelivered by RabbitMQ, so nothing is acked late on a new
   connection.
@@ -96,7 +98,10 @@ class ReliableConsumer:
 
         def _do():
             try:
-                self._channel.basic_publish(EXCHANGE, routing_key, body, PERSISTENT)
+                # with confirm_delivery() this waits for the broker's ack and raises
+                # NackError / UnroutableError (mandatory) instead of losing the reply
+                self._channel.basic_publish(EXCHANGE, routing_key, body, PERSISTENT,
+                                            mandatory=True)
             except Exception as e:  # noqa: BLE001 - reported to the caller
                 outcome["error"] = e
             done.set()
@@ -139,6 +144,7 @@ class ReliableConsumer:
         self._connection = self._connect()
         self._generation += 1
         self._channel = self._connection.channel()
+        self._channel.confirm_delivery()   # publishes are confirmed by the broker
         self._channel.exchange_declare(exchange=EXCHANGE, exchange_type=ExchangeType.direct,
                                        durable=True)
         self._channel.queue_declare(queue=self._queue, durable=True,

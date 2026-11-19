@@ -11,7 +11,7 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from pika.exceptions import AMQPConnectionError
+from pika.exceptions import AMQPConnectionError, NackError, UnroutableError
 
 # on the host, utils/ lives in Tools/ (in the container it is next to tests/)
 _TOOLS = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -24,11 +24,16 @@ from utils.reliable_consumer import ReliableConsumer  # noqa: E402
 class FakeChannel:
     def __init__(self, fail_publish=False):
         self.ops = []
+        self.confirms = False
+        self.mandatory = []
         self.prefetch = None
         self.auto_ack = None
         self.on_message = None
         self.cancelled = False
         self.fail_publish = fail_publish
+
+    def confirm_delivery(self):
+        self.confirms = True
 
     def exchange_declare(self, **kw): pass
     def queue_declare(self, **kw):
@@ -46,7 +51,10 @@ class FakeChannel:
         self.cancelled = True
         self.ops.append(("cancel",))
 
-    def basic_publish(self, exchange, routing_key, body, properties):
+    def basic_publish(self, exchange, routing_key, body, properties, mandatory=False):
+        self.mandatory.append(mandatory)
+        if isinstance(self.fail_publish, Exception):
+            raise self.fail_publish
         if self.fail_publish:
             raise RuntimeError("broker gone")
         self.ops.append(("publish", routing_key, body, properties.delivery_mode))
@@ -225,5 +233,35 @@ def test_reconnects_after_the_broker_was_unreachable():
 
     consumer, _, _, runner = start(lambda *a: None, channel=channel, factory=factory)
     assert len(attempts) == 2
+    consumer.stop()
+    runner.join(5)
+
+
+def test_publishes_are_confirmed_by_the_broker_and_mandatory():
+    consumer = None
+
+    def handler(ch, method, properties, body):
+        consumer.publish("project_queue", b"reply")
+
+    consumer, connection, channel, runner = start(handler)
+    assert channel.confirms is True                 # confirm_delivery() on every (re)connection
+    connection.inject(b"job")
+    assert wait_until(lambda: ("ack", 1) in channel.ops)
+    assert channel.mandatory == [True]
+    consumer.stop()
+    runner.join(5)
+
+
+@pytest.mark.parametrize("refusal", [NackError([]), UnroutableError([])])
+def test_a_reply_refused_or_unroutable_requeues_the_job(refusal):
+    consumer = None
+
+    def handler(ch, method, properties, body):
+        consumer.publish("project_queue", b"reply")
+
+    consumer, connection, channel, runner = start(handler, channel=FakeChannel(fail_publish=refusal))
+    connection.inject(b"job")
+    assert wait_until(lambda: ("nack", 1, True) in channel.ops)
+    assert ("ack", 1) not in channel.ops            # never acked without a confirmed reply
     consumer.stop()
     runner.join(5)
