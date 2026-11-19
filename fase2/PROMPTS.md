@@ -215,7 +215,7 @@ broker nos consumidores Python) fica para um commit separado.
 
 ---
 
-## 2026-11-20 · Fiabilidade · Claude Code (Opus 5.5)
+## 2026-11-19 · Fiabilidade · Claude Code (Opus 5.5)
 
 **Tarefa:** Correção do problema B da revisão técnica — confirmações do broker nas respostas
 publicadas pelos workers Python.
@@ -252,8 +252,64 @@ medido.
 
 ---
 
+## 2026-11-19 · Fiabilidade · Claude (Opus 5.5) · revisão do pull request
+
+**Tarefa:** Revisão do ramo `feat/reliability` antes do pull request para `main`, contra a Prompt 1
+e o plano do grupo, e correção dos problemas encontrados num ramo próprio
+(`feat/reliability-review`, com PR para `feat/reliability`).
+
+**Prompt:** Analisar o projeto da Fase 2 e verificar se a Fiabilidade cumpre a prompt de
+implementação e o plano; depois, corrigir os três problemas de código encontrados, com testes,
+sem mexer em `bench/` nem nos golden outputs.
+
+**Resultado (agente):**
+- Revisão: as DA-R1 a DA-R5 e as regras da prompt estão cumpridas. Encontrados três problemas no
+  `projects` e uma métrica que não mede o alvo.
+- `projects/utils/rabbit_mq.js` (commit `5101189`): uma publicação recusada pelo broker (nack) com
+  a ligação ativa ficava no buffer até à próxima reconexão e a promise nunca resolvia; passa a ser
+  reenviada após 1 s. Uma mensagem cujas publicações não eram confirmadas ficava sem ack nem nack
+  num canal aberto (o broker não a reentregava); passa a ser devolvida à fila, limitada pelo
+  `delivery-limit`. 3 testes (2 novos, 1 reforçado).
+- `projects/utils/refund.js`, `dead_letter.js`, `watchdog.js` (commit `a0ed568`): a DLQ não
+  repunha as operações reservadas, ao contrário do watchdog e do cancelamento. O `refundOnce` passa
+  para um módulo partilhado e a DLQ usa-o com a mesma ordem (avisar, repor, remover) e o mesmo
+  bloqueio por `msg_id`, para os dois nunca atuarem sobre o mesmo processo nem reporem duas vezes.
+  4 testes novos.
+- Medição: o R-4 do F6 no `analyze.py` conta erros até 10 s, mas o alvo é "prazo do watchdog
+  + 10 s". Com a definição do alvo, a baseline dá o mesmo valor (0 %, a imagem nunca é avisada),
+  por isso basta acrescentar a métrica à análise, sem medir de novo. Proposta a combinar com o António;
+  `bench/` não foi alterado.
+
+**Verificações (agente):** `node --test` do `projects` com 41/41 (35 anteriores e 6 novos); os
+testes novos falham com o código anterior; testes do consumidor Python 14/14. Não corrido:
+`run-all.sh` com a stack (sem Docker no ambiente do agente) nem as falhas F1–F6.
+
+**Limitações:** o F6 passa a dar erro no lote de imagem parado 60 s (prazo de 30 s), que na
+baseline acabava com sucesso aos 59,5 s: o utilizador é avisado, mas tem de repetir o pedido.
+Fica para a análise do relatório.
+
+**Contributo e validação (Diogo):**
+- Pedi a verificação da Fiabilidade contra a Prompt 1 e o plano, e escolhi quais dos problemas
+  encontrados corrigir agora e quais ficam como limitações no relatório.
+- Decidi fazer as correções num ramo separado, com PR para `feat/reliability`, para não misturar
+  com os commits do Sérgio.
+- Pedi primeiro uma análise de todo o projeto da Fase 2, sem alterações, e só depois a revisão da
+  Fiabilidade contra a Prompt 1 e o plano.
+- Das conclusões da revisão, aprovei a correção dos três problemas de código e a atualização deste
+  registo; os restantes pontos (prazo do watchdog que inclui a espera na fila, ferramenta de marca
+  d'água com o consumidor antigo, 8 s de SIGTERM num vídeo, duplo reembolso com o cancelamento,
+  bloqueio só numa instância do `projects`) ficam como limitações no relatório.
+- Decidi que a correção da métrica R-4 do F6 é combinada com o António, responsável pelas medições,
+  e não feita por nós em `bench/`, para respeitar a regra de não mudar os instrumentos entre a
+  baseline e a medição final.
+- Por fazer antes do PR: correr `tests/run-all.sh` com a stack neste ramo.
+
+---
+
 ## Estado
 
-As DA-R1 a DA-R5 estão implementadas no ramo `feat/reliability`, com as verificações locais do agente
-a passar. Falta: o commit da correção B, a revisão do pull request pelo Diogo, a migração do RabbitMQ nas
-máquinas do grupo e as medições oficiais na máquina de referência.
+As DA-R1 a DA-R5 estão implementadas no ramo `feat/reliability`, incluindo a correção B
+(`25d868b`). A revisão do Diogo está no ramo `feat/reliability-review` (`5101189`, `a0ed568`), com
+PR para `feat/reliability`. Falta: o merge da revisão, `run-all.sh` com a stack depois dele, o PR
+para `main`, a migração do RabbitMQ nas máquinas do grupo e as medições oficiais na máquina de
+referência.
