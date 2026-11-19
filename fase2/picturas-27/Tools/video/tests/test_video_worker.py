@@ -23,9 +23,13 @@ class FakeConsumer:
     def __init__(self, queue, handler, host, port, username, password):
         self.queue, self.handler = queue, handler
         self.published = []
+        self.ran = False
 
     def publish(self, routing_key, body):
         self.published.append((routing_key, json.loads(body)))
+
+    def run(self):
+        self.ran = True
 
 
 def job(**overrides):
@@ -43,15 +47,31 @@ def job(**overrides):
     return json.dumps(msg).encode()
 
 
+@pytest.fixture(params=[None, "video_queue", "video_heavy_queue"],
+                ids=["default", "normal", "heavy"])
+def configured_queue(request, monkeypatch):
+    if request.param is None:
+        monkeypatch.delenv("VIDEO_QUEUE", raising=False)
+    else:
+        monkeypatch.setenv("VIDEO_QUEUE", request.param)
+    return request.param or "video_queue"
+
+
 @pytest.fixture
-def worker(monkeypatch):
+def worker(monkeypatch, configured_queue):
     monkeypatch.setattr(video, "ReliableConsumer", FakeConsumer)
     return video.VideoWorker()
 
 
-def test_worker_consumes_the_video_queue(worker):
-    assert worker._consumer.queue == "video_queue"
+def test_worker_consumes_the_configured_queue(worker, configured_queue):
+    assert worker._consumer.queue == configured_queue
     assert worker._consumer.handler == worker.callback
+
+
+def test_run_logs_the_configured_queue_and_delegates_to_consumer(worker, configured_queue, capsys):
+    worker.run()
+    assert capsys.readouterr().out == f"[video] waiting for jobs on {configured_queue}\n"
+    assert worker._consumer.ran is True
 
 
 def test_success_publishes_progress_then_the_reply_unchanged(worker, monkeypatch):

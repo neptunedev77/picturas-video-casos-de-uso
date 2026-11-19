@@ -44,7 +44,8 @@ def now():
 class VideoWorker:
     def __init__(self):
         # one video at a time per replica (prefetch 1); parallelism comes from replicas
-        self._consumer = ReliableConsumer(VIDEO_QUEUE, self.callback, env.RABBITMQ_HOST,
+        self._queue = os.getenv("VIDEO_QUEUE", VIDEO_QUEUE)
+        self._consumer = ReliableConsumer(self._queue, self.callback, env.RABBITMQ_HOST,
                                           env.RABBITMQ_PORT, env.RABBITMQ_USERNAME,
                                           env.RABBITMQ_PASSWORD)
 
@@ -148,7 +149,7 @@ class VideoWorker:
         # the consumer acks the message once this callback returns
 
     def run(self):
-        print("[video] waiting for jobs on video_queue", flush=True)
+        print(f"[video] waiting for jobs on {self._queue}", flush=True)
         self._consumer.run()  # returns after SIGTERM: the process then exits with code 0
 
 
