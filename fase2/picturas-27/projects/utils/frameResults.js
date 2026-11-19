@@ -33,6 +33,8 @@ async function persistFrameResults(output, process, storage, appRoot) {
   const created = [];
   try {
     for (const { file, name } of files) {
+      // DA-R5: a reply redelivered after a crash skips the frames already stored
+      if (storage.exists && await storage.exists(name)) continue;
       const key = await storage.upload(file, name);
       uploaded.push(key);
       const result = await storage.create({

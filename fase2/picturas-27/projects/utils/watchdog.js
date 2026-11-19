@@ -19,10 +19,16 @@
 //      the cycle that wins the claim calls the users service; if that call fails, the claim
 //      is rolled back (0 -> N) and the process kept -> retried on the next cycle
 //   3. delete the process (a late result is then ignored by process_msg)
+// The watchdog and process_msg never act on the same process at once: before acting, the
+// watchdog takes the in-memory lock process_msg uses (same key: the process msg_id, i.e. the
+// reply's correlationId) and re-reads the process; a process being handled is skipped and
+// looked at again on the next cycle, so a reply arriving near the deadline cannot produce
+// both a success and an error (with a refund).
 // Known limit: the cancel route refunds before saving, so a user cancel at the very same time
 // as the watchdog could still refund twice (routes/projects.js is out of scope).
 const https = require('https');
 const { notify_failure } = require('./dead_letter');
+const { acquireMsgLock, releaseMsgLock } = require('./idempotency');
 
 const num = (name, def) => {
     const v = Number(process.env[name]);
@@ -49,6 +55,9 @@ function defaultDeps() {
     const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     return {
         listProcesses: () => ProcessModel.find({}).lean().exec(),
+        getProcess: (msg_id) => ProcessModel.findOne({ msg_id }).lean().exec(),
+        acquireLock: acquireMsgLock,
+        releaseLock: releaseMsgLock,
         getProject: (user_id, project_id) => Project.getOne(user_id, project_id),
         setPendingOps: (project, value) =>
             Project.updateIfVersion(project.user_id, project._id, { pendingAdvancedOps: value }, project.version),
@@ -97,10 +106,28 @@ async function refundOnce(process, project, deps) {
     throw new Error('could not claim the reserved operations');
 }
 
-async function checkProcess(process, deps, cfg) {
-    const project = await deps.getProject(process.user_id, process.project_id);
+function expired(process, project, deps, cfg) {
     const since = new Date(process.updatedAt || process.createdAt).getTime();
-    if (deps.now() - since < deadlineS(process, project, cfg) * 1000) return 'ok';
+    return deps.now() - since >= deadlineS(process, project, cfg) * 1000;
+}
+
+async function checkProcess(listed, deps, cfg) {
+    const project = await deps.getProject(listed.user_id, listed.project_id);
+    if (!expired(listed, project, deps, cfg)) return 'ok';
+    // the lock is taken only for expired processes, so replies of healthy steps are never
+    // skipped because of the watchdog
+    if (!deps.acquireLock(listed.msg_id)) return 'busy';          // being handled: next cycle
+    try {
+        const process = await deps.getProcess(listed.msg_id);    // fresh, under the lock
+        if (!process) return 'gone';                             // handled meanwhile
+        if (!expired(process, project, deps, cfg)) return 'ok';
+        return await failProcess(process, project, deps);
+    } finally {
+        deps.releaseLock(listed.msg_id);
+    }
+}
+
+async function failProcess(process, project, deps) {
     await notify_failure(process, ERROR_CODE, ERROR_MSG, deps);   // 1
     const refunded = await refundOnce(process, project, deps);    // 2
     const removed = await deps.deleteProcess(process);            // 3

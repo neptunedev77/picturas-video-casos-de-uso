@@ -3,17 +3,22 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 const { runCycle, deadlineS } = require('../utils/watchdog');
+const { acquireMsgLock, releaseMsgLock } = require('../utils/idempotency');
 
 const CFG = { imageS: 30, videoMinS: 120, videoFactor: 1, intervalMs: 10000 };
 const NOW = Date.parse('2026-11-19T12:00:00Z');
 const ago = (s) => new Date(NOW - s * 1000);
 
 function world({ processes, project, refundFails = 0, unconfirmed = false }) {
-  const w = { processes: [...processes], project: { version: 1, ...project }, published: [], refunds: [] };
+  const w = { processes: [...processes], project: { version: 1, ...project }, published: [], refunds: [], locks: [] };
   w.deps = {
     now: () => NOW,
     publishTimeoutMs: 20,
     listProcesses: async () => [...w.processes],
+    getProcess: async (msg_id) => w.processes.find((p) => p.msg_id === msg_id) || null,
+    // the real lock used by process_msg (same key: the process msg_id)
+    acquireLock: (msg_id) => { w.locks.push(msg_id); return acquireMsgLock(msg_id); },
+    releaseLock: releaseMsgLock,
     getProject: async () => ({ ...w.project }),
     // optimistic update, like Project.updateIfVersion: null when the version moved on
     setPendingOps: async (p, value) => {
@@ -97,4 +102,34 @@ test('a failed refund restores the reserved ops and keeps the process; the next 
   assert.deepStrictEqual([w.refunds, w.project.pendingAdvancedOps, w.processes.length], [[], 2, 1]);
   assert.deepStrictEqual(await runCycle(w.deps, CFG), ['expired']);
   assert.deepStrictEqual([w.refunds, w.project.pendingAdvancedOps, w.processes.length], [[['runner', 2]], 0, 0]);
+});
+
+test('a step whose reply is being handled by process_msg is skipped, then checked on the next cycle', async () => {
+  const w = world({ processes: [proc('a', 'i1', 45)], project: { imgs: [img], pendingAdvancedOps: 2 } });
+  assert.strictEqual(acquireMsgLock('request-a'), true);       // process_msg is handling its reply
+  assert.deepStrictEqual(await runCycle(w.deps, CFG), ['busy']);
+  assert.deepStrictEqual([w.published, w.refunds, w.processes.length], [[], [], 1]);
+  releaseMsgLock('request-a');
+  // process_msg finished the step: the process is gone, so no error and no refund
+  w.processes = [];
+  assert.deepStrictEqual(await runCycle(w.deps, CFG), []);
+  assert.deepStrictEqual([w.published, w.refunds], [[], []]);
+});
+
+test('a step handled between the listing and the lock is not failed (fresh read under the lock)', async () => {
+  const w = world({ processes: [proc('a', 'i1', 45)], project: { imgs: [img], pendingAdvancedOps: 2 } });
+  const listed = [...w.processes];
+  w.deps.listProcesses = async () => listed;     // stale listing
+  w.processes = [];                              // process_msg removed it meanwhile
+  assert.deepStrictEqual(await runCycle(w.deps, CFG), ['gone']);
+  assert.deepStrictEqual([w.published, w.refunds], [[], []]);
+});
+
+test('healthy steps never take the lock, and the lock is released even when acting fails', async () => {
+  const w = world({ processes: [proc('a', 'i1', 10), proc('b', 'i1', 45)],
+                    project: { imgs: [img], pendingAdvancedOps: 2 }, unconfirmed: true });
+  assert.deepStrictEqual(await runCycle(w.deps, CFG), ['ok', 'retry']);
+  assert.deepStrictEqual(w.locks, ['request-b']);              // only the expired one
+  assert.strictEqual(acquireMsgLock('request-b'), true);       // released after the failure
+  releaseMsgLock('request-b');
 });

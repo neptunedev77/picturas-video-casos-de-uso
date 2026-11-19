@@ -36,6 +36,10 @@ const { ensureEditorSlot, releaseEditorSlot } = require("../utils/presence");
 const { extractImageFeatures } = require("../utils/imageFeatures");
 const PreviewCache = require("../controllers/previewCache");
 const { makePreviewCacheKey, makeToolsFingerprint } = require("../utils/cacheKey");
+const ProcessModel = require("../models/process");
+const ResultModel = require("../models/result");
+const { acquireMsgLock, releaseMsgLock, successorMsgId, createSuccessorOnce, resultExists } =
+  require("../utils/idempotency");
 
 const {
   get_image_internal_url,
@@ -175,13 +179,27 @@ function process_msg() {
     // variáveis “seguras” para usar no catch
     let runnerIdSafe = null;
     let ownerIdSafe = null;
+    let lockedMsgId = null;          // DA-R5: reply being handled by this call
+    let deleteCurrentSafe = null;
+    let holdsRunCommitSafe = false;
 
     try {
       const msg_content = JSON.parse(msg.content.toString());
       const msg_id = msg_content.correlationId;
 
+      // DA-R5: a copy of a reply that is already being handled is skipped (see utils/idempotency)
+      if (!acquireMsgLock(msg_id)) {
+        console.log(`[IDEMPOTENCY] msg=${msg_id} already being handled, copy skipped`);
+        return;
+      }
+      lockedMsgId = msg_id;
+
       const process = await Process.getOneByMsgId(msg_id);
       if (!process) return;
+      // DA-R5: the process is removed only once its reply is handled, so a redelivered
+      // reply (e.g. after a crash) still finds it and the watchdog still sees it.
+      const deleteCurrent = () => Process.delete(process.user_id, process.project_id, process._id);
+      deleteCurrentSafe = deleteCurrent;
 
       ownerIdSafe = process.user_id;
       runnerIdSafe = process.runner_id || process.user_id;
@@ -206,7 +224,7 @@ function process_msg() {
       // persisted, including ordinary images in mixed projects. Failed jobs stay
       // as barriers so another source cannot commit a partial run.
       const holdsRunCommit = project.tools.some((tool) => tool.procedure === "extract_frames") && !/preview/.test(msg_id);
-      if (!holdsRunCommit) await Process.delete(process.user_id, process.project_id, process._id);
+      holdsRunCommitSafe = holdsRunCommit;
       
       if (msg_content.status === "error") {
         console.log(JSON.stringify(msg_content));
@@ -223,6 +241,7 @@ function process_msg() {
             msg_content.error.msg
           );
         }
+        if (!holdsRunCommit) await deleteCurrent();
         return;
       }
       
@@ -239,7 +258,7 @@ function process_msg() {
 
       if (active !== tok) {
         console.log(`[RUN-GUARD] IGNORE msg=${msg_id} processTok=${tok} activeTok=${active}`);
-        if (holdsRunCommit) await Process.delete(process.user_id, process.project_id, process._id);
+        await deleteCurrent();
         return;
       }
 
@@ -370,7 +389,10 @@ if (/preview/.test(msg_id) && isLast) {
   }
 }
 
-      if (/preview/.test(msg_id) && chainEnd) return;
+      if (/preview/.test(msg_id) && chainEnd) {
+        await deleteCurrent();
+        return;
+      }
 
       if (!/preview/.test(msg_id) && isLast && type === "frames") {
         if (!holdsRunCommit || !sourceIsVideo) throw new Error("Unexpected extracted frames for this job");
@@ -382,10 +404,13 @@ if (/preview/.test(msg_id) && isLast) {
             return response.data.data.imageKey.split("/").pop();
           },
           create: (result) => Result.create(result),
+          exists: (name) => resultExists((q) => ResultModel.exists(q), process, name),
           removeResult: (id) => Result.deleteById(process.user_id, process.project_id, id),
           removeImage: (key) => delete_image(process.user_id, process.project_id, "out", key),
         });
-      } else if (!/preview/.test(msg_id) && isLast) {
+      } else if (!/preview/.test(msg_id) && isLast &&
+                 !(await resultExists((q) => ResultModel.exists(q), process, path.basename(output_file_uri)))) {
+        // DA-R5: a reply redelivered after a crash does not upload or store its result again
         const file_path = path.resolve(__dirname, "..", output_file_uri);
         const file_name = path.basename(file_path);
         const fileStream = fs.createReadStream(file_path); // Use createReadStream for efficiency
@@ -424,13 +449,15 @@ if (/preview/.test(msg_id) && isLast) {
       // Se esta imagem acabou o pipeline, pode ser que a execução tenha terminado
       if (!/preview/.test(msg_id) && isLast) {
 
-        if (holdsRunCommit && chainEnd) await Process.delete(process.user_id, process.project_id, process._id);
         // A terminal source has all outputs stored; intermediate text results
         // retain their barrier until their successor is registered below.
-        const remaining = await Process.countByProjectAndToken(
+        // DA-R5: the current process is removed after the commit, so it is not counted
+        // here when it is done (outside extraction runs it always is, as before).
+        const currentDone = !holdsRunCommit || chainEnd;
+        const remaining = (await Process.countByProjectAndToken(
           process.project_id,
           process.token || 0
-        );
+        )) - (currentDone ? 1 : 0);
 
         if (remaining === 0) {
           // re-fetch do projeto (já tens project) mas garante que está fresh
@@ -455,7 +482,10 @@ if (/preview/.test(msg_id) && isLast) {
             const committed = await Project.commitRunIfActive(
               process.user_id, process.project_id, process.token || 0, toolsSnapshot
             );
-            if (!committed) return;
+            if (!committed) {
+              await deleteCurrent();
+              return;
+            }
 
             console.log(`[COMMIT] project=${process.project_id} committedToken=${process.token || 0}`);
 
@@ -463,14 +493,19 @@ if (/preview/.test(msg_id) && isLast) {
             console.log(
               `[COMMIT-SKIP] project=${process.project_id} token=${process.token} activeToken=${freshProject.activeToken}`
             );
+            await deleteCurrent();
             return;
           }
         }
+        if (chainEnd) await deleteCurrent();
       }
 
       if (holdsRunCommit) {
         const latest = await Project.getOne(process.user_id, process.project_id);
-        if (!latest || (latest.activeToken || 0) !== (process.token || 0)) return;
+        if (!latest || (latest.activeToken || 0) !== (process.token || 0)) {
+          await deleteCurrent();
+          return;
+        }
       }
 
       // Notify only after the result is stored and the completed run is committed.
@@ -483,9 +518,8 @@ if (/preview/.test(msg_id) && isLast) {
 
       if (chainEnd) return;
 
-      const new_msg_id = /preview/.test(msg_id)
-        ? `preview-${uuidv4()}`
-        : `request-${uuidv4()}`;
+      // DA-R5: deterministic, so a redelivered reply finds the successor it created
+      const new_msg_id = successorMsgId(msg_id, next_pos);
 
       const tool = imgTools[next_pos];
 
@@ -511,17 +545,22 @@ if (/preview/.test(msg_id) && isLast) {
         token: process.token,
       };
 
-      // Making sure database entry is created before sending message to avoid conflicts
-      await Process.create(new_process);
-      if (holdsRunCommit) await Process.delete(process.user_id, process.project_id, process._id);
-      send_msg_tool(
-        new_msg_id,
-        timestamp,
-        new_process.og_img_uri,
-        new_process.new_img_uri,
-        tool_name,
-        params
-      );
+      // Making sure database entry is created before sending message to avoid conflicts.
+      // DA-R5: an existing successor is already in processing, so its request is not resent.
+      const created = await createSuccessorOnce((q) => ProcessModel.exists(q), (p) => Process.create(p), new_process);
+      if (created) {
+        send_msg_tool(
+          new_msg_id,
+          timestamp,
+          new_process.og_img_uri,
+          new_process.new_img_uri,
+          tool_name,
+          params
+        );
+      } else {
+        console.log(`[IDEMPOTENCY] successor ${new_msg_id} already exists, request not resent`);
+      }
+      await deleteCurrent();
     } catch (err) {
 
       console.error("[process_msg] error:", err);
@@ -535,7 +574,13 @@ if (/preview/.test(msg_id) && isLast) {
         "30000",
         "An error happened while processing the project"
       );
+      // reported as failed, as before; extraction runs keep it as a barrier, as before
+      if (deleteCurrentSafe && !holdsRunCommitSafe) {
+        await deleteCurrentSafe().catch((e) => console.error("[process_msg] delete failed:", e));
+      }
       return;
+    } finally {
+      if (lockedMsgId) releaseMsgLock(lockedMsgId);
     }
   });
 }
