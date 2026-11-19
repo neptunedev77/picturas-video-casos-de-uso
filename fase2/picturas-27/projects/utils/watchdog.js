@@ -26,8 +26,8 @@
 // both a success and an error (with a refund).
 // Known limit: the cancel route refunds before saving, so a user cancel at the very same time
 // as the watchdog could still refund twice (routes/projects.js is out of scope).
-const https = require('https');
 const { notify_failure } = require('./dead_letter');
+const { refundOnce, refundDeps } = require('./refund');
 const { acquireMsgLock, releaseMsgLock } = require('./idempotency');
 
 const num = (name, def) => {
@@ -43,25 +43,17 @@ const CONFIG = {
 };
 const ERROR_CODE = '30002';
 const ERROR_MSG = 'The job took too long and was stopped';
-const CLAIM_ATTEMPTS = 3;
 
 function defaultDeps() {
-    const axios = require('axios');
     const ProcessModel = require('../models/process');
     const Process = require('../controllers/process');
-    const Project = require('../controllers/project');
     const { send_rabbit_msg } = require('./rabbit_mq');
-    // same call as the cancel route; the users service does not request a client certificate
-    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     return {
         listProcesses: () => ProcessModel.find({}).lean().exec(),
         getProcess: (msg_id) => ProcessModel.findOne({ msg_id }).lean().exec(),
         acquireLock: acquireMsgLock,
         releaseLock: releaseMsgLock,
-        getProject: (user_id, project_id) => Project.getOne(user_id, project_id),
-        setPendingOps: (project, value) =>
-            Project.updateIfVersion(project.user_id, project._id, { pendingAdvancedOps: value }, project.version),
-        refund: (user, n) => axios.post(`https://users:10001/${user}/process/refund/${n}`, {}, { httpsAgent }),
+        ...refundDeps(),   // getProject, setPendingOps, refund (utils/refund.js)
         deleteProcess: async (p) => (await Process.delete(p.user_id, p.project_id, p._id)).deletedCount === 1,
         publish: send_rabbit_msg,
         publishTimeoutMs: 5000,
@@ -82,28 +74,6 @@ function deadlineS(process, project, cfg) {
     const extraction = ((project && project.tools) || []).some((t) => t.procedure === 'extract_frames');
     if (extraction && videos.length) return Math.max(...videos.map((m) => videoDeadline(m, cfg)));
     return cfg.imageS;
-}
-
-async function refundOnce(process, project, deps) {
-    let current = project;
-    for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt++) {
-        const n = (current && current.pendingAdvancedOps) || 0;
-        if (n <= 0) return 0;                                    // nothing reserved, or already refunded
-        const claimed = await deps.setPendingOps(current, 0);
-        if (!claimed) {                                          // version changed: re-read and retry
-            current = await deps.getProject(process.user_id, process.project_id);
-            continue;
-        }
-        try {
-            await deps.refund(process.runner_id || process.user_id, n);
-            return n;
-        } catch (err) {
-            const restored = await deps.setPendingOps(claimed, n);
-            if (!restored) console.error(`[watchdog] could not restore ${n} reserved ops of project ${process.project_id}`);
-            throw err;
-        }
-    }
-    throw new Error('could not claim the reserved operations');
 }
 
 function expired(process, project, deps, cfg) {

@@ -4,8 +4,26 @@ const assert = require('node:assert');
 
 const { handle_dead_letter, processMsgId } = require('../utils/dead_letter');
 
-function deps({ process = null, failGet = false, failDelete = false, unconfirmed = false } = {}) {
-  const d = { published: [], deleted: [], retryDelayMs: 1, publishTimeoutMs: 20 };
+function deps({ process = null, failGet = false, failDelete = false, unconfirmed = false,
+                pendingOps = 0, failRefund = 0, locked = false } = {}) {
+  const d = { published: [], deleted: [], refunds: [], log: [], retryDelayMs: 1, publishTimeoutMs: 20 };
+  // project with an optimistic version, as Project.updateIfVersion sees it
+  d.project = { _id: 'proj', user_id: 'owner', version: 1, pendingAdvancedOps: pendingOps };
+  d.locks = new Set(locked ? ['request-1'] : []);
+  d.acquireLock = (id) => (d.locks.has(id) ? false : (d.locks.add(id), true));
+  d.releaseLock = (id) => d.locks.delete(id);
+  d.getProject = async () => ({ ...d.project });
+  d.setPendingOps = async (project, value) => {
+    if (project.version !== d.project.version) return null;
+    d.project = { ...d.project, pendingAdvancedOps: value, version: d.project.version + 1 };
+    return { ...d.project };
+  };
+  let refundFailures = failRefund;
+  d.refund = async (user, n) => {
+    if (refundFailures > 0) { refundFailures -= 1; throw new Error('users down'); }
+    d.refunds.push([user, n]);
+    d.log.push('refund');
+  };
   d.getProcess = async (id) => {
     if (failGet) throw new Error('mongo down');
     d.lookedUp = id;
@@ -14,9 +32,11 @@ function deps({ process = null, failGet = false, failDelete = false, unconfirmed
   d.deleteProcess = async (p) => {
     if (failDelete) throw new Error('mongo down');
     d.deleted.push(p._id);
+    d.log.push('delete');
   };
   d.publish = (msg, queue) => {
     d.published.push({ msg, queue });
+    d.log.push('notify');
     return unconfirmed ? new Promise(() => {}) : Promise.resolve();
   };
   return d;
@@ -67,4 +87,37 @@ test('an error event not confirmed by the broker keeps the process for a retry',
   const d = deps({ process: proc('request-1'), unconfirmed: true });
   await assert.rejects(handle_dead_letter(msg({ messageId: 'request-1' }), d));
   assert.deepStrictEqual(d.deleted, []);
+});
+
+test('a dead-lettered job refunds the operations reserved for its run, after notifying', async () => {
+  const d = deps({ process: proc('request-1'), pendingOps: 3 });
+  await handle_dead_letter(msg({ messageId: 'request-1' }), d);
+  assert.deepStrictEqual(d.refunds, [['runner', 3]]);          // to whoever ran the job
+  assert.deepStrictEqual(d.log, ['notify', 'refund', 'delete']);
+  assert.strictEqual(d.project.pendingAdvancedOps, 0);
+  assert.strictEqual(d.locks.size, 0);                          // lock released
+});
+
+test('nothing reserved: no call to the users service', async () => {
+  const d = deps({ process: proc('request-1'), pendingOps: 0 });
+  await handle_dead_letter(msg({ messageId: 'request-1' }), d);
+  assert.deepStrictEqual([d.refunds, d.deleted], [[], ['p1']]);
+});
+
+test('a failed refund keeps the process and is retried, refunding only once', async () => {
+  const d = deps({ process: proc('request-1'), pendingOps: 2, failRefund: 1 });
+  await assert.rejects(handle_dead_letter(msg({ messageId: 'request-1' }), d));
+  assert.deepStrictEqual([d.refunds, d.deleted], [[], []]);
+  assert.strictEqual(d.project.pendingAdvancedOps, 2);          // claim rolled back
+  assert.strictEqual(d.locks.size, 0);
+  await handle_dead_letter(msg({ messageId: 'request-1' }), d);  // the redelivery
+  await handle_dead_letter(msg({ messageId: 'request-1' }), d);  // a duplicate copy
+  assert.deepStrictEqual(d.refunds, [['runner', 2]]);
+});
+
+test('a process being handled (msg_id lock held) is left for a retry, untouched', async () => {
+  const d = deps({ process: proc('request-1'), pendingOps: 2, locked: true });
+  await assert.rejects(handle_dead_letter(msg({ messageId: 'request-1' }), d));
+  assert.deepStrictEqual([d.published, d.refunds, d.deleted], [[], [], []]);
+  assert.ok(d.locks.has('request-1'));                          // the holder's lock is kept
 });

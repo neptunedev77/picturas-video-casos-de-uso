@@ -1,6 +1,11 @@
 // Consumer of picturas.dlq (DA-R3): a job message that exhausted its deliveries on a
 // work queue is reported to the user through the existing process-error /
-// preview-error events, and its process is removed.
+// preview-error events, the operations reserved for its run are refunded once (as the
+// watchdog does, utils/refund.js), and its process is removed.
+//
+// Same order and lock as the watchdog (notify, refund, delete, under the msg_id lock that
+// process_msg also takes), so the watchdog and this consumer never act on the same process
+// at once and the reserved operations are never refunded twice.
 //
 // Delivery guarantee: at-least-once. The dead-lettered message is acked only after the
 // error event is confirmed by the broker and the process deleted. A transient failure
@@ -8,6 +13,8 @@
 // user may therefore, rarely, receive the same error twice.
 const { v4: uuidv4 } = require('uuid');
 const { read_rabbit_msg, send_rabbit_msg } = require('./rabbit_mq');
+const { acquireMsgLock, releaseMsgLock } = require('./idempotency');
+const { refundOnce, refundDeps } = require('./refund');
 
 const DLQ = 'picturas.dlq';
 const RETRY_DELAY_MS = 5000;
@@ -22,6 +29,9 @@ function defaultDeps() {
     return {
         getProcess: (msg_id) => Process.getOneByMsgId(msg_id),
         deleteProcess: (p) => Process.delete(p.user_id, p.project_id, p._id),
+        acquireLock: acquireMsgLock,
+        releaseLock: releaseMsgLock,
+        ...refundDeps(),   // getProject, setPendingOps, refund
         publish: send_rabbit_msg,
         retryDelayMs: RETRY_DELAY_MS,
         publishTimeoutMs: PUBLISH_TIMEOUT_MS,
@@ -73,20 +83,35 @@ async function handle_dead_letter(msg, deps = defaultDeps()) {
         console.error('[dlq] message without messageId/correlationId dropped');
         return;
     }
+    if (!deps.acquireLock(msg_id)) {
+        // its reply is being handled, or the watchdog is acting on it: look again later
+        console.error(`[dlq] ${msg_id}: process busy, retrying`);
+        await sleep(deps.retryDelayMs);
+        throw new Error('process busy');   // not acked: requeued by utils/rabbit_mq.js
+    }
+    let failure = null;
     try {
         const process = await deps.getProcess(msg_id);
         if (!process) {
             console.error(`[dlq] ${msg_id}: no process (already finished or cancelled)`);
             return;
         }
-        // notify first, then delete: a failure in between leads to a retry, never to silence
+        // notify, refund, then delete: a failure in between leads to a retry, never to
+        // silence; the refund claim makes a retry refund at most once
         await notify_failure(process, ERROR_CODE, ERROR_MSG, deps);
+        const project = await deps.getProject(process.user_id, process.project_id);
+        const refunded = await refundOnce(process, project, deps);
         await deps.deleteProcess(process);
-        console.error(`[dlq] ${msg_id}: reported to the user and process removed`);
+        console.error(`[dlq] ${msg_id}: reported to the user, ${refunded} ops refunded, process removed`);
     } catch (err) {
-        console.error(`[dlq] ${msg_id}: transient failure (${err.message}), retrying`);
+        failure = err;
+    } finally {
+        deps.releaseLock(msg_id);   // before the pause, so replies are not held up
+    }
+    if (failure) {
+        console.error(`[dlq] ${msg_id}: transient failure (${failure.message}), retrying`);
         await sleep(deps.retryDelayMs);
-        throw err;   // not acked: requeued by utils/rabbit_mq.js
+        throw failure;   // not acked: requeued by utils/rabbit_mq.js
     }
 }
 
