@@ -1,4 +1,4 @@
-"""Observe video pools, or explicitly enable guarded Compose scale-out only."""
+"""Observe video pools, enable scale-out only, or explicitly enable both directions."""
 
 import argparse
 from dataclasses import asdict, dataclass, replace
@@ -94,7 +94,7 @@ def observe(config, runtime, memory, now=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path(__file__).with_name("config.json"))
-    parser.add_argument("--mode", choices=("observe", "scale-out"), default="observe")
+    parser.add_argument("--mode", choices=("observe", "scale-out", "scale"), default="observe")
     parser.add_argument("--once", action="store_true", help="print one observation and exit")
     args = parser.parse_args(argv)
     try:
@@ -103,13 +103,13 @@ def main(argv=None):
         parser.error(str(error))
     runtime = Runtime(config, os.getenv("RABBIT_USER", "user"), os.getenv("RABBIT_PASS"))
     actuator = None
-    if args.mode == "scale-out":
+    if args.mode != "observe":
         if __package__:
             from .actuator import Actuator
         else:
             from actuator import Actuator
         try:
-            actuator = Actuator(config)
+            actuator = Actuator(config, mode=args.mode)
         except ValueError as error:
             parser.error(str(error))
     memory = {}

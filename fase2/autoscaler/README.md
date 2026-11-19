@@ -1,11 +1,14 @@
-# Video autoscaler — observation and guarded scale-out
+# Video autoscaler — observation and guarded scaling
 
 This block reads RabbitMQ and Docker, evaluates a policy and prints one JSON object per
 observation. `observe` is still the default and performs no mutations. Explicit
-`--mode scale-out` enables the separate `actuator.py`; scale-in is never executed.
+`--mode scale-out` enables additions only. Explicit `--mode scale` enables additions and
+safe removal of idle replicas. `actuator.py` shares locking/journaling between the modes;
+`scale_in.py` implements the ID-specific stop/confirm/remove state machine.
 The observation runtime still allows only Docker `ps` and `inspect`; RabbitMQ access
 uses HTTP GET. The actuator additionally reads the Docker context/daemon identity and
-resolved Compose configuration, and may issue one guarded Compose scale-out request.
+resolved Compose configuration. It may issue a guarded Compose scale-out request, or,
+only in `scale` mode, SIGTERM and non-forced removal of one identified idle replica.
 
 Run from the repository root with Python 3.11+ and Docker CLI access. No Python packages
 need to be installed. Use the credentials of the existing broker through environment
@@ -43,7 +46,7 @@ paused replica still occupies budget. A scale-in proposal does not free real bud
 
 The policy waits while a pool is transitioning or consumers do not match its running
 replicas. Capacity changes, work and degraded observations restart the idle window.
-There is no per-container idle selection in this block.
+Scale-in selects one real container ID only after the entire pool is observed idle.
 
 In observation mode, cooldowns are tracked for **intentions** in memory. Each new observation reconciles against
 real containers; unexecuted proposals never become virtual replicas. Restarting the observer
@@ -56,7 +59,8 @@ attempt cooldowns, so restarting an actuator does not bypass them.
 Containers are selected by exact Compose project/service labels; Compose one-off test
 containers are excluded. Created/restarting containers and running containers with a starting
 health check count as `starting`. Exited/dead containers are reported as `stopped` and do
-not occupy replica budget.
+not occupy observed replica budget. During a pending scale-in, their slot is
+retained separately until the selected container's removal is confirmed.
 
 Docker does not always expose SIGTERM shutdown as a distinct `stopping` state. A container
 still reported as running remains counted until Docker reports it stopped. Reported
@@ -70,7 +74,7 @@ above a limit is reported as degraded and held; it is not silently clamped in th
 
 Observation reports include real counts, metrics, proposed desired counts, reasons, budget,
 errors and `actions_executed: 0`. Observation state/logs stay in memory/stdout;
-benchmark instruments, inputs and golden outputs are unchanged in both modes.
+benchmark instruments, inputs and golden outputs are unchanged in all modes.
 
 ## Enable scale-out explicitly
 
@@ -85,7 +89,8 @@ python -B -m fase2.autoscaler.autoscaler --mode scale-out
 Stop the active process with Ctrl+C, then run without `--mode`, or with `--mode observe`,
 to return to read-only observation. This does not stop/remove existing workers. The JSON
 configuration must keep `"mode": "observe"`: a config file alone cannot enable mutations.
-`apply` and scale-in modes remain invalid.
+`apply` remains invalid. `--mode scale-out` never executes scale-in, including the
+reconciliation of a removal initiated earlier in `scale` mode.
 
 `compose_file` is resolved relative to the selected configuration file, not the current
 working directory. The supplied file selects `../picturas-27/docker-compose.yaml`.
@@ -94,7 +99,9 @@ overdue startup as uncertain. Neither timeout frees a pending reservation.
 
 ### Safety boundary and startup confirmation
 
-- Approved pools/limits are enforced again by the actuator: normal 1–2, heavy 0–2, total 3.
+- Approved services and safety ceilings are enforced again by the actuator: normal minimum
+  >=1, pool maxima <=2, global maximum <=3. The unchanged defaults are normal 1–2 and heavy
+  0–2. Stricter limits and policy periods remain configurable in `config.json`.
 - A lock covers observation, reobservation, reservation, Compose and reconciliation. At most
   one pool gains one replica per step. Only a fresh `scale_out` decision can invoke Compose.
 - The Docker context is pinned and the daemon ID is checked. The Compose project, file and
@@ -104,9 +111,9 @@ overdue startup as uncertain. Neither timeout frees a pending reservation.
 - All existing video containers must be running and stable before an addition. Stopped
   containers block actuation too: otherwise Compose could restart/remove an unexpected
   container while reconciling its absolute target. Fix such deployment state separately.
-- The only mutating command is `compose up -d --no-deps --no-recreate --no-build --pull never
+- Scale-out uses only `compose up -d --no-deps --no-recreate --no-build --pull never
   --scale SERVICE=N SERVICE`. Dependencies, other services, builds, pulls, removals and
-  explicit scale-in are outside this actuator. Existing IDs must remain present.
+  explicit scale-in are outside the scale-out path. Existing IDs must remain present.
   The subprocess environment explicitly disables `COMPOSE_REMOVE_ORPHANS`, including
   when the parent shell or an environment file enables automatic orphan removal.
 - A successful command is **not** readiness. Confirmation requires exactly one additional
@@ -118,10 +125,89 @@ overdue startup as uncertain. Neither timeout frees a pending reservation.
   twice. No observation error authorizes capacity or releases a reservation.
 
 Active reports add `actions_attempted`, `actuation` and `occupied_with_reservations`.
-`actions_executed` counts Compose calls returning zero in that step, **not** ready replicas.
+`actions_executed` counts mutating Docker calls returning zero in that step, **not**
+ready replicas. A completed scale-in may have two calls: stop and rm.
 Check `actuation.ready` and `actuation.container_id`. Pending valid observations can exit
 `--once` with code 0 without readiness; blocked/uncertain/failed steps exit with code 1.
 Further invocations resume reconciliation from the journal.
+
+## Enable scale-in explicitly (Block 7)
+
+```console
+python -B -m fase2.autoscaler.autoscaler --mode scale
+```
+
+This is the only mode that may stop/remove a replica. It can also scale out. The policy
+still uses the configured idle window (default 60 s with both ready and unacked at zero)
+and scale-in cooldown (default 30 s). These values are not tuned in this block.
+
+One operation is selected per step. A valid scale-out intention takes priority over
+scale-in; the controller never adds and removes capacity in the same step. Pending
+operations block new operations in both pools, including across actuator restarts.
+
+For each scale-in:
+
+1. Under the same project/daemon lock, read the resolved Compose configuration and obtain
+   another valid observation. Require stable workers, matching consumers, the full idle
+   window and a target no lower than the configured minimum.
+2. Select one deterministic full container ID from the idle pool. Persist that ID, all
+   original IDs, the target and the stop grace before sending a signal.
+3. Execute `docker --context CONTEXT stop --signal SIGTERM --timeout SECONDS ID`. The timeout
+   comes from the selected service's explicit `stop_grace_period` (currently 45 s), rounded
+   up to integer seconds; the CLI timeout covers that grace as well. The existing worker
+   still cancels its consumer and has its internal 8 s to finish/requeue. No ack, heartbeat,
+   requeue, watchdog, refund or worker logic is changed. Docker's stop command may escalate
+   after its configured grace; the actuator adds no separate force/kill command.
+4. Reobserve. A zero stop result alone is insufficient. Require that the same ID is
+   actually stopped (`exited`/`dead`, not running/paused/restarting), survivors are unchanged
+   and stable, and RabbitMQ reflects the disconnected consumer.
+5. Obtain another observation immediately before `docker --context CONTEXT rm ID`.
+   No force, volume, network, name-based or Compose scale-down operation is used.
+6. Confirm the selected ID is absent, the exact survivors remain and their consumer count
+   agrees. Only then release the retained budget slot. Start the real scale-in cooldown
+   at completion and start a new idle window if the queue is still empty.
+
+Stop/remove errors and timeouts remain journaled. A stopped-but-not-removed replica still
+reserves its slot; unknown Docker state reports an unknown usable total, not fabricated
+capacity. Reconciliation after a restart can finish a stop that completed late, or confirm
+a removal whose result was lost. A request with uncertain outcome is not blindly repeated:
+
+- Stop retries address the same persisted ID only, and require a fresh full idle window,
+  zero ready/unacked, matching consumers, stable replicas and unchanged survivors/minima.
+  Both the configured scale-in cooldown and the previous Docker stop grace plus read
+  timeout must have elapsed. This recovers a crash after reservation but before SIGTERM.
+- Removal retries address the same confirmed stopped ID, with the configured scale-in
+  cooldown and another valid observation immediately before rm. They never force removal
+  or select a replacement ID. This recovers a crash before rm or a transient rm failure.
+- Attempt times are persisted before each request. At most one stop and one rm request
+  are made per step, even if a slow call outlasts its cooldown. Reservations are retained
+  until actual removal is confirmed; elapsed time alone never frees capacity.
+
+Work arriving between observation and SIGTERM is handled by the existing ReliableConsumer.
+No queue lock or new worker protocol is introduced. New ready/unacked messages always block
+a new SIGTERM (including stop retries), but do not block cleanup of an already stopped,
+disconnected container: rm cannot remove live capacity from that ID. The controller does
+not ack, purge or modify queued messages. Completing that cleanup unlocks the existing
+scale-out path, including heavy 1 -> 0 -> 1 when new work arrives during/after shutdown.
+Scale-out can run in a later step, respecting its existing cooldown and budget.
+
+Invalid metrics, changed survivor IDs, corrupt journals, or a target unexpectedly restarted
+after removal was authorized keep the operation blocked. These conditions need valid
+observations or explicit operator reconciliation; no journal is discarded to bypass them.
+
+### Disable scale-in
+
+Stop the `--mode scale` process with Ctrl+C, then start either:
+
+```console
+python -B -m fase2.autoscaler.autoscaler --mode scale-out
+python -B -m fase2.autoscaler.autoscaler --mode observe
+```
+
+The first permits additions only; the second performs no mutations. Neither resumes stop/rm
+for an existing pending scale-in. Resume with `--mode scale` to finish its reconciliation.
+Changing modes does not undo SIGTERM or a Docker request already sent, and never discards
+the journal. Do not run multiple controllers with separate state directories.
 
 ### Persistent state and uncertain operations
 
@@ -143,8 +229,9 @@ OS/I/O errors keep it uncertain because the CLI may already have sent the reques
 Cooldown still applies. Once valid observations establish the exact new running capacity
 and consumer count, reconciliation can finish even after a CLI timeout or process restart.
 
-If an operation never becomes observable, it intentionally stays blocked rather than
-blindly retrying after a TTL. Stop all actuators, inspect both pools and the journal IDs,
+An unobserved scale-out intentionally stays blocked rather than blindly creating more
+capacity after a TTL. Scale-in resumes only the same ID with the guards above. For
+unreconcilable deployment state, stop all actuators, inspect both pools and the journal IDs,
 confirm no old Compose process/request can still create capacity, and reconcile the
 deployment before an operator archives/resets the journal. Do not delete it merely because
 a timeout elapsed. Corrupt journals and backwards wall clocks also block mutations.
@@ -178,8 +265,12 @@ Use the existing instruments in a separate `dev` campaign, never overwrite `base
 on the prepared POSIX benchmark host, `fase2/bench/run-measurements.sh dev 1 S1 S2 S3`.
 The existing campaign recovery can start stopped workers: ensure none exist before the
 run and do not run concurrent recovery/deployment commands during actuator safety tests.
-Run the existing reliability/API regression suite afterwards. No scale-in or post-burst
-memory reduction is promised in this block. Never delete volumes for these validations.
+Run the existing reliability/API regression suite afterwards. In `scale-out` mode no
+post-burst reduction is expected. In `scale` mode, verify one identified idle replica is
+stopped and removed after the configured idle/cooldown windows, the normal minimum stays
+available, and both resource usage and consumer counts reflect the confirmed removal.
+Never delete volumes for these validations. Real Docker tests and S1-S3 benchmarks belong
+to the designated Ubuntu validation host; simulated unit tests are not evidence of them.
 
 ## Unit tests
 

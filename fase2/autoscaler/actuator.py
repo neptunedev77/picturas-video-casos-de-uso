@@ -1,4 +1,4 @@
-"""Single-host, journaled Compose scale-out. No stop/remove/recreate operations."""
+"""Single-host, journaled scaling with explicit opt-in for removal of idle replicas."""
 
 from contextlib import contextmanager
 from dataclasses import replace
@@ -15,8 +15,10 @@ import time
 
 if __package__:
     from .policy import PoolMemory
+    from .scale_in import ScaleIn, validate_pending as validate_scale_in
 else:
     from policy import PoolMemory
+    from scale_in import ScaleIn, validate_pending as validate_scale_in
 
 
 POOLS = {
@@ -72,14 +74,18 @@ def inventory_ids(inventory):
 
 class Actuator:
     def __init__(self, config, command_runner=subprocess.run,
-                 wall_clock=time.time, monotonic=time.monotonic):
-        configured = {p.name: (p.service, p.queue, p.minimum, p.maximum)
+                 wall_clock=time.time, monotonic=time.monotonic, mode="scale-out"):
+        configured = {p.name: (p.service, p.queue)
                       for p in config.policy.pools}
-        if configured != POOLS or config.policy.max_total != 3:
-            raise ValueError("Scale-out requires the approved two pools and global budget 3")
+        if (configured != {name: values[:2] for name, values in POOLS.items()} or
+                config.policy.max_total > 3 or any(p.maximum > 2 for p in config.policy.pools)):
+            raise ValueError("Scaling requires the approved pools, pool maxima <=2 and total <=3")
+        if mode not in ("scale-out", "scale"):
+            raise ValueError("Actuator mode must be scale-out or scale")
         if config.compose_file is None or not config.compose_file.is_file():
             raise ValueError("Scale-out requires an existing explicit compose_file")
         self.config = config
+        self.mode = mode
         self._run, self._wall, self._monotonic = command_runner, wall_clock, monotonic
         self.context = self.daemon = None
         root = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / ".local" / "state")))
@@ -131,13 +137,16 @@ class Actuator:
                 name not in POOLS or not finite_number(value) for name, value in cooldowns.items()
             ):
                 raise ValueError("cooldowns")
+            in_cooldowns = state.setdefault("scale_in_cooldowns", {})
+            if not isinstance(in_cooldowns, dict) or any(
+                name not in POOLS or not finite_number(value) for name, value in in_cooldowns.items()
+            ):
+                raise ValueError("scale-in cooldowns")
             pending = state["pending"]
             if pending is not None:
                 if not isinstance(pending, dict):
                     raise ValueError("pending object")
-                if pending["pool"] not in POOLS or pending["phase"] not in (
-                    "reserved", "returned", "uncertain",
-                ):
+                if pending["pool"] not in POOLS:
                     raise ValueError("pending operation")
                 if not finite_number(pending["requested_at"]):
                     raise ValueError("pending time")
@@ -149,6 +158,12 @@ class Actuator:
                     ) for ids in before.values()
                 ):
                     raise ValueError("container identities")
+                direction = pending.get("direction", "scale_out")
+                if direction == "scale_in":
+                    validate_scale_in(pending, self.config)
+                    return state
+                if direction != "scale_out" or pending["phase"] not in ("reserved", "returned", "uncertain"):
+                    raise ValueError("pending direction/phase")
                 service = POOLS[pending["pool"]][0]
                 target = pending["target"]
                 if type(target) is not int or target != len(before[service]) + 1 or target > 2:
@@ -205,6 +220,7 @@ class Actuator:
                         spec["restart"] != "on-failure" or
                         spec["depends_on"]["rabbitmq"]["condition"] != "service_healthy"):
                     raise ValueError("worker configuration")
+            return document
         except (ValueError, KeyError, TypeError) as error:
             raise SafetyError("Compose does not match the approved video services") from error
 
@@ -216,7 +232,7 @@ class Actuator:
             if any(counts[key] for key in ("starting", "stopping", "paused", "stopped")):
                 # In particular, Compose must never reconcile an excess stopped
                 # container by removing it or restart it outside this reservation.
-                raise SafetyError("Existing video containers must be running and stable before scale-out")
+                raise SafetyError("Existing video containers must be running and stable before scaling")
         for container in inventory:
             labels = container["Config"]["Labels"]
             directory = labels.get("com.docker.compose.project.working_dir")
@@ -235,6 +251,13 @@ class Actuator:
             if elapsed < self.config.policy.scale_out_cooldown_s:
                 previous = memory.get(pool, PoolMemory())
                 memory[pool] = replace(previous, last_scale_out=now - elapsed)
+        for pool, attempted in state.get("scale_in_cooldowns", {}).items():
+            if wall < attempted:
+                raise SafetyError("Wall clock moved backwards; keep capacity on hold")
+            elapsed = wall - attempted
+            if elapsed < self.config.policy.scale_in_cooldown_s:
+                previous = memory.get(pool, PoolMemory())
+                memory[pool] = replace(previous, last_scale_in=now - elapsed)
         return memory
 
     def _reconcile(self, state, report, inventory):
@@ -279,6 +302,8 @@ class Actuator:
 
     @staticmethod
     def _reserved_slots(pending, inventory):
+        if pending.get("direction") == "scale_in":
+            return ScaleIn.reserved_slots(pending, inventory)
         if inventory is not None:
             ids = inventory_ids(inventory)
             service = POOLS[pending["pool"]][0]
@@ -290,9 +315,8 @@ class Actuator:
                     return 0
         return 1
 
-    @staticmethod
-    def _finish(report, action, attempted=0, executed=0):
-        report.update(mode="scale-out", actions_attempted=attempted, actions_executed=executed,
+    def _finish(self, report, action, attempted=0, executed=0):
+        report.update(mode=self.mode, actions_attempted=attempted, actions_executed=executed,
                       actuation=action)
         if action["status"] in ("blocked", "uncertain", "failed"):
             report["status"] = "degraded"
@@ -301,10 +325,10 @@ class Actuator:
         return report
 
     def step(self, runtime, memory, observer):
-        """One serialized reconciliation; at most one +1 Compose request."""
+        """One serialized operation; never scale out and scale in in the same step."""
         report = {"mode": "scale-out", "status": "degraded", "actions_executed": 0,
                   "timestamp": datetime.now(timezone.utc).isoformat(),
-                  "budget": 3, "observed_total": None, "proposed_total": None,
+                  "budget": self.config.policy.max_total, "observed_total": None, "proposed_total": None,
                   "errors": [], "pools": {}}
         state = None
         attempted = executed = 0
@@ -316,29 +340,40 @@ class Actuator:
                 memory = self._with_cooldowns(memory, state)
                 report, next_memory = observer(self.config, runtime, memory)
                 if state["pending"] is not None:
+                    if state["pending"].get("direction") == "scale_in":
+                        return ScaleIn(self, observer).resume(
+                            runtime, report, next_memory, state, journal_path)
                     action = self._reconcile(state, report, runtime.inventory)
                     self._save(journal_path, state)
                     return self._finish(report, action), next_memory
                 candidates = [p for p in report["pools"].values()
                               if p["decision"]["intent"] == "scale_out"]
+                if not candidates and self.mode == "scale":
+                    candidates = [p for p in report["pools"].values()
+                                  if p["decision"]["intent"] == "scale_in"]
                 if report["status"] != "ok" or not candidates:
                     return self._finish(report, {"status": "idle", "ready": False}), next_memory
                 pool_name = candidates[0]["decision"]["pool"]
-                self._validate_compose()
+                direction = candidates[0]["decision"]["intent"]
+                compose = self._validate_compose()
                 # Do not reuse the proposal's updated memory: that would apply
                 # its new intention cooldown to the very action being checked.
                 report, next_memory = observer(self.config, runtime, memory)
                 self._validate_inventory(report, runtime.inventory)
                 pool = report["pools"][pool_name]
                 decision = pool["decision"]
-                if decision["intent"] != "scale_out":
+                if decision["intent"] != direction:
                     return self._finish(report, {"status": "idle", "ready": False,
                                                  "reason": "Decision changed on refresh"}), next_memory
+                if direction == "scale_in":
+                    return ScaleIn(self, observer).start(
+                        runtime, report, next_memory, state, journal_path, compose, pool_name)
                 target = decision["desired"]
                 service = POOLS[pool_name][0]
                 before = inventory_ids(runtime.inventory)
-                if (target != len(before[service]) + 1 or target > 2 or
-                        report["observed_total"] + 1 > 3):
+                maximum = next(p.maximum for p in self.config.policy.pools if p.name == pool_name)
+                if (target != len(before[service]) + 1 or target > maximum or
+                        report["observed_total"] + 1 > self.config.policy.max_total):
                     raise SafetyError("Scale-out target violates actual capacity limits")
                 state["pending"] = {"pool": pool_name, "target": target, "before": before,
                                     "consumers_before": pool["metrics"]["consumers"],

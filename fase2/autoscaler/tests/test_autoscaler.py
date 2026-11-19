@@ -158,6 +158,26 @@ class ObserverTests(unittest.TestCase):
             actuator.return_value.step.return_value = ({"status": "degraded"}, {})
             self.assertEqual(autoscaler.main(["--mode", "scale-out", "--once"]), 1)
 
+    def test_scale_mode_requires_explicit_cli_opt_in(self):
+        with patch.object(autoscaler, "Runtime"), \
+                patch("fase2.autoscaler.actuator.Actuator") as actuator, redirect_stdout(io.StringIO()):
+            actuator.return_value.step.return_value = ({"status": "ok", "mode": "scale"}, {})
+            self.assertEqual(autoscaler.main(["--mode", "scale", "--once"]), 0)
+        self.assertEqual(actuator.call_args.kwargs["mode"], "scale")
+
+    def test_scale_out_cli_keeps_the_exclusive_mode(self):
+        with patch.object(autoscaler, "Runtime"), \
+                patch("fase2.autoscaler.actuator.Actuator") as actuator, redirect_stdout(io.StringIO()):
+            actuator.return_value.step.return_value = ({"status": "ok", "mode": "scale-out"}, {})
+            self.assertEqual(autoscaler.main(["--mode", "scale-out", "--once"]), 0)
+        self.assertEqual(actuator.call_args.kwargs["mode"], "scale-out")
+
+    def test_configuration_cannot_enable_bidirectional_scaling(self):
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        data["mode"] = "scale"
+        with patch.object(Path, "read_text", return_value=json.dumps(data)), self.assertRaises(ValueError):
+            autoscaler.load_config(CONFIG_PATH)
+
     def test_configuration_cannot_silently_enable_actuation(self):
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         data["mode"] = "scale-out"
