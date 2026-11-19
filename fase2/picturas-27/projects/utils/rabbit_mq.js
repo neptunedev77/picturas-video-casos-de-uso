@@ -24,6 +24,7 @@ const exchange = "picturas";
 const rabbit_mq_sv = `amqp://${rabbit_username}:${rabbit_password}@${rabbit_host}:${rabbit_port}`;
 
 const BACKOFF_MAX_MS = 30000;
+const NACK_RETRY_MS = 1000;   // pause before resending a publish the broker refused
 
 let connectFn = (url) => amqp.connect(url);
 let state = null;        // { conn, pubCh } while connected
@@ -64,17 +65,27 @@ function connect() {
     return connecting;
 }
 
+// Keeps a publish that was not confirmed and sends it again later. While connected,
+// connect() returns at once and does not flush, so the retry is scheduled here; without it a
+// publish refused by the broker (nack) would wait for the next reconnection.
+function retryLater(item) {
+    pending.push(item);
+    if (!state) { connect(); return; }
+    setTimeout(flush, NACK_RETRY_MS);
+}
+
 function doPublish(item) {
     const s = state;
     if (!s) { pending.push(item); connect(); return; }
     try {
         s.pubCh.publish(exchange, item.queue, item.content, { persistent: true }, (err) => {
-            if (err) { pending.push(item); connect(); }   // not confirmed: send again later
-            else item.resolve();
+            if (err) {
+                console.error(`[rabbit] publish to ${item.queue} not confirmed, sending it again`);
+                retryLater(item);
+            } else item.resolve();
         });
     } catch (err) {
-        pending.push(item);
-        connect();
+        retryLater(item);
     }
 }
 
@@ -112,8 +123,16 @@ async function startConsumer(s, { queue, callback, queueType }) {
                 ch.ack(msg);
             }
         } catch (err) {
-            // connection lost: no ack, the broker redelivers the message
-            console.error(`[rabbit] message on ${queue} left for redelivery: ${err.message}`);
+            // a publish was refused (nack) or the connection was lost. Requeue the message so
+            // it is not left unacked on a channel that is still open (the broker would not
+            // redeliver it until the connection closes); the delivery limit bounds the retries.
+            // If the channel is gone the nack fails and the broker redelivers it anyway.
+            console.error(`[rabbit] publishes of a message on ${queue} not confirmed, requeueing: ${err.message}`);
+            try {
+                ch.nack(msg, false, true);
+            } catch (nackErr) {
+                console.error(`[rabbit] message on ${queue} left for redelivery: ${nackErr.message}`);
+            }
         }
     }, { noAck: false });
 }
