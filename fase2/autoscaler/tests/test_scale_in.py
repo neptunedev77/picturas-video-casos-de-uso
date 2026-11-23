@@ -84,7 +84,11 @@ class ScaleInTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
-        self.config = replace(load_config(CONFIG_PATH), state_dir=Path(self.directory.name))
+        # The scenarios below are timed for a 60 s idle window, so they pin it instead of
+        # following the deployed config.json (tuned to 40 s for the E-4 target).
+        config = load_config(CONFIG_PATH)
+        self.config = replace(config, state_dir=Path(self.directory.name),
+                              policy=replace(config.policy, scale_in_idle_s=60))
         self.reset()
 
     def reset(self, normal=1, heavy=1):

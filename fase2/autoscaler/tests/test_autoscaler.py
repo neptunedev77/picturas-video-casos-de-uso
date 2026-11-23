@@ -26,7 +26,7 @@ class ObserverTests(unittest.TestCase):
         self.assertEqual((config.mode, config.project, config.interval_s), ("observe", "picturas", 1))
         self.assertEqual(config.policy.max_total, 3)
         self.assertEqual((config.policy.scale_out_cooldown_s, config.policy.scale_in_idle_s,
-                          config.policy.scale_in_cooldown_s), (5, 60, 30))
+                          config.policy.scale_in_cooldown_s), (5, 40, 30))
         self.assertEqual([(p.name, p.service, p.queue, p.minimum, p.maximum) for p in config.policy.pools], [
             ("normal", "video_tool", "video_queue", 1, 2),
             ("heavy", "video_heavy_tool", "video_heavy_queue", 0, 2),

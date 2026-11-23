@@ -36,7 +36,7 @@ another configuration file, without modifying Compose or the application.
 | Global occupied replica budget | 3 |
 | Observation interval | 1 s, including collection time when reads complete in time |
 | Scale-out intention | +1 per pool/decision; cooldown 5 s |
-| Scale-in intention | -1 after 60 s of observed empty ready **and** unacked counts |
+| Scale-in intention | -1 after 40 s of observed empty ready **and** unacked counts (tuned from 60 s so the whole scale-in fits the E-4 target of 60 s) |
 | Scale-in cooldown | 30 s per pool; at most one reduction per observation |
 
 Backlog requires more capacity when `ready > 0` and `ready + unacked > running replicas`.
@@ -138,7 +138,7 @@ python -B -m fase2.autoscaler.autoscaler --mode scale
 ```
 
 This is the only mode that may stop/remove a replica. It can also scale out. The policy
-still uses the configured idle window (default 60 s with both ready and unacked at zero)
+still uses the configured idle window (40 s in `config.json`, with both ready and unacked at zero)
 and scale-in cooldown (default 30 s). These values are not tuned in this block.
 
 One operation is selected per step. A valid scale-out intention takes priority over
