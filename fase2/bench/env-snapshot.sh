@@ -17,4 +17,8 @@ REPO="$(cd "$(dirname "$0")/../picturas-27" && pwd)"
   docker compose version
   echo "## containers"; docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' | sort
   echo "## loadavg"; cat /proc/loadavg
+  echo "## autoscaler"
+  echo "AUTOSCALER mode for this campaign: ${AUTOSCALER:-off}"
+  AS_CFG="$(dirname "$REPO")/autoscaler/config.json"
+  [ -f "$AS_CFG" ] && cat "$AS_CFG" || echo "no fase2/autoscaler in this checkout"
 } > "$OUT" 2>&1
