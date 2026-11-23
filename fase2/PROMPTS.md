@@ -319,3 +319,138 @@ As DA-R1 a DA-R5, a correção B (`25d868b`) e a revisão do Diogo (`5101189`, `
 as novas regras de mensagens. Falta: a migração do RabbitMQ nas máquinas do grupo, a confirmação
 da regressão 30/30 e as medições oficiais (`after-reliability`) na máquina de referência, e
 acordar com o António o cálculo do R-4 do F6.
+
+---
+
+# Elasticidade (Rafael Sousa e al81205)
+
+**Fonte deste registo.** As prompts originais da frente de Elasticidade não foram guardadas no
+repositório. As entradas abaixo foram reconstruídas pelo António (com apoio do Claude) a partir dos
+commits do ramo `feat/elasticity-video`, das mensagens da equipa e do documento de validação
+`validacao_elasticidade_ubuntu_antonio.md`. O ponto de partida foi a prompt de implementação da
+Elasticidade do grupo (`docs/prompts-implementacao.md`, Prompt 2). Os números de testes citados
+são os do relatório do agente; os que foram confirmados pela equipa estão assinalados.
+
+---
+
+## 2026-11-19 · Elasticidade · Codex (modelo não registado)
+
+**Tarefa:** DA-E2 e DA-E3 — fila pesada para a legendagem, pools de vídeo separados e limites.
+
+**Prompt:** Prompt 2 do grupo (problemas medidos na baseline, alvos E-1…E-5, decisões DA-E1…DA-E4,
+regras para as medições continuarem comparáveis), pedida por etapas.
+
+**Resultado (agente), commits `2941dd4`, `a54e568`, `daee237`, `5f88e7a` (Rafael Sousa):**
+- `rabbitMQ/definitions.json`: fila `video_heavy_queue` (quorum), ligação ao exchange e inclusão na
+  política de dead-letter `work-queues-dead-letter` (pedido da frente de Fiabilidade).
+- `Tools/video/video.py`: a fila consumida passa a vir da variável `VIDEO_QUEUE`.
+- `docker-compose.yaml`: serviço `video_heavy_tool` com a mesma imagem e configuração do
+  `video_tool`; limites de 2 CPUs e 3 GB por réplica; `stop_grace_period` de 45 s.
+- `projects/utils/videoRouting.js` e `project_msg.js`: os vídeos cujo pipeline tem legendagem vão
+  para a fila pesada; os restantes para a `video_queue`. Testes em `projects/tests/video-routing.test.js`.
+- `fase2/tests/elasticity/`: 15 testes de Compose e topologia.
+
+**Validação:** _a preencher pela equipa (o que foi revisto, testado ou corrigido)._
+
+---
+
+## 2026-11-19 · Elasticidade · Codex (modelo não registado)
+
+**Tarefa:** DA-E1 e DA-E4 — autoscaler: modo de observação, scale-out e scale-in seguros.
+
+**Prompt:** continuação da Prompt 2 do grupo, por blocos (observação, scale-out, scale-in).
+
+**Resultado (agente), commits `7f9c331` (Rafael Sousa), `3a479ce` e `c059ecf` (al81205):**
+- `fase2/autoscaler/`: programa Python sem dependências externas que lê a API do RabbitMQ e o
+  Docker a cada segundo e aplica a política de `config.json` (pool normal 1–2 réplicas, pool
+  pesado 0–2, no máximo 3 réplicas de vídeo; scale-out de 1 réplica com 5 s de cooldown; scale-in
+  depois de um período sem trabalho, com 30 s de cooldown).
+- Três modos: `observe` (predefinido, não altera nada), `scale-out` e `scale`. O scale-out usa
+  `docker compose up --scale`; o scale-in envia SIGTERM a um contentor identificado, espera que
+  pare e só depois o remove (sem `--force`), com bloqueio e registo (journal) das operações.
+- Diferença em relação ao plano: o autoscaler corre como programa no anfitrião, e não como
+  serviço do Docker Compose; só o vídeo escala e tem limites.
+- 180 testes automáticos do autoscaler (relatório do agente).
+
+**Verificações (equipa):** a 23/11, na máquina de referência, os 180 testes do autoscaler e os 15
+de topologia passaram (António, com o Claude). A validação com Docker real (réplicas criadas e
+removidas de verdade) está por fazer.
+
+**Validação:** _a preencher pela equipa._
+
+---
+
+# Medição e qualidade (António Sousa)
+
+**Papéis.** António: decisões de método, condições da máquina de referência, execução das
+campanhas, revisão dos resultados, commits manuais. Claude (Opus 5.5, Claude Code na app de
+desktop): análise do código, scripts de medição e de testes, análise dos resultados e propostas.
+Regra fixada pelo António: o agente não faz commits, push nem merges; prepara as alterações e
+dá os comandos.
+
+---
+
+## 2026-11-17 · Medição · Claude Code (Opus 5.5)
+
+**Tarefa:** instrumentos de medição e medição inicial (baseline).
+
+**Prompt (resumo):** a partir do plano da Fase 2, explicar como fazer a medição inicial no Ubuntu
+de referência, escrever os instrumentos necessários e guardar os resultados.
+
+**Resultado (agente):** `fase2/bench/` (gerador de carga pela API pública, amostragem do RabbitMQ
+e do Docker, cenários S1–S3 e falhas F1–F6, referências sem carga, script da campanha e análise
+das métricas E-1…E-5 e R-1…R-5); dados de teste fixos; medição de 5 repetições por cenário; medição
+do tempo de arranque de uma réplica de vídeo (4,8 s), origem do alvo do E-3.
+
+**Contributo e validação (António):**
+- Preparei a máquina de referência (cluster de outro projeto parado, corrente, modo de desempenho,
+  sem suspensão) e corri a campanha.
+- Na revisão dos resultados ficou claro que o F1, o F4 e o F6 injetavam a falha depois de os
+  trabalhos acabarem; esses resultados foram postos de lado (`results/baseline/_discarded-v1/`) e
+  os cenários repetidos com a falha a apanhar trabalho em curso.
+- Aceitei fixar os alvos propostos com origem identificada e redefinir o E-2 e o E-5.
+
+---
+
+## 2026-11-17 · Medição · Claude Code (Opus 5.5)
+
+**Tarefa:** suite de regressão, golden outputs e prompts de implementação para as duas frentes.
+
+**Resultado (agente):** `fase2/tests/regression/` (30 casos pela API com golden outputs
+capturados duas vezes na base), `fase2/tests/run-all.sh` (testes unitários existentes + regressão,
+`ALL PASSED` na base); dados de teste versionados; revisão das prompts de implementação.
+
+**Contributo e validação (António):** confirmei com um clone limpo que a regressão passava 30/30;
+corrigi o processo de trabalho com o agente depois de ele ter feito commits e merges sem eu pedir
+(regra: os commits passam a ser meus).
+
+---
+
+## 2026-11-23 · Medição · Claude Code (Opus 5.5)
+
+**Tarefa:** revisão da implementação das duas frentes antes da medição final e correções.
+
+**Prompt (resumo):** reler o plano, as mensagens da equipa e o enunciado, analisar o código novo,
+dar parecer e dizer se está tudo pronto para a medição final; depois implementar as correções,
+de forma simples de explicar.
+
+**Resultado (agente):**
+- Parecer (PDF `analise-antes-medicao-final.pdf`): Fiabilidade conforme o plano; Elasticidade
+  sólida mas diferente do plano (autoscaler fora do Compose, só vídeo); cinco problemas que
+  afetavam a medição final.
+- `bench/analyze/analyze.py`: cálculo do E-3 (tempo de scale-out) e do E-4 (tempo de scale-in) por
+  fila de vídeo; R-4 do F6 com o limite do plano (prazo do watchdog + 10 s = 50 s, contando o
+  intervalo de 10 s entre verificações). Os 50 valores anteriores da baseline ficam iguais.
+- `bench/run-measurements.sh`: com `AUTOSCALER=scale`, liga o autoscaler durante a campanha,
+  guarda as decisões, espera pelo estado de repouso antes de cada repetição e não volta a ligar
+  réplicas desligadas pelo scale-in; `REF-f4mix` passa a fazer parte da campanha.
+- `fase2/autoscaler/config.json`: período sem trabalho antes do scale-in de 60 s para 40 s (com 60 s
+  o alvo do E-4, ≤ 60 s, era impossível); testes do scale-in passam a fixar os seus próprios 60 s.
+
+**Verificações (agente):** analyze reaplicado à baseline sem mudar valores; cálculos novos testados
+com dados simulados; arranque e paragem do autoscaler a partir do script; 180 testes do
+autoscaler e 15 de topologia a passar.
+
+**Contributo e validação (António):** pedi explicações acessíveis e correções simples de
+apresentar; decidi assumir as correções finais, as medições e o relatório. _Completar com o que
+foi revisto e testado._
