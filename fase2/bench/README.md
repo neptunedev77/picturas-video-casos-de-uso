@@ -27,6 +27,32 @@ Each run writes `results/<phase>/<scenario>/repN/` with `jobs.csv` (one row per 
 first event, end, status), `events.jsonl`, `chaos.csv`, `queues.csv`, `docker.csv`,
 `compose.log` and `meta.json`.
 
+### Final measurement (with the autoscaler)
+
+```bash
+AUTOSCALER=scale ./run-measurements.sh final 5
+```
+
+With `AUTOSCALER=scale` the script (1) starts `fase2/autoscaler` in mode `scale` for the
+whole campaign and stops it at the end, (2) saves every autoscaler decision in
+`results/<phase>/autoscaler.jsonl` (errors in `autoscaler.err`) and its configuration in the
+`env-*.txt` snapshot, and (3) before every run waits until the video pools are back at rest
+(1 normal consumer, 0 heavy) so every repetition starts from the same state. It also does not
+start again a video replica that exited cleanly, because that is a scale-in in progress.
+Without `AUTOSCALER` the method is exactly the baseline one.
+
+### Changes to the method after the baseline (all applied to the baseline data too)
+
+- `analyze.py` computes E-3 (scale-out time) and E-4 (scale-in time, first replica removed and
+  back to the starting replicas) per video queue from `queues.csv`; on the baseline they are
+  n/a because the number of consumers never changes.
+- `analyze.py` adds R-4 for F6 as the plan defines it: frozen image jobs reported within the
+  watchdog deadline + 10 s (30 s deadline + 10 s check interval + 10 s = 50 s). The old
+  "≤ 10 s" line is kept.
+- `REF-f4mix`, the reference of F4, is now in the default scenario list (in the baseline it
+  was run on its own).
+- Re-running `analyze.py` on `results/baseline` leaves every previous value unchanged.
+
 Job status: `done` (one result per input), `error_reported` (a `process-error` reached the
 client), `hung` (neither before the timeout: 600 s for S*, 150 s for F* (over 7x the longest solo job)), `rejected` /
 `submit_failed` (the submit itself failed).

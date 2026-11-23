@@ -13,6 +13,13 @@
 | E-5 S2 image throughput (jobs/min) | {"n": 5, "median": 41.66, "p95": 41.67, "stdev": 0.0, "min": 41.66, "max": 41.67} |
 | S2 video wait p95 per rep (s) | {"n": 5, "median": 21.5, "p95": 22.04, "stdev": 0.85, "min": 20.23, "max": 22.04} |
 | E-3 S3 max video_queue consumers | {"n": 5, "median": 1, "p95": 1, "stdev": 0.0, "min": 1, "max": 1} |
+| E-3 S1 video_queue scale-out time (s) | {"n": 0} |
+| E-3 S1 video_queue reps without scale-out | 5 |
+| E-3 S3 video_queue scale-out time (s) | {"n": 0} |
+| E-3 S3 video_queue reps without scale-out | 5 |
+| E-4 S3 video_queue scale-in time, first replica removed (s) | {"n": 0} |
+| E-4 S3 video_queue time back to the starting replicas (s) | {"n": 0} |
+| E-4 S3 video_queue reps without scale-in | 5 |
 | E-4 idle memory, picturas-* (MB) | {"n": 5, "median": 3257.53, "p95": 3662.69, "stdev": 184.56, "min": 3217.19, "max": 3662.69} |
 | E-4 S3 memory before burst (MB) | {"n": 5, "median": 4006.67, "p95": 4448.42, "stdev": 218.72, "min": 3896.67, "max": 4448.42} |
 | E-4 S3 memory during burst (MB) | {"n": 5, "median": 4251.87, "p95": 4720.57, "stdev": 228.67, "min": 4147.76, "max": 4720.57} |
@@ -52,3 +59,4 @@
 | R-5 F6 jobs with duplicate results | 0 |
 | R-4 F5 % errors reported <= 10 s | 50.0 |
 | R-4 F6 % errors reported <= 10 s | 0.0 |
+| R-4 F6 % frozen image jobs reported <= 50 s (watchdog 30 + check 10 + 10) | 0.0 |

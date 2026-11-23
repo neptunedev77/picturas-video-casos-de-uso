@@ -71,6 +71,46 @@ def consumers_series(d, queue):
     return [int(r["consumers"]) for r in csv.DictReader(open(f)) if r["queue"] == queue and r["consumers"].isdigit()]
 
 
+# Video queues: the normal one (baseline and final) and the heavy one (captioning, final only).
+VIDEO_QUEUES = ("video_queue", "video_heavy_queue")
+
+
+def queue_series(d, queue, t_from=0.0):
+    """[(t, ready, unacked, consumers)] of one queue, sampled every second by the sampler."""
+    f = f"{d}/queues.csv"
+    if not os.path.exists(f):
+        return []
+    rows = []
+    for r in csv.DictReader(open(f)):
+        if r["queue"] == queue and r["consumers"].isdigit() and float(r["t"]) >= t_from:
+            rows.append((float(r["t"]), int(r["ready"]), int(r["unacked"]), int(r["consumers"])))
+    return rows
+
+
+def scale_out_time(rows):
+    """E-3: from the first sample with jobs waiting (ready > 0) to the first sample with
+    one more consumer than at that moment. None = no job ever waited, or no new consumer."""
+    start = next((i for i, x in enumerate(rows) if x[1] > 0), None)
+    if start is None:
+        return None
+    t0, c0 = rows[start][0], rows[start][3]
+    return next((t - t0 for t, _, _, c in rows[start:] if c > c0), None)
+
+
+def scale_in_times(rows, rest):
+    """E-4: from the moment the queue is empty for good (last sample with ready + unacked > 0)
+    to (a) the first consumer removed and (b) the queue back at `rest` consumers.
+    None = the queue never had work, or the consumers never went down."""
+    busy = [i for i, x in enumerate(rows) if x[1] + x[2] > 0]
+    if not busy:
+        return None, None
+    i = busy[-1]
+    t_e, c_e = rows[i][0], rows[i][3]
+    first = next((t - t_e for t, _, _, c in rows[i:] if c < c_e), None)
+    back = next((t - t_e for t, _, _, c in rows[i:] if c <= rest), None) if c_e > rest else None
+    return first, back
+
+
 res = {}
 # --- references
 for ref in ("REF-trim", "REF-subs", "REF-img10", "REF-mixed", "REF-f4mix"):
@@ -96,6 +136,26 @@ res["S2 video wait p95 per rep (s)"] = agg([p95([j["t_first_event"] - j["t_submi
 # --- E-3 / E-4
 s3 = reps("S3")
 res["E-3 S3 max video_queue consumers"] = agg([max(consumers_series(r["dir"], "video_queue") or [0]) for r in s3])
+# Scale-out / scale-in times, per video queue, from the sampler's queues.csv (added after the
+# baseline: on the baseline data they are n/a because the number of consumers never changes).
+for q in VIDEO_QUEUES:
+    if not any(queue_series(r["dir"], q) for r in s3 + s1):
+        continue  # the heavy queue does not exist in the baseline
+    res[f"E-3 S3 max {q} consumers"] = agg([max(consumers_series(r["dir"], q) or [0]) for r in s3])
+    for name, runs in (("S1", s1), ("S3", s3)):
+        times = [scale_out_time(queue_series(r["dir"], q, r["meta"]["t_zero"])) for r in runs]
+        res[f"E-3 {name} {q} scale-out time (s)"] = agg(times)
+        res[f"E-3 {name} {q} reps without scale-out"] = sum(1 for x in times if x is None)
+    firsts, backs = [], []
+    for r in s3:
+        rows = queue_series(r["dir"], q, r["meta"]["t_zero"])
+        rest = rows[0][3] if rows else 0          # consumers when the scenario started
+        first, back = scale_in_times(rows, rest)
+        firsts.append(first)
+        backs.append(back)
+    res[f"E-4 S3 {q} scale-in time, first replica removed (s)"] = agg(firsts)
+    res[f"E-4 S3 {q} time back to the starting replicas (s)"] = agg(backs)
+    res[f"E-4 S3 {q} reps without scale-in"] = sum(1 for x in firsts if x is None)
 idle = [mem_window(d, 0, 1e12) for d in sorted(glob.glob(f"{ROOT}/IDLE/rep*"))]
 res["E-4 idle memory, picturas-* (MB)"] = agg(idle)
 res["E-4 S3 memory before burst (MB)"] = agg([mem_window(r["dir"], r["meta"]["t_zero"], r["meta"]["t_zero"] + 55) for r in s3])
@@ -128,6 +188,15 @@ for f in ("F5", "F6"):
     if jobs:
         ok = sum(1 for j in jobs if j["status"] == "error_reported" and j["t_end"] - j["t_submit"] <= 10)
         res[f"R-4 {f} % errors reported <= 10 s"] = round(100 * ok / len(jobs), 1)
+# R-4 for F6 as the plan defines it ("within the watchdog deadline + 10 s"), added after the
+# baseline. Only the image jobs: the 60 s freeze is below the video deadline (120 s), so the
+# captioning job is expected to finish, not to fail. Limit 50 s = image deadline (30 s)
+# + the watchdog check interval (10 s) + 10 s.
+f6_images = [j for r in reps("F6") for j in r["jobs"] if j["kind"] == "image"]
+if f6_images:
+    ok = sum(1 for j in f6_images if j["status"] == "error_reported" and j["t_end"] - j["t_submit"] <= 50)
+    res["R-4 F6 % frozen image jobs reported <= 50 s (watchdog 30 + check 10 + 10)"] = \
+        round(100 * ok / len(f6_images), 1)
 
 json.dump(res, open(f"{ROOT}/summary.json", "w"), indent=2)
 with open(f"{ROOT}/summary.md", "w") as out:
