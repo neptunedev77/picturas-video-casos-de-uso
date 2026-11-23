@@ -1,4 +1,5 @@
 const { send_rabbit_msg, read_rabbit_msg } = require('./rabbit_mq')
+const { selectVideoQueue } = require('./videoRouting');
 
 const queues = {
     'cut': 'cut_queue',
@@ -24,7 +25,7 @@ const queues = {
 }
 
 function send_msg_tool(msg_id, timestamp, og_img_uri, new_img_uri, tool, params) {
-    const queue = queues[tool];
+    const queue = tool === 'video' ? selectVideoQueue(params?.tools) : queues[tool];
     const msg = {
         "messageId": msg_id,
         "timestamp": timestamp,

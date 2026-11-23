@@ -252,13 +252,22 @@ services:
     volumes:
       - image_data:/app/images
 
-  # Video worker (ffmpeg isolated in the container)
-  video_tool:
+  # Video pools share one image and the same reliability configuration.
+  video_tool: &video-worker
+    image: picturas-video_tool
     build:
       context: ./Tools
       dockerfile: video/Dockerfile
     restart: on-failure
-    environment:
+    # Match Whisper's two CPU threads. The reference peak was 1918 MiB;
+    # keep headroom in both pools while normal jobs still include captions.
+    cpus: 2.0
+    mem_limit: 3g
+    # Allow the 8 s worker grace plus the existing 30 s broker I/O timeout.
+    stop_grace_period: 45s
+    environment: &video-worker-env
+      VIDEO_QUEUE: video_queue
+      WORKER_SHUTDOWN_GRACE_S: 8
       VIDEO_PREVIEW_SECONDS: 3
       WHISPER_MODEL: small
       WHISPER_CACHE_DIR: /models/whisper
@@ -271,6 +280,12 @@ services:
     volumes:
       - image_data:/app/images
       - whisper_models:/models/whisper
+
+  video_heavy_tool:
+    <<: *video-worker
+    environment:
+      <<: *video-worker-env
+      VIDEO_QUEUE: video_heavy_queue
 
   border_tool:
     build:
