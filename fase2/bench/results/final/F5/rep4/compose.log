@@ -1,0 +1,141 @@
+video_tool-1   | [video] msg=request-a613c37f-225b-469d-b7df-5128adf1864d preview=False tools=['trim']
+resize_tool-1  | height and width must be > 0
+generative-mock-1  | 127.0.0.1 - - [23/Nov/2026 22:43:45] "GET /sdapi/v1/samplers HTTP/1.1" 200 -
+api_gateway-1      | [0mPOST /users/ [32m201[0m 45.731 ms - 377[0m
+api_gateway-1      | [0mPOST /users/ [32m201[0m 45.041 ms - 377[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb893 [32m201[0m 25.002 ms - 385[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb895 [32m201[0m 24.122 ms - 385[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/img [32m204[0m 29.351 ms - -[0m
+api_gateway-1      | [0mGET /projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c [32m200[0m 15.456 ms - 404[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/tool [32m201[0m 12.541 ms - 2[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/video [32m204[0m 118.609 ms - -[0m
+api_gateway-1      | [0mGET /projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e [32m200[0m 8.628 ms - 604[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/tool [32m201[0m 11.733 ms - 2[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/process [32m201[0m 16.283 ms - 9[0m
+api_gateway-1      | [0mPOST /projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/process [32m201[0m 31.789 ms - 9[0m
+api_gateway-1      | [0mGET /projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/process/url [32m200[0m 6.221 ms - 22[0m
+api_gateway-1      | [0mGET /projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/process/url [32m200[0m 5.362 ms - 22[0m
+users-1            | ---- USERS-MS: REGISTER REQUEST ----
+users-1            | BODY: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-f33c0c677e@bench.test',
+users-1            |   password: 'bench-pass-123',
+users-1            |   type: 'premium'
+users-1            | }
+users-1            | USER OBJECT BEFORE SAVE: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-f33c0c677e@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | User object to persist: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-f33c0c677e@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | ---- USERS-MS: REGISTER REQUEST ----
+users-1            | BODY: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-b0289aaa35@bench.test',
+users-1            |   password: 'bench-pass-123',
+users-1            |   type: 'premium'
+users-1            | }
+users-1            | USER OBJECT BEFORE SAVE: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-b0289aaa35@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | User object to persist: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-b0289aaa35@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | [0mPOST / [32m201[0m 42.542 ms - 377[0m
+users-1            | [0mPOST / [32m201[0m 42.716 ms - 377[0m
+users-1            | [0mGET /6b04c19e7367f384745bb893/type [32m200[0m 1.056 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/type [32m200[0m 1.093 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/type [32m200[0m 0.916 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb893/type [32m200[0m 1.122 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb893/type [32m200[0m 0.777 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb893/type [32m200[0m 0.665 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/type [32m200[0m 0.853 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/type [32m200[0m 0.795 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/type [32m200[0m 0.651 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb893/type [32m200[0m 0.826 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/type [32m200[0m 0.950 ms - 18[0m
+users-1            | [0mGET /6b04c19e7367f384745bb895/process/1 [32m200[0m 1.111 ms - 4[0m
+projects-1         | [0mPOST /6b04c19e7367f384745bb893 [32m201[0m 20.395 ms - 385[0m
+projects-1         | [0mPOST /6b04c19e7367f384745bb895 [32m201[0m 2.098 ms - 385[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/img [32m204[0m 26.101 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/video HIT, file = true
+projects-1         | [GET /:user/:project headers] {
+projects-1         |   hasAuth: true,
+projects-1         |   authStart: 'Bearer eyJhbGciOiJIU',
+projects-1         |   caller: '6b04c19e7367f384745bb893'
+projects-1         | }
+projects-1         | [0mGET /6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c [32m200[0m 11.383 ms - 404[0m
+projects-1         | [0mPOST /6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/tool [32m204[0m 9.991 ms - -[0m
+projects-1         | [0mPOST /6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/video [32m204[0m 109.367 ms - -[0m
+projects-1         | [GET /:user/:project headers] {
+projects-1         |   hasAuth: true,
+projects-1         |   authStart: 'Bearer eyJhbGciOiJIU',
+projects-1         |   caller: '6b04c19e7367f384745bb895'
+projects-1         | }
+projects-1         | [0mGET /6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e [32m200[0m 6.299 ms - 604[0m
+projects-1         | [0mPOST /6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/tool [32m204[0m 9.460 ms - -[0m
+projects-1         | [CALLER] {
+projects-1         |   userParam: '6b04c19e7367f384745bb893',
+projects-1         |   forwarded: '6b04c19e7367f384745bb893',
+projects-1         |   hasAuth: true,
+projects-1         |   caller: '6b04c19e7367f384745bb893'
+projects-1         | }
+projects-1         | [ADV DEBUG] project: 6b04c19e5234fcf89dbc909c adv_ops: 0 totalAdv: 0 charged: 0 newTools: 0 tools: [ 'resize' ]
+projects-1         | [0mPOST /6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/process [32m201[0m 13.200 ms - 7[0m
+projects-1         | [T-03][RABBIT] msg=request-39b8aa2c-7d0c-4be3-b3c9-50fed9bffe91 status=error outType=undefined curPos=0 key=
+projects-1         | {"messageId":"resize-5-request-39b8aa2c-7d0c-4be3-b3c9-50fed9bffe91","correlationId":"request-39b8aa2c-7d0c-4be3-b3c9-50fed9bffe91","timestamp":"2026-11-23T22:43:45.855719+00:00","status":"error","error":{"code":1501,"message":"An error occured while processing the request","msg":"An error occured while processing the request","details":{"inputFileURI":"./images/users/6b04c19e7367f384745bb893/projects/6b04c19e5234fcf89dbc909c/src/img_01.png"}},"metadata":{"processingTime":26.719,"microservice":"picturas-resize-tool-ms"}}
+projects-1         | [CALLER] {
+projects-1         |   userParam: '6b04c19e7367f384745bb895',
+projects-1         |   forwarded: '6b04c19e7367f384745bb895',
+projects-1         |   hasAuth: true,
+projects-1         |   caller: '6b04c19e7367f384745bb895'
+projects-1         | }
+projects-1         | [ADV DEBUG] project: 6b04c19e5234fcf89dbc909e adv_ops: 0 totalAdv: 0 charged: 0 newTools: 0 tools: [ 'trim' ]
+projects-1         | [0mPOST /6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/process [32m201[0m 28.026 ms - 7[0m
+projects-1         | [T-03][RABBIT] msg=request-a613c37f-225b-469d-b7df-5128adf1864d status=error outType=undefined curPos=0 key=
+projects-1         | {"messageId":"video-3c647cf2-c27a-49c6-8f63-959c75b8a76a","correlationId":"request-a613c37f-225b-469d-b7df-5128adf1864d","timestamp":"2026-11-23T22:43:46.401364+00:00","status":"error","error":{"code":2003,"message":"Trim end must be after its start","msg":"Trim end must be after its start","details":{"inputFileURI":"./images/users/6b04c19e7367f384745bb895/projects/6b04c19e5234fcf89dbc909e/src/short_10s_720p.mp4"}},"metadata":{"processingTime":42.827999999999996,"microservice":"picturas-video-tool-ms"}}
+projects-1         | [0mGET /6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/process/url [32m200[0m 3.178 ms - 22[0m
+projects-1         | [0mGET /6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/process/url [32m200[0m 2.900 ms - 22[0m
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/users/ HTTP/1.1" 201 377 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/users/ HTTP/1.1" 201 377 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb893 HTTP/1.1" 201 385 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb895 HTTP/1.1" 201 385 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "GET /api-gateway/projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c HTTP/1.1" 200 404 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/video HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "GET /api-gateway/projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e HTTP/1.1" 200 604 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:42 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:45 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/process HTTP/1.1" 201 9 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:46 +0000] "POST /api-gateway/projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/process HTTP/1.1" 201 9 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:47 +0000] "GET /api-gateway/projects/6b04c19e7367f384745bb893/6b04c19e5234fcf89dbc909c/process/url HTTP/1.1" 200 22 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:48 +0000] "GET /api-gateway/projects/6b04c19e7367f384745bb895/6b04c19e5234fcf89dbc909e/process/url HTTP/1.1" 200 22 "-" "python-requests/2.34.2"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:48 +0000] "GET /socket.io/?transport=websocket&EIO=4&t=1795473822.6305058 HTTP/1.1" 101 248 "-" "-"
+nginx-1            | 172.19.0.1 - - [23/Nov/2026:22:43:48 +0000] "GET /socket.io/?transport=websocket&EIO=4&t=1795473822.6310618 HTTP/1.1" 101 235 "-" "-"
+ws_gateway-1       | a user connected
+ws_gateway-1       | Connecting to room: 6b04c19e7367f384745bb893
+ws_gateway-1       | a user connected
+ws_gateway-1       | Connecting to room: 6b04c19e7367f384745bb895
+ws_gateway-1       | Received msg: {"type":"project-op","projectId":"6b04c19e5234fcf89dbc909c","ownerId":"6b04c19e7367f384745bb893","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6b04c19e7367f384745bb893","baseVersion":1,"newVersion":2,"payload":{"tools":[{"position":0,"procedure":"resize","params":{"width":0,"height":0},"_id":"6b04c19e5234fcf89dbc90b2"}]}},"timestamp":1795473822722,"status":"success"}
+ws_gateway-1       | Received msg: {"type":"project-op","projectId":"6b04c19e5234fcf89dbc909e","ownerId":"6b04c19e7367f384745bb895","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6b04c19e7367f384745bb895","baseVersion":1,"newVersion":2,"payload":{"tools":[{"position":0,"procedure":"trim","params":{"start":8,"end":4,"imgId":"6b04c19e5234fcf89dbc90b8"},"_id":"6b04c19e5234fcf89dbc90c6"}]}},"timestamp":1795473822811,"status":"success"}
+ws_gateway-1       | Received msg: {"messageId":"update-client-process-06ed71ea-6807-43ea-b7d8-75533fd4c373","timestamp":"2026-11-23T22:43:45.857Z","user":"6b04c19e7367f384745bb893","status":"error","errorCode":1501,"errorMsg":"An error occured while processing the request"}
+ws_gateway-1       | Received msg: {"messageId":"update-client-process-982ee875-0e64-4179-8c21-a298b2524cb9","timestamp":"2026-11-23T22:43:46.402Z","user":"6b04c19e7367f384745bb895","status":"error","errorCode":2003,"errorMsg":"Trim end must be after its start"}
+ws_gateway-1       | A user disconnected
+ws_gateway-1       | A user disconnected

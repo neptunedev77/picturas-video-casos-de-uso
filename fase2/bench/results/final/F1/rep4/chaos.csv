@@ -1,0 +1,4 @@
+t,offset,cmd,rc,output
+1795473620.012,0.5,docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=running | xargs -r docker pause,0,d6a3b898facb
+1795473623.622,4.0,docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=running | xargs -r docker kill ; docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=paused | xargs -r docker kill,0,d6a3b898facb
+1795473625.585,6.0,docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=exited | xargs -r docker start,0,d6a3b898facb

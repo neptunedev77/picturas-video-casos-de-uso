@@ -1,0 +1,5 @@
+t,offset,cmd,rc,output
+1795474851.249,15.0,docker ps -aq --filter 'name=^picturas-video' --filter status=running | xargs -r docker kill ; docker ps -aq --filter 'name=^picturas-video' --filter status=paused | xargs -r docker kill,0,"be0ac1a78bc5
+f634837156da"
+1795474861.341,25.0,docker ps -aq --filter 'name=^picturas-video' --filter status=exited | xargs -r docker start,0,"be0ac1a78bc5
+f634837156da"

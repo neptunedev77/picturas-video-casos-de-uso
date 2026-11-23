@@ -1,0 +1,134 @@
+video_tool-1  | [video] msg=request-97f38c43-638f-487d-ba1c-4f69c5475767 preview=False tools=['trim']
+video_tool-1  | [video] msg=request-97f38c43-638f-487d-ba1c-4f69c5475767 ok frames=90 t=0.8s
+generative-mock-1  | 127.0.0.1 - - [23/Nov/2026 22:47:48] "GET /sdapi/v1/samplers HTTP/1.1" 200 -
+api_gateway-1      | [0mPOST /users/ [32m201[0m 44.350 ms - 377[0m
+api_gateway-1      | [0mPOST /projects/6b04c2927367f384745bb8bf [32m201[0m 4.528 ms - 383[0m
+api_gateway-1      | [0mPOST /projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/video [32m204[0m 117.973 ms - -[0m
+api_gateway-1      | [0mGET /projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454 [32m200[0m 10.208 ms - 602[0m
+api_gateway-1      | [0mPOST /projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/tool [32m201[0m 12.790 ms - 2[0m
+api_gateway-1      | [0mPOST /projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/process [32m201[0m 40.701 ms - 9[0m
+api_gateway-1      | [0mGET /projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/process/url [32m200[0m 7.140 ms - 384[0m
+users-1            | ---- USERS-MS: REGISTER REQUEST ----
+users-1            | BODY: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-f1775acda3@bench.test',
+users-1            |   password: 'bench-pass-123',
+users-1            |   type: 'premium'
+users-1            | }
+users-1            | USER OBJECT BEFORE SAVE: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-f1775acda3@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | User object to persist: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-f1775acda3@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | [0mPOST / [32m201[0m 41.147 ms - 377[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/type [32m200[0m 0.916 ms - 18[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/type [32m200[0m 1.073 ms - 18[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/type [32m200[0m 0.825 ms - 18[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/type [32m200[0m 0.782 ms - 18[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/type [32m200[0m 0.874 ms - 18[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/type [32m200[0m 1.067 ms - 18[0m
+users-1            | [0mGET /6b04c2927367f384745bb8bf/process/1 [32m200[0m 2.018 ms - 4[0m
+projects-1         | [0mPOST /6b04c2927367f384745bb8bf [32m201[0m 1.478 ms - 383[0m
+projects-1         | PROJECTS-MS /:user/:project/video HIT, file = true
+projects-1         | [0mPOST /6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/video [32m204[0m 105.997 ms - -[0m
+projects-1         | [GET /:user/:project headers] {
+projects-1         |   hasAuth: true,
+projects-1         |   authStart: 'Bearer eyJhbGciOiJIU',
+projects-1         |   caller: '6b04c2927367f384745bb8bf'
+projects-1         | }
+projects-1         | [0mGET /6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454 [32m200[0m 7.052 ms - 602[0m
+projects-1         | [0mPOST /6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/tool [32m204[0m 10.443 ms - -[0m
+projects-1         | [CALLER] {
+projects-1         |   userParam: '6b04c2927367f384745bb8bf',
+projects-1         |   forwarded: '6b04c2927367f384745bb8bf',
+projects-1         |   hasAuth: true,
+projects-1         |   caller: '6b04c2927367f384745bb8bf'
+projects-1         | }
+projects-1         | [ADV DEBUG] project: 6b04c2925234fcf89dbc9454 adv_ops: 0 totalAdv: 0 charged: 0 newTools: 0 tools: [ 'trim' ]
+projects-1         | [0mPOST /6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/process [32m201[0m 35.654 ms - 7[0m
+projects-1         | [T-03][RABBIT] msg=request-97f38c43-638f-487d-ba1c-4f69c5475767 status=success outType=video curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-97f38c43-638f-487d-ba1c-4f69c5475767 curPos=0 processTok=1 activeTok=1
+projects-1         | [COMMIT] project=6b04c2925234fcf89dbc9454 committedToken=1
+projects-1         | [0mGET /6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/process/url [32m200[0m 4.297 ms - 384[0m
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-23T22:47:51.296+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:40760","connectionId":1277,"connectionCount":5}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-23T22:47:51.297+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1277","msg":"client metadata","attr":{"remote":"127.0.0.1:40760","client":"conn1277","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-23T22:47:51.299+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1277","msg":"Connection ended","attr":{"remote":"127.0.0.1:40760","connectionId":1277,"connectionCount":4}}
+projects_mongoDB-1       | {"t":{"$date":"2026-11-23T22:47:50.852+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:44858","connectionId":1358,"connectionCount":11}}
+projects_mongoDB-1       | {"t":{"$date":"2026-11-23T22:47:50.852+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1358","msg":"client metadata","attr":{"remote":"127.0.0.1:44858","client":"conn1358","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+projects_mongoDB-1       | {"t":{"$date":"2026-11-23T22:47:50.854+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1358","msg":"Connection ended","attr":{"remote":"127.0.0.1:44858","connectionId":1358,"connectionCount":10}}
+users_mongoDB-1          | {"t":{"$date":"2026-11-23T22:47:51.476+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45646","connectionId":1298,"connectionCount":26}}
+users_mongoDB-1          | {"t":{"$date":"2026-11-23T22:47:51.476+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1298","msg":"client metadata","attr":{"remote":"127.0.0.1:45646","client":"conn1298","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+users_mongoDB-1          | {"t":{"$date":"2026-11-23T22:47:51.478+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1298","msg":"Connection ended","attr":{"remote":"127.0.0.1:45646","connectionId":1298,"connectionCount":25}}
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:46 +0000] "POST /api-gateway/users/ HTTP/1.1" 201 377 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:46 +0000] "POST /api-gateway/projects/6b04c2927367f384745bb8bf HTTP/1.1" 201 383 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:46 +0000] "POST /api-gateway/projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/video HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:46 +0000] "GET /api-gateway/projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454 HTTP/1.1" 200 602 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:46 +0000] "POST /api-gateway/projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:49 +0000] "POST /api-gateway/projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/process HTTP/1.1" 201 9 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:51 +0000] "GET /api-gateway/projects/6b04c2927367f384745bb8bf/6b04c2925234fcf89dbc9454/process/url HTTP/1.1" 200 384 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:47:51 +0000] "GET /socket.io/?transport=websocket&EIO=4&t=1795474066.422445 HTTP/1.1" 101 6706 "-" "-"
+ws_gateway-1             | a user connected
+ws_gateway-1             | Connecting to room: 6b04c2927367f384745bb8bf
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6b04c2925234fcf89dbc9454","ownerId":"6b04c2927367f384745bb8bf","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6b04c2927367f384745bb8bf","baseVersion":1,"newVersion":2,"payload":{"tools":[{"position":0,"procedure":"trim","params":{"start":1,"end":4,"imgId":"6b04c2925234fcf89dbc9459"},"_id":"6b04c2925234fcf89dbc9467"}]}},"timestamp":1795474066587,"status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-c31ef44d-b6ce-4734-ad0d-96ba0d6d1263","timestamp":"2026-11-23T22:47:49.847501+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":1}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-9e60320c-6eab-40fb-a288-d55ba81bbd2b","timestamp":"2026-11-23T22:47:49.862306+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":3}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-fdb36dbf-3fae-460d-b086-1a5349e4e0ab","timestamp":"2026-11-23T22:47:49.877020+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":5}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-e1de6a2b-6f8f-4eca-96b0-6dbbb816026d","timestamp":"2026-11-23T22:47:49.890385+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":7}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-6272ff0a-c86c-4413-a06b-82e096ed1a88","timestamp":"2026-11-23T22:47:49.900031+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":10}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-266fb5b0-76ae-4f11-905a-5fb5cbb520a9","timestamp":"2026-11-23T22:47:49.910785+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":12}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-80eeb14d-5c86-4f4a-9a6a-fcaf847e4492","timestamp":"2026-11-23T22:47:49.923036+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":14}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-4d88f874-d439-4f18-b6d3-802e81ddd0fd","timestamp":"2026-11-23T22:47:49.933880+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":16}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-069f25d2-1e05-4112-a7db-e677bafde6c1","timestamp":"2026-11-23T22:47:49.945982+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":18}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-b14f678e-5ab0-4244-a6c7-ef3169dacab5","timestamp":"2026-11-23T22:47:49.952047+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":20}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-facd56d9-da23-463f-8895-7b0347ec8f35","timestamp":"2026-11-23T22:47:49.962267+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":22}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-8b1dbc99-9ace-476f-bb7d-90a24b49cde8","timestamp":"2026-11-23T22:47:49.971038+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":24}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-614a7898-9fbe-4e8d-b899-401ef40b6b98","timestamp":"2026-11-23T22:47:49.983760+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":26}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-af1693b0-0d49-4605-99c8-6f27a0bb9c4e","timestamp":"2026-11-23T22:47:49.994265+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":28}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-ff4e7cd4-22e6-43e5-9109-c857ea2d9cc6","timestamp":"2026-11-23T22:47:49.999523+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":30}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-07943c9f-1411-4859-a932-1ea4db0a8d64","timestamp":"2026-11-23T22:47:50.010526+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":32}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-c36a6952-5a68-4279-a74f-d514a06f81a9","timestamp":"2026-11-23T22:47:50.019501+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":34}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-433b1556-b45d-4a9d-9d54-d04187803069","timestamp":"2026-11-23T22:47:50.031184+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":36}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-259516f9-7cf9-4be6-8a7c-809b53db6066","timestamp":"2026-11-23T22:47:50.041308+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":38}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-7b98acf0-22a0-4da1-9c72-62dd27599ca4","timestamp":"2026-11-23T22:47:50.047459+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":40}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-35ee8e1c-2273-465b-b353-9556b77f7891","timestamp":"2026-11-23T22:47:50.058303+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":42}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-ba1f77dd-e484-4c66-a9d0-30a8fbd9f6ef","timestamp":"2026-11-23T22:47:50.070364+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":44}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-65e3197b-a8da-452f-bd56-85a4180351c6","timestamp":"2026-11-23T22:47:50.079933+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":46}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-7d27db11-f815-4ae8-bab8-e8a7ea543ecb","timestamp":"2026-11-23T22:47:50.090396+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":48}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-5e4351bc-4e77-4071-8c3f-8233fc58e65a","timestamp":"2026-11-23T22:47:50.096972+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":50}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-0780e11b-c45b-44b4-9fa0-66c5b26160aa","timestamp":"2026-11-23T22:47:50.107542+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":52}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-ff2249c2-389f-4389-943a-7c715f0f93b7","timestamp":"2026-11-23T22:47:50.117939+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":54}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-c97bc1f9-b548-4162-9a2f-782a30e271ea","timestamp":"2026-11-23T22:47:50.128929+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":56}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-ed42c75d-a272-42bb-b209-8e9522cf971c","timestamp":"2026-11-23T22:47:50.138366+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":58}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-c293dd43-3c3d-46f5-ae94-a7418d0724b4","timestamp":"2026-11-23T22:47:50.143192+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":60}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-856d4fcf-ee14-46e0-8391-eb1a58f8c14c","timestamp":"2026-11-23T22:47:50.153435+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":62}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-f73d7d6f-fe9f-4bd4-99d0-f1fa9f9bc905","timestamp":"2026-11-23T22:47:50.164346+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":64}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-8f640920-892d-4c4d-ad1d-1485cfdcd8af","timestamp":"2026-11-23T22:47:50.174626+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":66}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-64f4e4c8-68e8-468e-aa97-5148558dc80a","timestamp":"2026-11-23T22:47:50.184763+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":68}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-29d852d8-a522-45f4-a66a-edfdc4a19874","timestamp":"2026-11-23T22:47:50.189998+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":70}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-fddb9e5d-1550-4776-b13b-342c6b1406c6","timestamp":"2026-11-23T22:47:50.200661+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":72}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-5dd26fef-8707-4bbd-bd7c-2134589701c5","timestamp":"2026-11-23T22:47:50.210008+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":74}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-23dbdb9b-7dc2-4dd3-a460-c499911b1905","timestamp":"2026-11-23T22:47:50.219364+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":76}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-c0e10529-7e4a-4273-8a05-a699c1ffcdc9","timestamp":"2026-11-23T22:47:50.228902+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":78}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-aebef8b1-dd74-44e6-818a-dabef3a04ad0","timestamp":"2026-11-23T22:47:50.234601+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":80}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-a66c9830-efee-49b6-9986-8daf83bcf4eb","timestamp":"2026-11-23T22:47:50.248059+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":82}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-105a6f63-14e4-4674-af73-fdc69650cd70","timestamp":"2026-11-23T22:47:50.256152+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":84}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-825a38ea-32ee-425c-b951-d3a933729e34","timestamp":"2026-11-23T22:47:50.266925+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":86}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-fefa5c54-e910-4aa4-b529-390aa9606d92","timestamp":"2026-11-23T22:47:50.276737+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":88}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-50fb0508-cc9f-47ea-ba5f-f90b5e5027a9","timestamp":"2026-11-23T22:47:50.283036+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":90}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-687a4020-70d5-46fb-8b06-9b92d2a981cd","timestamp":"2026-11-23T22:47:50.296369+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":92}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-1c694fb2-5bb1-482b-8ec6-a51368404c7b","timestamp":"2026-11-23T22:47:50.305976+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":94}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-097441dd-598c-41b0-8cca-da5d5f7de1c5","timestamp":"2026-11-23T22:47:50.316257+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":96}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-02754119-ad9e-4d45-92ec-90d2bb6c1e28","timestamp":"2026-11-23T22:47:50.324712+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":98}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-d1d4a231-6f56-4ed0-8c39-e1fc6ac7ca54","timestamp":"2026-11-23T22:47:50.329193+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":99}
+ws_gateway-1             | Received msg: {"messageId":"update-client-video-progress-29ee59d7-cc8a-4833-b215-d0f2185d61b7","timestamp":"2026-11-23T22:47:50.350769+00:00","status":"success","user":"6b04c2927367f384745bb8bf","projectId":"6b04c2925234fcf89dbc9454","imgId":"6b04c2925234fcf89dbc9459","preview":false,"percent":100}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-3d01eac0-f04e-4afc-94df-195124dad231","timestamp":"2026-11-23T22:47:50.405Z","user":"6b04c2927367f384745bb8bf","status":"success"}
+ws_gateway-1             | A user disconnected

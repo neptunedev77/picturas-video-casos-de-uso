@@ -1,0 +1,223 @@
+generative-mock-1  | 127.0.0.1 - - [23/Nov/2026 22:49:44] "GET /sdapi/v1/samplers HTTP/1.1" 200 -
+api_gateway-1      | [0mPOST /users/ [32m201[0m 44.629 ms - 377[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5 [32m201[0m 4.213 ms - 387[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 21.260 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 17.709 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 15.997 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 15.407 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 13.598 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 14.426 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 15.088 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 13.856 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 13.036 ms - -[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 14.491 ms - -[0m
+api_gateway-1      | [0mGET /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515 [32m200[0m 13.356 ms - 3239[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool [32m201[0m 11.164 ms - 2[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool [32m201[0m 11.259 ms - 2[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool [32m201[0m 11.324 ms - 2[0m
+api_gateway-1      | [0mPOST /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/process [32m201[0m 35.281 ms - 9[0m
+api_gateway-1      | [0mGET /projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/process/url [32m200[0m 13.209 ms - 3527[0m
+users-1            | ---- USERS-MS: REGISTER REQUEST ----
+users-1            | BODY: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-2b506bbaf9@bench.test',
+users-1            |   password: 'bench-pass-123',
+users-1            |   type: 'premium'
+users-1            | }
+users-1            | USER OBJECT BEFORE SAVE: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-2b506bbaf9@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | User object to persist: {
+users-1            |   name: 'bench',
+users-1            |   email: 'bench-2b506bbaf9@bench.test',
+users-1            |   type: 'premium',
+users-1            |   operations: [],
+users-1            |   password: 'bench-pass-123'
+users-1            | }
+users-1            | [0mPOST / [32m201[0m 41.866 ms - 377[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 1.188 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.893 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.957 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 1.011 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.781 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.861 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.824 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.774 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.776 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.783 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.827 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.782 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.568 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.749 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.669 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.756 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.565 ms - 18[0m
+users-1            | [0mGET /6b04c3057367f384745bb8d5/type [32m200[0m 0.796 ms - 18[0m
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5 [32m201[0m 1.365 ms - 387[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 18.260 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 14.468 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 13.028 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 12.272 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 10.861 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 11.532 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 11.154 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 11.293 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 10.510 ms - -[0m
+projects-1         | PROJECTS-MS /:user/:project/img HIT, file = true
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img [32m204[0m 10.981 ms - -[0m
+projects-1         | [GET /:user/:project headers] {
+projects-1         |   hasAuth: true,
+projects-1         |   authStart: 'Bearer eyJhbGciOiJIU',
+projects-1         |   caller: '6b04c3057367f384745bb8d5'
+projects-1         | }
+projects-1         | [0mGET /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515 [32m200[0m 10.874 ms - 3239[0m
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool [32m204[0m 8.906 ms - -[0m
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool [32m204[0m 8.983 ms - -[0m
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool [32m204[0m 9.047 ms - -[0m
+projects-1         | [CALLER] {
+projects-1         |   userParam: '6b04c3057367f384745bb8d5',
+projects-1         |   forwarded: '6b04c3057367f384745bb8d5',
+projects-1         |   hasAuth: true,
+projects-1         |   caller: '6b04c3057367f384745bb8d5'
+projects-1         | }
+projects-1         | [ADV DEBUG] project: 6b04c3055234fcf89dbc9515 adv_ops: 0 totalAdv: 0 charged: 0 newTools: 0 tools: [ 'brightness', 'contrast', 'saturation' ]
+projects-1         | [0mPOST /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/process [32m201[0m 32.133 ms - 7[0m
+projects-1         | [T-03][RABBIT] msg=request-f8d752a4-611d-4805-b7ad-f8a2587cebec status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-f8d752a4-611d-4805-b7ad-f8a2587cebec curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-52fbffcb-a2c0-4afc-9d2d-e2795aa844d0 status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-52fbffcb-a2c0-4afc-9d2d-e2795aa844d0 curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-f8d752a4-611d-4805-b7ad-f8a2587cebec-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-f8d752a4-611d-4805-b7ad-f8a2587cebec-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-f8d752a4-611d-4805-b7ad-f8a2587cebec-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-f8d752a4-611d-4805-b7ad-f8a2587cebec-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-52fbffcb-a2c0-4afc-9d2d-e2795aa844d0-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-52fbffcb-a2c0-4afc-9d2d-e2795aa844d0-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-92ab7f4e-110d-42d2-80d8-ddbc1187754b status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-92ab7f4e-110d-42d2-80d8-ddbc1187754b curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-52fbffcb-a2c0-4afc-9d2d-e2795aa844d0-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-52fbffcb-a2c0-4afc-9d2d-e2795aa844d0-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-9e3b9958-388e-4d1d-b3cc-e6b654e48585 status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-9e3b9958-388e-4d1d-b3cc-e6b654e48585 curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-92ab7f4e-110d-42d2-80d8-ddbc1187754b-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-92ab7f4e-110d-42d2-80d8-ddbc1187754b-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-6c709971-012a-4e4c-9180-4c8e94846d32 status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-6c709971-012a-4e4c-9180-4c8e94846d32 curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-9e3b9958-388e-4d1d-b3cc-e6b654e48585-s1 status=success outType=image curPos=1 key=
+projects-1         | [T-03][RABBIT] msg=request-92ab7f4e-110d-42d2-80d8-ddbc1187754b-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-9e3b9958-388e-4d1d-b3cc-e6b654e48585-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [RUN-DEBUG] msg=request-92ab7f4e-110d-42d2-80d8-ddbc1187754b-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-603e35b1-8fbc-480f-a401-14a895ca5f0f status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-603e35b1-8fbc-480f-a401-14a895ca5f0f curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-7eb7c7a3-5580-4c6e-a978-04f73b513467 status=success outType=image curPos=0 key=
+projects-1         | [T-03][RABBIT] msg=request-9e3b9958-388e-4d1d-b3cc-e6b654e48585-s2 status=success outType=image curPos=2 key=
+projects-1         | [T-03][RABBIT] msg=request-6c709971-012a-4e4c-9180-4c8e94846d32-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-9e3b9958-388e-4d1d-b3cc-e6b654e48585-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [RUN-DEBUG] msg=request-7eb7c7a3-5580-4c6e-a978-04f73b513467 curPos=0 processTok=1 activeTok=1
+projects-1         | [RUN-DEBUG] msg=request-6c709971-012a-4e4c-9180-4c8e94846d32-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-3ef19670-a210-4be4-82df-7d180cd4ae07 status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-3ef19670-a210-4be4-82df-7d180cd4ae07 curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-6c709971-012a-4e4c-9180-4c8e94846d32-s2 status=success outType=image curPos=2 key=
+projects-1         | [T-03][RABBIT] msg=request-603e35b1-8fbc-480f-a401-14a895ca5f0f-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-6c709971-012a-4e4c-9180-4c8e94846d32-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [RUN-DEBUG] msg=request-603e35b1-8fbc-480f-a401-14a895ca5f0f-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-4ab374fa-5dd3-4e76-966d-e5503dff64dc status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-4ab374fa-5dd3-4e76-966d-e5503dff64dc curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-7eb7c7a3-5580-4c6e-a978-04f73b513467-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-7eb7c7a3-5580-4c6e-a978-04f73b513467-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-a8e080f2-21e3-417b-9dcb-8209dc7bb66b status=success outType=image curPos=0 key=
+projects-1         | [RUN-DEBUG] msg=request-a8e080f2-21e3-417b-9dcb-8209dc7bb66b curPos=0 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-603e35b1-8fbc-480f-a401-14a895ca5f0f-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-603e35b1-8fbc-480f-a401-14a895ca5f0f-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-3ef19670-a210-4be4-82df-7d180cd4ae07-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-3ef19670-a210-4be4-82df-7d180cd4ae07-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-7eb7c7a3-5580-4c6e-a978-04f73b513467-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-7eb7c7a3-5580-4c6e-a978-04f73b513467-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-4ab374fa-5dd3-4e76-966d-e5503dff64dc-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-4ab374fa-5dd3-4e76-966d-e5503dff64dc-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-a8e080f2-21e3-417b-9dcb-8209dc7bb66b-s1 status=success outType=image curPos=1 key=
+projects-1         | [RUN-DEBUG] msg=request-a8e080f2-21e3-417b-9dcb-8209dc7bb66b-s1 curPos=1 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-3ef19670-a210-4be4-82df-7d180cd4ae07-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-3ef19670-a210-4be4-82df-7d180cd4ae07-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-4ab374fa-5dd3-4e76-966d-e5503dff64dc-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-4ab374fa-5dd3-4e76-966d-e5503dff64dc-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [T-03][RABBIT] msg=request-a8e080f2-21e3-417b-9dcb-8209dc7bb66b-s2 status=success outType=image curPos=2 key=
+projects-1         | [RUN-DEBUG] msg=request-a8e080f2-21e3-417b-9dcb-8209dc7bb66b-s2 curPos=2 processTok=1 activeTok=1
+projects-1         | [COMMIT] project=6b04c3055234fcf89dbc9515 committedToken=1
+projects-1         | [0mGET /6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/process/url [32m200[0m 10.140 ms - 3527[0m
+users_mongoDB-1    | {"t":{"$date":"2026-11-23T22:49:42.233+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:51012","connectionId":1309,"connectionCount":26}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-23T22:49:42.233+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1309","msg":"client metadata","attr":{"remote":"127.0.0.1:51012","client":"conn1309","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+users_mongoDB-1    | {"t":{"$date":"2026-11-23T22:49:42.236+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1309","msg":"Connection ended","attr":{"remote":"127.0.0.1:51012","connectionId":1309,"connectionCount":25}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-23T22:49:41.635+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:60072","connectionId":1369,"connectionCount":11}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-23T22:49:41.635+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1369","msg":"client metadata","attr":{"remote":"127.0.0.1:60072","client":"conn1369","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+projects_mongoDB-1  | {"t":{"$date":"2026-11-23T22:49:41.638+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1369","msg":"Connection ended","attr":{"remote":"127.0.0.1:60072","connectionId":1369,"connectionCount":10}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-23T22:49:42.060+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:54156","connectionId":1288,"connectionCount":5}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-23T22:49:42.060+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1288","msg":"client metadata","attr":{"remote":"127.0.0.1:54156","client":"conn1288","doc":{"application":{"name":"MongoDB Shell"},"driver":{"name":"MongoDB Internal Client","version":"4.4.30"},"os":{"type":"Linux","name":"Ubuntu","architecture":"x86_64","version":"20.04"}}}}
+subscriptions_mongoDB-1  | {"t":{"$date":"2026-11-23T22:49:42.062+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1288","msg":"Connection ended","attr":{"remote":"127.0.0.1:54156","connectionId":1288,"connectionCount":4}}
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/users/ HTTP/1.1" 201 377 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5 HTTP/1.1" 201 387 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/img HTTP/1.1" 204 0 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "GET /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515 HTTP/1.1" 200 3239 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:41 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/tool HTTP/1.1" 201 2 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:44 +0000] "POST /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/process HTTP/1.1" 201 9 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:46 +0000] "GET /api-gateway/projects/6b04c3057367f384745bb8d5/6b04c3055234fcf89dbc9515/process/url HTTP/1.1" 200 3527 "-" "python-requests/2.34.2"
+nginx-1                  | 172.19.0.1 - - [23/Nov/2026:22:49:46 +0000] "GET /socket.io/?transport=websocket&EIO=4&t=1795474181.6795053 HTTP/1.1" 101 2637 "-" "-"
+ws_gateway-1             | a user connected
+ws_gateway-1             | Connecting to room: 6b04c3057367f384745bb8d5
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6b04c3055234fcf89dbc9515","ownerId":"6b04c3057367f384745bb8d5","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6b04c3057367f384745bb8d5","baseVersion":10,"newVersion":11,"payload":{"tools":[{"position":0,"procedure":"brightness","params":{"brightness":1.3},"_id":"6b04c3055234fcf89dbc9634"}]}},"timestamp":1795474181886,"status":"success"}
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6b04c3055234fcf89dbc9515","ownerId":"6b04c3057367f384745bb8d5","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6b04c3057367f384745bb8d5","baseVersion":11,"newVersion":12,"payload":{"tools":[{"position":0,"procedure":"brightness","params":{"brightness":1.3},"_id":"6b04c3055234fcf89dbc9634"},{"position":1,"procedure":"contrast","params":{"contrastFactor":1.4},"_id":"6b04c3055234fcf89dbc9665"}]}},"timestamp":1795474181899,"status":"success"}
+ws_gateway-1             | Received msg: {"type":"project-op","projectId":"6b04c3055234fcf89dbc9515","ownerId":"6b04c3057367f384745bb8d5","op":{"opId":null,"type":"TOOL_ADDED","actorId":"6b04c3057367f384745bb8d5","baseVersion":12,"newVersion":13,"payload":{"tools":[{"position":0,"procedure":"brightness","params":{"brightness":1.3},"_id":"6b04c3055234fcf89dbc9634"},{"position":1,"procedure":"contrast","params":{"contrastFactor":1.4},"_id":"6b04c3055234fcf89dbc9665"},{"position":2,"procedure":"saturation","params":{"saturationFactor":1.5},"_id":"6b04c3055234fcf89dbc969a"}]}},"timestamp":1795474181912,"status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-52461d6e-9667-40cc-a108-cde2b76e643b","timestamp":"2026-11-23T22:49:44.988Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-4ea7d759-4267-45a2-b886-411b17233856","timestamp":"2026-11-23T22:49:45.026Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-036b38ed-312f-4d17-a06f-b80287559cd2","timestamp":"2026-11-23T22:49:45.028Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-7d0acc37-d6b2-4d3d-a344-26aa9dc560ff","timestamp":"2026-11-23T22:49:45.065Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-938038e6-05d4-4f8c-b876-08e1fc550fa2","timestamp":"2026-11-23T22:49:45.069Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-3c4c1e4c-f01c-445d-844f-f06d121d7520","timestamp":"2026-11-23T22:49:45.064Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-8a632f7b-8ad4-4965-925f-e78c6f57e2ce","timestamp":"2026-11-23T22:49:45.103Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-6670786e-14e1-464d-84d9-0b106d1cce25","timestamp":"2026-11-23T22:49:45.113Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-06c4edd6-59ce-44fa-bed4-a9b12e34522a","timestamp":"2026-11-23T22:49:45.145Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-4b959225-72f4-4abd-874f-0414641eedc3","timestamp":"2026-11-23T22:49:45.151Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-0dfe0d0e-e333-4457-a446-8fee8329900d","timestamp":"2026-11-23T22:49:45.186Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-f1996050-35d3-4923-8316-9f2c25eaaa69","timestamp":"2026-11-23T22:49:45.188Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-77733a69-b416-4de9-a35a-ddc0a842f5cb","timestamp":"2026-11-23T22:49:45.186Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-085f112d-cb01-45b7-9a16-b989f9fcf48b","timestamp":"2026-11-23T22:49:45.228Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-720c5a48-e5f8-4a27-8366-28c4b964cc4d","timestamp":"2026-11-23T22:49:45.228Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-29b55edd-9273-45b7-8189-f1b2cad991b1","timestamp":"2026-11-23T22:49:45.228Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-716ee8bd-3aae-4afc-b9fb-c7ff2b28cd6d","timestamp":"2026-11-23T22:49:45.269Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-3a40a042-94f2-4925-a3d9-f5828c6226ff","timestamp":"2026-11-23T22:49:45.275Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-1916fa49-e4d8-48a5-b6a7-3d37f5ddaea8","timestamp":"2026-11-23T22:49:45.275Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-a8d0afab-1209-4076-855d-4c04ab7e3d74","timestamp":"2026-11-23T22:49:45.309Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-ae74df19-c01e-4cef-898a-aa15bc11b7aa","timestamp":"2026-11-23T22:49:45.311Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-99682f7c-fcde-4711-8f0f-f37ee49a46bb","timestamp":"2026-11-23T22:49:45.342Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-8e8622d6-f8b8-437c-8ae3-e80328b4edf8","timestamp":"2026-11-23T22:49:45.351Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-3c793706-c1b5-4a7a-a09a-25d55d72445b","timestamp":"2026-11-23T22:49:45.346Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-e5ce0388-5e62-4884-b422-4403bdee9218","timestamp":"2026-11-23T22:49:45.384Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-cb6f2d98-0db8-4fdb-9f8c-523b94e486f6","timestamp":"2026-11-23T22:49:45.382Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-744e3d3f-f8f5-4666-8495-fa708ced4f20","timestamp":"2026-11-23T22:49:45.417Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-43b7f8ca-b499-4e45-bc62-65ce53400a7e","timestamp":"2026-11-23T22:49:45.421Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-fd686f17-b974-48e6-9d40-966d4b0b301f","timestamp":"2026-11-23T22:49:45.453Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | Received msg: {"messageId":"update-client-process-dfdc821a-854e-47a8-8188-57b9bf3e2b88","timestamp":"2026-11-23T22:49:45.483Z","user":"6b04c3057367f384745bb8d5","status":"success"}
+ws_gateway-1             | A user disconnected
