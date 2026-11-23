@@ -57,7 +57,7 @@ class VideoPoolComposeTests(unittest.TestCase):
     def test_each_replica_has_cpu_and_memory_limits(self):
         for name in VIDEO_POOLS:
             with self.subTest(service=name):
-                self.assertEqual(float(self.services[name]["cpus"]), 2.0)
+                self.assertEqual(float(self.services[name]["cpus"]), 4.0)
                 self.assertEqual(int(self.services[name]["mem_limit"]), 3 * 2**30)
 
     def test_worker_grace_is_preserved_with_a_longer_docker_timeout(self):

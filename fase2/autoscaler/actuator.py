@@ -197,10 +197,24 @@ class Actuator:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
 
+    def _compose_files(self):
+        """The files `docker compose up` loads by default: compose_file plus the override file
+        next to it, if present. The repository ships docker-compose.override.yml, so the
+        running containers are labelled with both; scaling with compose_file alone would
+        create replicas from a different configuration."""
+        files = [self.config.compose_file]
+        for name in ("docker-compose.override.yml", "docker-compose.override.yaml"):
+            override = self.config.compose_file.parent / name
+            if override.is_file():
+                files.append(override)
+                break
+        return files
+
     def _compose(self, *arguments):
+        files = [part for path in self._compose_files() for part in ("--file", str(path))]
         return ["--context", self.context, "compose", "--project-name", self.config.project,
                 "--project-directory", str(self.config.compose_file.parent),
-                "--file", str(self.config.compose_file), *arguments]
+                *files, *arguments]
 
     def _validate_compose(self):
         try:
@@ -214,7 +228,7 @@ class Actuator:
                 if (spec.get("container_name") or spec.get("ports") or
                         spec["environment"]["VIDEO_QUEUE"] != queue or
                         spec["image"] != "picturas-video_tool" or
-                        float(spec["cpus"]) != 2 or int(spec["mem_limit"]) != 3 * 2**30 or
+                        float(spec["cpus"]) != 4 or int(spec["mem_limit"]) != 3 * 2**30 or
                         set(spec["networks"]) != {"elk"} or
                         volumes != {("image_data", "/app/images"), ("whisper_models", "/models/whisper")} or
                         spec["restart"] != "on-failure" or
@@ -233,12 +247,13 @@ class Actuator:
                 # In particular, Compose must never reconcile an excess stopped
                 # container by removing it or restart it outside this reservation.
                 raise SafetyError("Existing video containers must be running and stable before scaling")
+        expected = [path.resolve() for path in self._compose_files()]
         for container in inventory:
             labels = container["Config"]["Labels"]
             directory = labels.get("com.docker.compose.project.working_dir")
             files = labels.get("com.docker.compose.project.config_files", "").split(",")
             if (not directory or Path(directory).resolve() != self.config.compose_file.parent or
-                    len(files) != 1 or Path(files[0]).resolve() != self.config.compose_file):
+                    [Path(f).resolve() for f in files if f] != expected):
                 raise SafetyError("Existing video container belongs to a different Compose configuration")
 
     def _with_cooldowns(self, memory, state):

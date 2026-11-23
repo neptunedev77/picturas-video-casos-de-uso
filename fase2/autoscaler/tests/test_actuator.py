@@ -20,6 +20,15 @@ from fase2.autoscaler.runtime import parse_containers
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.json"
 
 
+def compose_files_label(config):
+    """The config_files label real Compose writes: compose_file plus the override next to it."""
+    files = [config.compose_file]
+    override = config.compose_file.parent / "docker-compose.override.yml"
+    if override.is_file():
+        files.append(override)
+    return ",".join(str(f) for f in files)
+
+
 def hold_lock(path, ready, release):
     with exclusive_lock(Path(path)):
         ready.set()
@@ -45,7 +54,7 @@ class World:
         for service, queue in (("video_tool", "video_queue"), ("video_heavy_tool", "video_heavy_queue")):
             self.spec["services"][service] = {
                 "image": "picturas-video_tool", "environment": {"VIDEO_QUEUE": queue},
-                "cpus": "2.0", "mem_limit": 3 * 2**30, "restart": "on-failure",
+                "cpus": "4.0", "mem_limit": 3 * 2**30, "restart": "on-failure",
                 "networks": {"elk": None},
                 "depends_on": {"rabbitmq": {"condition": "service_healthy"}},
                 "volumes": [{"source": "image_data", "target": "/app/images"},
@@ -60,7 +69,7 @@ class World:
                 "com.docker.compose.project": self.config.project,
                 "com.docker.compose.service": service,
                 "com.docker.compose.project.working_dir": str(self.config.compose_file.parent),
-                "com.docker.compose.project.config_files": str(self.config.compose_file),
+                "com.docker.compose.project.config_files": compose_files_label(self.config),
             }},
             "State": {"Status": status, "Running": status == "running"},
         }
@@ -242,6 +251,22 @@ class ActuatorTests(unittest.TestCase):
         for forbidden in ("stop", "rm", "down", "--remove-orphans", "--force-recreate", "--build"):
             self.assertNotIn(forbidden, command)
 
+    def test_compose_includes_the_override_file_compose_loads_by_default(self):
+        override = self.config.compose_file.parent / "docker-compose.override.yml"
+        self.assertTrue(override.is_file())   # shipped with the repository
+        self.step()
+        command = self.world.up_commands[0]
+        files = [command[i + 1] for i, part in enumerate(command) if part == "--file"]
+        self.assertEqual(files, [str(self.config.compose_file), str(override)])
+
+    def test_container_created_without_the_override_blocks_actuation(self):
+        # e.g. started with `docker compose -f docker-compose.yaml`: different configuration
+        self.world.documents[0]["Config"]["Labels"]["com.docker.compose.project.config_files"] = \
+            str(self.config.compose_file)
+        report = self.step()
+        self.assertEqual(report["actuation"]["status"], "blocked")
+        self.assertEqual(self.world.up_commands, [])
+
     def test_compose_cannot_inherit_automatic_orphan_removal(self):
         original = self.world.command
         environments = []
@@ -262,7 +287,7 @@ class ActuatorTests(unittest.TestCase):
         self.assertEqual(self.world.up_commands, [])
 
     def test_unsafe_compose_configuration_is_blocked(self):
-        for key, value in (("ports", ["9000:9000"]), ("container_name", "fixed"), ("cpus", 4), ("mem_limit", 1)):
+        for key, value in (("ports", ["9000:9000"]), ("container_name", "fixed"), ("cpus", 2), ("mem_limit", 1)):
             with self.subTest(key=key):
                 spec = self.world.spec["services"]["video_tool"]
                 original = dict(spec)
