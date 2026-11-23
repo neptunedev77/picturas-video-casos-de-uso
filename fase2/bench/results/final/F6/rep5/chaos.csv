@@ -1,0 +1,5 @@
+t,offset,cmd,rc,output
+1795475035.308,2.0,docker ps -aq --filter 'name=^picturas-video' --filter status=running | xargs -r docker pause ; docker ps -aq --filter 'name=^picturas-brightness_tool-[0-9]+$' --filter status=running | xargs -r docker pause,0,"f634837156da
+7bc390699311"
+1795475095.290,62.0,docker ps -aq --filter 'name=^picturas-video' --filter status=paused | xargs -r docker unpause ; docker ps -aq --filter 'name=^picturas-brightness_tool-[0-9]+$' --filter status=paused | xargs -r docker unpause,0,"f634837156da
+7bc390699311"

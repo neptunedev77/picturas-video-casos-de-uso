@@ -1,0 +1,18 @@
+{
+  "scenario": "F6",
+  "t_zero": 1795472651.8491986,
+  "timeout": 150.0,
+  "jobs": 2,
+  "chaos": [
+    [
+      2.0,
+      "docker ps -aq --filter 'name=^picturas-video' --filter status=running | xargs -r docker pause ; docker ps -aq --filter 'name=^picturas-brightness_tool-[0-9]+$' --filter status=running | xargs -r docker pause"
+    ],
+    [
+      62.0,
+      "docker ps -aq --filter 'name=^picturas-video' --filter status=paused | xargs -r docker unpause ; docker ps -aq --filter 'name=^picturas-brightness_tool-[0-9]+$' --filter status=paused | xargs -r docker unpause"
+    ]
+  ],
+  "idle_after": 0,
+  "t_finish": 1795472734.208503
+}

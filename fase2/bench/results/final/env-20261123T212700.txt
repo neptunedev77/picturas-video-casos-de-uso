@@ -1,0 +1,95 @@
+# env-snapshot 2026-11-23T21:27:00+00:00
+## commit
+aa74a04db4ae51227c462416e376960cc94c63a4
+?? ../bench/results/final-campaign.log
+?? ../bench/results/final/env-20261123T212700.txt
+## kernel
+Linux nitro 7.0.0-43-generic #43-Ubuntu SMP PREEMPT_DYNAMIC Fri Oct 23 13:25:25 UTC 2026 x86_64 GNU/Linux
+## cpu
+CPU(s):                                  16
+Model name:                              13th Gen Intel(R) Core(TM) i7-13620H
+Thread(s) per core:                      2
+Core(s) per socket:                      10
+CPU(s) scaling MHz:                      44%
+CPU max MHz:                             4900.0000
+CPU min MHz:                             400.0000
+## memory
+               total        used        free      shared  buff/cache   available
+Mem:            14Gi       5.3Gi       3.3Gi       484Mi       6.9Gi       9.3Gi
+Swap:          4.0Gi       1.8Gi       2.2Gi
+## power
+performance
+ac_online=1
+## docker
+client=29.10.0 server=29.10.0
+Docker Compose version v5.7.1
+## containers
+picturas-api_gateway-1	c5e1c1e6751d	Up 2 hours
+picturas-bg_remove_ai_tool-1	a1b8189fb5dc	Up 2 hours
+picturas-binarization_tool-1	a6b8e058e409	Up 2 hours
+picturas-border_tool-1	f7642879fff8	Up 2 hours
+picturas-brightness_tool-1	50e674af99ef	Up 2 hours
+picturas-contrast_tool-1	d6c864037519	Up 2 hours
+picturas-cut_ai_tool-1	d9c26a0b53f4	Up 2 hours
+picturas-cut_tool-1	abe844878bd3	Up 2 hours
+picturas-expand_ai_tool-1	dc2b57f518b5	Up 2 hours
+picturas-frontend-1	3b877f73b831	Up 2 hours
+picturas-generative-mock-1	f88bcd663f1b	Up 2 hours (healthy)
+picturas-img_storage-1	e792ea00f08b	Up 3 hours
+picturas-mongo-backup-1	mongo:4.4	Up 3 hours
+picturas-nginx-1	nginx:latest	Up 2 hours
+picturas-obj_ai_tool-1	9f87af582d6b	Up 2 hours
+picturas-people_ai_tool-1	f38531c63c26	Up 2 hours
+picturas-projects-1	picturas-projects	Up 2 hours
+picturas-projects_mongoDB-1	mongo:4.4	Up 2 hours (healthy)
+picturas-rabbitmq-1	picturas-rabbitmq	Up 2 hours (healthy)
+picturas-resize_tool-1	218e9fc54bfc	Up 2 hours
+picturas-rotate_tool-1	2e442f41637d	Up 2 hours
+picturas-saturation_tool-1	b00da8f3de69	Up 2 hours
+picturas-seaweedfs-1	chrislusf/seaweedfs:4.47	Up 3 hours
+picturas-subscriptions-1	8a63ccba48c0	Up 2 hours
+picturas-subscriptions_mongoDB-1	mongo:4.4	Up 2 hours (healthy)
+picturas-text_ai_tool-1	03a4c6892ddc	Up 2 hours
+picturas-upgrade_ai_tool-1	01ed82914aac	Up 2 hours
+picturas-users-1	1b3910d34228	Up 2 hours
+picturas-users_mongoDB-1	mongo:4.4	Up 2 hours (healthy)
+picturas-video_tool-1	picturas-video_tool	Up 6 minutes
+picturas-watermark_tool_ms-1	prcsousa/picturas-watermark-tool-ms:latest	Up 2 hours
+picturas-ws_gateway-1	d417023a0e23	Up 3 hours
+## loadavg
+0.72 1.21 1.03 1/2438 594179
+## autoscaler
+AUTOSCALER mode for this campaign: scale
+{
+  "mode": "observe",
+  "project": "picturas",
+  "rabbit_api": "http://localhost:15672/api",
+  "rabbit_vhost": "/",
+  "timeout_s": 2,
+  "interval_s": 1,
+  "compose_file": "../picturas-27/docker-compose.yaml",
+  "actuation_timeout_s": 30,
+  "readiness_timeout_s": 60,
+  "policy": {
+    "max_total": 3,
+    "scale_out_cooldown_s": 5,
+    "scale_in_idle_s": 40,
+    "scale_in_cooldown_s": 30,
+    "pools": [
+      {
+        "name": "normal",
+        "service": "video_tool",
+        "queue": "video_queue",
+        "minimum": 1,
+        "maximum": 2
+      },
+      {
+        "name": "heavy",
+        "service": "video_heavy_tool",
+        "queue": "video_heavy_queue",
+        "minimum": 0,
+        "maximum": 2
+      }
+    ]
+  }
+}

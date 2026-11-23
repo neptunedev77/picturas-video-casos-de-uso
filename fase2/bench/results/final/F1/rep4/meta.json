@@ -1,0 +1,22 @@
+{
+  "scenario": "F1",
+  "t_zero": 1795473619.4540715,
+  "timeout": 150.0,
+  "jobs": 1,
+  "chaos": [
+    [
+      0.5,
+      "docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=running | xargs -r docker pause"
+    ],
+    [
+      4.0,
+      "docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=running | xargs -r docker kill ; docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=paused | xargs -r docker kill"
+    ],
+    [
+      6.0,
+      "docker ps -aq --filter 'name=^picturas-contrast_tool-[0-9]+$' --filter status=exited | xargs -r docker start"
+    ]
+  ],
+  "idle_after": 0,
+  "t_finish": 1795473627.5232
+}
