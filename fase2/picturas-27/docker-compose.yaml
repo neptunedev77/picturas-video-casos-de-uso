@@ -259,9 +259,10 @@ services:
       context: ./Tools
       dockerfile: video/Dockerfile
     restart: on-failure
-    # Match Whisper's two CPU threads. The reference peak was 1918 MiB;
-    # keep headroom in both pools while normal jobs still include captions.
-    cpus: 2.0
+    # 4 CPUs per replica: a 60 s captioning took 28 s with 2 CPUs, 19 s with 4 and 17.5 s
+    # without a limit (reference laptop, 3 runs each). Three replicas use at most 12 of the
+    # 16 hardware threads. The reference memory peak was 1918 MiB.
+    cpus: 4.0
     mem_limit: 3g
     # Allow the 8 s worker grace plus the existing 30 s broker I/O timeout.
     stop_grace_period: 45s

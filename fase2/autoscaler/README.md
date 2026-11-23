@@ -255,7 +255,7 @@ python -B -m fase2.autoscaler.autoscaler --mode observe --once
 
 Ensure this stack was deployed from that exact Compose directory/file, workers are stable,
 the image is already built, the queues retain their quorum/DLQ policy, and the host has room
-for up to three workers (each capped at 2 CPUs/3 GiB). With deliberate existing test load,
+for up to three workers (each capped at 4 CPUs/3 GiB). With deliberate existing test load,
 run `--mode scale-out` in one terminal and compare before/after container IDs, labels,
 mounts, network, resource limits, queue consumers and successful job completion. Verify
 repeated steps never exceed 3, `--mode observe` performs no further changes, and queued
