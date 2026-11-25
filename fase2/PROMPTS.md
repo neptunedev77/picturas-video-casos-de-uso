@@ -322,7 +322,7 @@ acordar com o António o cálculo do R-4 do F6.
 
 ---
 
-# Elasticidade (Rafael Sousa)
+# Elasticidade (Bruno Sousa e Bruno Vale)
 
 **Fonte deste registo.** O registo inicial desta frente foi reconstruído pelo António (com apoio
 do Claude), antes de as prompts originais serem registadas no repositório, a partir dos
@@ -344,26 +344,115 @@ automáticos e operações Git autorizadas. António: responsável designado par
 Ubuntu e benchmarks S1–S3. As prompts anteriores aos blocos disponíveis nesta conversa continuam
 identificadas pelo registo reconstruído, sem inventar o seu texto original.
 
+**Complemento dos Blocos 1–5 (25/11).** Os resumos seguintes completam as entradas iniciais com
+os detalhes fornecidos por Bruno Sousa, confrontados com os commits de 19/11 e os ficheiros atuais
+do repositório. As verificações são os resultados reportados desse
+trabalho, sem nova execução nesta edição documental. A continuação de Bruno Vale, identificado
+no histórico como `al81205`, mantém-se nas entradas posteriores.
+
 ---
 
-## 2026-11-19 · Elasticidade · Codex (modelo não registado)
+## 2026-11-19 · Elasticidade · Codex (modelo não registado) · Bruno Sousa
 
-**Tarefa:** DA-E2 e DA-E3 — fila pesada para a legendagem, pools de vídeo separados e limites.
+**Tarefa:** Blocos 1–5 da implementação da Elasticidade: separação dos trabalhos de vídeo e autoscaler em observação.
 
 **Prompt:** Prompt 2 do grupo (problemas medidos na baseline, alvos E-1…E-5, decisões DA-E1…DA-E4,
 regras para as medições continuarem comparáveis), pedida por etapas.
 
-**Resultado (agente), commits `2941dd4`, `a54e568`, `daee237`, `5f88e7a` (Rafael Sousa):**
-- `rabbitMQ/definitions.json`: fila `video_heavy_queue` (quorum), ligação ao exchange e inclusão na
-  política de dead-letter `work-queues-dead-letter` (pedido da frente de Fiabilidade).
-- `Tools/video/video.py`: a fila consumida passa a vir da variável `VIDEO_QUEUE`.
-- `docker-compose.yaml`: serviço `video_heavy_tool` com a mesma imagem e configuração do
-  `video_tool`; limites de 2 CPUs e 3 GB por réplica; `stop_grace_period` de 45 s.
-- `projects/utils/videoRouting.js` e `project_msg.js`: os vídeos cujo pipeline tem legendagem vão
-  para a fila pesada; os restantes para a `video_queue`. Testes em `projects/tests/video-routing.test.js`.
-- `fase2/tests/elasticity/`: 15 testes de Compose e topologia.
+### Bloco 1 — topologia da fila pesada
 
-**Validação:** _a preencher pela equipa (o que foi revisto, testado ou corrigido)._
+**Prompt (resumo):** acrescentar uma fila para trabalhos pesados de vídeo, preservando as
+garantias de Fiabilidade das filas existentes.
+
+**Resultado (agente), commit `2941dd4`:** criada `video_heavy_queue`, durable e quorum, com binding
+no exchange `picturas` e routing key `video_heavy_queue`. A policy `work-queues-dead-letter`
+passou a abrangê-la (pedido da frente de Fiabilidade), mantendo `delivery-limit: 5`,
+`dead-letter-exchange: picturas.dlx`, `dead-letter-strategy: at-least-once` e
+`overflow: reject-publish`.
+
+**Ficheiros:** `rabbitMQ/definitions.json` e `fase2/tests/elasticity/test_topology.py` (este último
+relativo à raiz do repositório).
+
+**Verificações reportadas:** 8 testes aprovados; `docker compose config --quiet` e
+`git diff --check` sem erros; RabbitMQ healthy, sem `PRECONDITION_FAILED`.
+
+### Bloco 2 — worker de vídeo configurável
+
+**Prompt (resumo):** permitir que o mesmo worker consuma a fila normal ou a pesada por
+configuração, sem alterar o contrato das mensagens nem o consumidor fiável.
+
+**Resultado (agente), commit `a54e568`:** leitura de `VIDEO_QUEUE`, com `video_queue` como valor
+predefinido e possibilidade de consumir `video_heavy_queue`; o log identifica a fila selecionada.
+Mantidos `procedure: "video"` e o `ReliableConsumer` sem alterações.
+
+**Ficheiros:** `Tools/video/video.py` e `Tools/video/tests/test_video_worker.py`.
+
+**Verificações reportadas:** 33 testes aprovados, com cobertura de ack manual, confirmações,
+requeue e shutdown; `git diff --check` sem erros.
+
+### Bloco 3 — dois pools de workers
+
+**Prompt (resumo):** separar os consumidores em dois pools escaláveis, com limites de recursos
+por réplica e encerramento compatível com a Fiabilidade.
+
+**Resultado (agente), commit `daee237`:** `video_tool` consome `video_queue` e o novo
+`video_heavy_tool` consome `video_heavy_queue`. Partilham imagem, código, volumes e dependências,
+com `restart: on-failure`, sem portas adicionais nem `container_name` fixo. Cada réplica ficou
+limitada a 2 CPUs e 3 GiB de RAM, com `WORKER_SHUTDOWN_GRACE_S = 8` e `stop_grace_period: 45s`.
+
+**Decisão de recursos:** 2 CPUs coerentes com os dois threads do Whisper; face ao pico observado
+de cerca de 1918 MiB, 3 GiB dão aproximadamente 60 % de margem. O Docker local dispunha de cerca
+de 7,58 GiB, abaixo dos 16 GB da máquina de referência; estes dados não substituem as medições
+oficiais. Os 2 CPUs são o valor deste bloco; a alteração posterior para 4 consta de `8ae172a`
+(23/11, António Sousa).
+
+**Ficheiros:** `docker-compose.yaml` e `fase2/tests/elasticity/test_compose.py` (este último
+relativo à raiz do repositório).
+
+**Verificações reportadas:** ambos os contentores Up, com um consumidor por fila; 15 testes de
+Compose/topologia e 107 de vídeo/Fiabilidade aprovados; `docker compose config --quiet` e
+`git diff --check` sem erros.
+
+### Bloco 4 — routing normal/heavy
+
+**Prompt (resumo):** encaminhar as pipelines com legendagem para a fila pesada, tanto na
+pré-visualização como no processamento completo, preservando as mensagens existentes.
+
+**Resultado (agente), commit `5f88e7a`:** criada a seleção em `projects/utils/videoRouting.js` e
+integrada em `project_msg.js`: qualquer etapa com `procedure === "subtitles"` seleciona
+`video_heavy_queue`; as restantes pipelines seguem para `video_queue`. As pipelines combinadas
+com subtitles continuam heavy. Payload, identificadores, ordem da pipeline e `procedure: "video"`
+foram preservados; a publicação continua pelo módulo fiável existente.
+
+**Ficheiros:** `projects/utils/videoRouting.js`, `projects/utils/project_msg.js` e
+`projects/tests/video-routing.test.js`.
+
+**Verificações reportadas:** 11 testes novos de routing; 52 testes Node e 15 de topologia/Compose
+aprovados; `git diff --check` sem erros.
+
+### Bloco 5 — autoscaler em modo observação
+
+**Prompt (resumo):** criar um autoscaler em modo observe/dry-run, recolhendo métricas e propondo
+decisões sem criar, parar, remover ou escalar contentores.
+
+**Resultado (agente), commit `7f9c331`:** criada a estrutura `fase2/autoscaler/`, com política
+separada da recolha de métricas RabbitMQ/Docker. Apenas `observe` estava implementado neste bloco.
+A política inicial previa normal 1–2, heavy 0–2 e orçamento global de 3 réplicas, com observação
+a cada 1 s; intenção de scale-out de +1 por decisão/pool, cooldown de 5 s; intenção de scale-in
+de -1 após 60 s sem mensagens ready/unacked, cooldown de 30 s.
+
+**Decisões de segurança:** réplicas `starting`, `stopping` e `paused` contam para o orçamento;
+uma intenção de scale-in não liberta capacidade. Métricas inválidas não são lidas como zero;
+falhas de RabbitMQ/Docker mantêm a capacidade conhecida e bloqueiam decisões; capacidade
+desconhecida permanece desconhecida. A atuação real ficou para os blocos posteriores.
+
+**Ficheiros (relativos à raiz):** `fase2/autoscaler/autoscaler.py`, `policy.py`, `runtime.py`,
+`config.json` e `README.md` na mesma pasta; testes em `fase2/autoscaler/tests/test_policy.py`,
+`test_runtime.py` e `test_autoscaler.py`.
+
+**Verificações reportadas:** 56 testes unitários aprovados e `git diff --check` sem erros.
+Na observação real, normal 1 → 1 e heavy 1 → 1, total 2/3, `status: ok` e `actions_executed: 0`;
+os contentores não foram alterados.
 
 ---
 
@@ -373,7 +462,7 @@ regras para as medições continuarem comparáveis), pedida por etapas.
 
 **Prompt:** continuação da Prompt 2 do grupo, por blocos (observação, scale-out, scale-in).
 
-**Resultado (agente), commits `7f9c331` (Rafael Sousa), `3a479ce` e `c059ecf` (al81205):**
+**Resultado (agente), commits `3a479ce` e `c059ecf` (al81205), em continuação do Bloco 5 acima:**
 - `fase2/autoscaler/`: programa Python sem dependências externas que lê a API do RabbitMQ e o
   Docker a cada segundo e aplica a política de `config.json` (pool normal 1–2 réplicas, pool
   pesado 0–2, no máximo 3 réplicas de vídeo; scale-out de 1 réplica com 5 s de cooldown; scale-in
