@@ -324,12 +324,25 @@ acordar com o António o cálculo do R-4 do F6.
 
 # Elasticidade (Rafael Sousa)
 
-**Fonte deste registo.** As prompts originais da frente de Elasticidade não foram guardadas no
-repositório. As entradas abaixo foram reconstruídas pelo António (com apoio do Claude) a partir dos
+**Fonte deste registo.** O registo inicial desta frente foi reconstruído pelo António (com apoio
+do Claude), antes de as prompts originais serem registadas no repositório, a partir dos
 commits do ramo `feat/elasticity-video`, das mensagens da equipa e do documento de validação
 `validacao_elasticidade_ubuntu_antonio.md`. O ponto de partida foi a prompt de implementação da
 Elasticidade do grupo (`docs/prompts-implementacao.md`, Prompt 2). Os números de testes citados
 são os do relatório do agente; os que foram confirmados pela equipa estão assinalados.
+
+Em 25/11, este registo foi complementado com resumos fiéis das prompts disponíveis na conversa
+com o Codex, incluindo o anexo da implementação do Bloco 6, as revisões dos Blocos 6 e 7 e os
+pedidos explícitos de commit e push. O complemento identifica as decisões do utilizador e os
+resultados do agente; não é uma exportação integral da conversa nem uma nova execução dos testes.
+As entradas iniciais e as verificações atribuídas aos colegas foram preservadas.
+
+**Papéis no complemento.** Utilizador (autor Git dos commits dos Blocos 6 e 7: `al81205`):
+instruções, condições de segurança, limites de âmbito, pedidos de revisão e autorização explícita
+para commit e push. Codex (modelo não registado): análise, implementação, correções, testes
+automáticos e operações Git autorizadas. António: responsável designado para Docker real no
+Ubuntu e benchmarks S1–S3. As prompts anteriores aos blocos disponíveis nesta conversa continuam
+identificadas pelo registo reconstruído, sem inventar o seu texto original.
 
 ---
 
@@ -376,7 +389,156 @@ regras para as medições continuarem comparáveis), pedida por etapas.
 de topologia passaram (António, com o Claude). A validação com Docker real (réplicas criadas e
 removidas de verdade) está por fazer.
 
-**Validação:** _a preencher pela equipa._
+**Intervenção e validação:** as instruções e autorizações do utilizador (`al81205`) estão
+registadas no complemento abaixo. A execução local dos testes foi feita pelo agente; a
+confirmação da equipa é a indicada acima. A validação com Docker real não foi executada nesta
+conversa.
+
+---
+
+## 2026-11-25 · Elasticidade · Codex (modelo não registado) · complemento das prompts
+
+Registo retrospetivo dos pedidos disponíveis nesta conversa para os Blocos 6 e 7. Os commits de
+implementação são de 19/11; a data deste complemento é a do registo das prompts, não a de novos
+testes ou de uma nova implementação. Os caminhos `fase2/autoscaler/` e `fase2/tests/elasticity/`
+referidos abaixo são relativos à raiz do repositório.
+
+### Preparação — analisar antes de implementar
+
+**Prompt (resumo fiel):** confirmar `git status`, branch e referências remotas; verificar se a
+Fiabilidade da `main` já está integrada, sem fazer merge ou rebase automaticamente; ler
+`AGENTS.md`, todo o autoscaler, os serviços `video_tool` e `video_heavy_tool` no Compose e o
+graceful shutdown do `ReliableConsumer`. Rever a política, os 56 testes existentes e o modo
+`observe`, as garantias da `video_heavy_queue`, as medições iniciais e os scripts S1–S3. Apresentar
+estado real, divergências, ficheiros a alterar, solução técnica, riscos e plano de testes antes
+de implementar scale-out. Preservar os 335 artefactos não rastreados e não alterar a Fiabilidade.
+
+**Contributo e decisões do utilizador:** separei a análise da implementação e fixei o âmbito na
+Elasticidade de vídeo. Proibi alterações a ack manual, heartbeat, requeue, quorum queues, DLQ,
+watchdog, idempotência, refund, graceful shutdown e tratamento de respostas no `projects`.
+
+### Bloco 6 — implementação e revisão do scale-out
+
+**Prompt de implementação (resumo fiel do anexo original):** implementar exclusivamente
+scale-out num atuador separado, preferencialmente `fase2/autoscaler/actuator.py`. Manter
+`observe` predefinido e exigir ativação explícita para atuar; nunca executar scale-in neste
+bloco. Normal: mínimo 1, máximo 2; heavy: mínimo 0, máximo 2; orçamento global máximo 3.
+Contabilizar réplicas `starting`, `stopping` e `paused`, acrescentar no máximo uma réplica por
+decisão/pool e respeitar cooldown. Usar Compose com projeto, configuração e diretório explícitos,
+apenas para os dois serviços de vídeo, sem eliminar ou recriar contentores existentes. Exigir
+observações válidas, exclusão mútua, nova observação antes da criação, reserva persistente,
+reconciliação pelos IDs reais e confirmação do arranque e do consumidor RabbitMQ. Código zero
+do Docker não prova prontidão. Tratar repetição, concorrência, falhas, timeouts, criação parcial,
+métricas inválidas e reinício sem inventar capacidade nem libertar reservas incertas. Acrescentar
+testes determinísticos, correr os existentes e os de topologia, verificar o diff e apresentar
+limitações. Não alterar Fiabilidade, routing, baseline ou benchmarks; não fazer commit, push,
+merge ou rebase automaticamente, nem começar o Bloco 7.
+
+**Prompts de validação e revisão (resumo fiel):** verificar Docker Engine Linux, credenciais,
+Compose, IDs iniciais, recursos, filas e consumidores; observar sem ações; provocar crescimento
+controlado e verificar exatamente uma réplica adicional, preservação dos IDs anteriores,
+consumidor novo, processamento real, limites e cooldowns. Se o Docker estiver inacessível,
+interromper a validação real e indicar o bloqueio. Depois, fazer revisão técnica final do atuador,
+runtime, CLI, configuração, README e testes, corrigindo apenas defeitos comprovados com a menor
+alteração e testes de regressão. Não exigir Docker real nesta máquina; os testes reais e S1–S3
+ficam a cargo do António no Ubuntu. Preparar a lista exata de ficheiros, sem executar o commit.
+
+**Resultado e verificações (agente):** implementação do modo explícito `scale-out`, lock por
+projeto/daemon, journal persistente e reconciliação, com criação através de Compose sem recriar
+as réplicas existentes. O relatório passou de 111 para 114 testes do autoscaler após duas
+correções na revisão final; os 15 testes de Compose/topologia e `git diff --check` passaram.
+Estes números são totais sucessivos da suite, não testes a somar. O Docker Engine Linux estava
+inacessível no Windows; não foi demonstrada criação ou processamento real de contentores nesta
+sessão. O resultado foi guardado no commit `3a479ce`.
+
+**Contributo e decisões do utilizador:** exigi revisão antes do commit, preservação dos 335
+artefactos, limites e reservas também em estados transitórios, e nenhuma mudança à Fiabilidade.
+Determinei que o António faria a validação real. Só depois dos resultados autorizei um único
+commit, com oito caminhos explícitos, sem `git add .` e sem push nessa etapa.
+
+### Bloco 7 — implementação e revisão do scale-in seguro
+
+**Prompt de implementação (resumo fiel):** partir da branch `feat/elasticity-video` e do commit
+`3a479ce`; reler o código, Compose, política e graceful shutdown, sem alterar a Fiabilidade.
+Implementar scale-in com normal 1–2, heavy 0–2 e orçamento global 3; exigir 60 segundos sem
+mensagens ready/unacked, cooldown de 30 segundos e redução máxima de uma réplica por decisão/pool,
+mantendo os parâmetros configuráveis. Nunca remover a última normal. Revalidar métricas e
+estados imediatamente antes da atuação; bloquear métricas inválidas, operações pendentes e
+transições incompatíveis. Persistir um ID real antes da operação, enviar SIGTERM, respeitar o
+prazo de encerramento do Compose, confirmar a paragem e só depois remover esse contentor.
+Falhas ou timeouts mantêm capacidade reservada até reconciliação e remoção confirmada. Não usar
+Compose para escolher o contentor a reduzir nem eliminar volumes, redes ou outros serviços.
+Reutilizar ack/requeue e os 8 segundos internos da Fiabilidade. Preservar `observe` e o modo
+exclusivo `scale-out`; criar um modo explícito para ambas as direções, reutilizando lock,
+reservas e reconciliação, sem decisões contraditórias. Testar mínimos, máximos, inatividade,
+cooldown, ready/unacked, estados transitórios, concorrência, falhas, reinícios e modos existentes.
+Não fazer commit, push, merge ou rebase automaticamente, nem afinação ou benchmarks.
+
+**Prompt de revisão final (resumo fiel):** rever os seis ficheiros do Bloco 7 e confirmar
+persistência do ID, stop normal sem force, rm apenas após paragem, reservas e modos de atuação.
+Analisar três cenários: mensagem nova entre decisão e remoção; último heavy 1 → 0 seguido de
+trabalho novo e recuperação 0 → 1; interrupções antes, durante e depois de stop/remove. Não perder
+trabalho, remover outro contentor, libertar capacidade fictícia nem bloquear permanentemente sem
+condição justificável. Demonstrar cada defeito, aplicar a correção mínima, acrescentar regressão
+e repetir todos os testes e verificações de âmbito, sem Docker real nesta máquina.
+
+**Resultado e correções (agente):** modo explícito `scale` para ambas as direções e máquina de
+estados em `fase2/autoscaler/scale_in.py`, integrada com o atuador e o journal existentes.
+Na revisão final foram encontrados e corrigidos dois bloqueios de recuperação:
+
+- Trabalho novo podia impedir a limpeza do último heavy já parado, mantendo a operação pendente
+  e bloqueando scale-out. A limpeza pode agora terminar depois de confirmar o mesmo ID parado,
+  sobreviventes válidos e consumidor desligado, mesmo que haja trabalho novo. As observações com
+  ready/unacked impedem iniciar uma nova paragem; o autoscaler não confirma nem descarta mensagens.
+  Terminar a limpeza desbloqueia o scale-out posterior, respeitando cooldown e orçamento.
+- Interrupções e falhas transitórias de stop/remove podiam deixar a operação pendente
+  indefinidamente. A reconciliação permite tentativas controladas sobre o mesmo ID persistido:
+  stop exige inatividade e observações válidas, cooldown e prazo anterior decorrido; rm exige
+  confirmação de paragem, cooldown e observação final. Os instantes das tentativas são persistidos,
+  não há mais de uma tentativa de cada operação por ciclo e o orçamento só é libertado depois
+  da remoção confirmada. Estados inválidos ou identidades inconsistentes continuam bloqueados.
+
+**Verificações (agente):** 171 testes após a implementação inicial; 180 após nove novos testes
+de regressão da revisão final, além dos 15 testes de Compose/topologia, sintaxe de 10 ficheiros
+Python e `git diff --check`, todos aprovados. Foram simulados heavy 1 → 0 → 1, chegadas de trabalho,
+falhas, reinícios e respostas perdidas; mocks não provam funcionamento com Docker real. A revisão
+confirmou o scale-out existente e o âmbito limitado aos seis ficheiros autorizados. Resultado
+guardado no commit `c059ecf`.
+
+**Contributo e decisões do utilizador:** defini os dez requisitos de segurança da revisão e os
+três cenários críticos; pedi correções apenas para defeitos demonstrados, com regressão. Mantive
+a Fiabilidade, workers, RabbitMQ, routing, Compose e benchmarks fora do âmbito. Pedi relatório e
+lista exata de ficheiros antes de autorizar o commit; deixei os testes reais para o António.
+
+**Parâmetros históricos:** os 60 segundos são o requisito da prompt e da revisão do Bloco 7.
+A alteração posterior para 40 segundos é do commit `5689aac`, de 23/11, por António Sousa, e está
+descrita na secção de Medição e qualidade. Não foi parte das correções desta revisão nem uma
+decisão de afinação tomada nesta conversa.
+
+### Commit e publicação — autorizações separadas
+
+**Prompts (resumo fiel):** depois de cada revisão, criar um único commit com a mensagem indicada
+e apenas os caminhos autorizados: oito ficheiros no Bloco 6, seis no Bloco 7. Confirmar branch,
+HEAD e staging exato; interromper perante ficheiros inesperados; executar a verificação do diff
+em staging; excluir os 335 artefactos e não fazer push. Num pedido posterior e separado, verificar
+remoto, fetch, HEAD e divergência; publicar apenas os dois commits locais se não existir nenhum
+commit remoto em falta, sem force, e confirmar hashes local/remoto iguais.
+
+**Resultado (agente, autorizado pelo utilizador):** criados os commits `3a479ce` e `c059ecf`, com
+as mensagens `feat(elasticity): implement safe video scale-out` e
+`feat(elasticity): implement safe video scale-in`. No pedido de publicação, a divergência era
+0 commits remotos em falta e 2 locais por publicar; após `git push origin feat/elasticity-video`
+e novo fetch, passou a 0/0, com HEAD local e remoto
+`c059ecfb65928351cb74b87564225765a2861d6e`. Não houve novos commits de código, force push,
+merge/rebase ou alteração à `main` nessa publicação. Os 335 artefactos permaneceram excluídos.
+
+**Limitações e validação humana:** as instruções, condições e autorizações acima são decisões
+do utilizador registadas na conversa. Os testes locais foram executados pelo agente; não são
+apresentados como execução manual do utilizador. A confirmação de 23/11 pelo António e Claude
+consta da entrada anterior, preservada. Na conclusão destes blocos, a validação de réplicas e
+processamento com Docker real e os benchmarks S1–S3 foram entregues ao António no Ubuntu; não
+foram executados nesta sessão. Este complemento documental não acrescenta resultados dessas
+validações nem altera o registo da frente de Medição e qualidade.
 
 ---
 
