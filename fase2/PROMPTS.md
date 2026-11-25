@@ -322,7 +322,7 @@ acordar com o António o cálculo do R-4 do F6.
 
 ---
 
-# Elasticidade (Rafael Sousa e al81205)
+# Elasticidade (Rafael Sousa)
 
 **Fonte deste registo.** As prompts originais da frente de Elasticidade não foram guardadas no
 repositório. As entradas abaixo foram reconstruídas pelo António (com apoio do Claude) a partir dos
