@@ -94,7 +94,7 @@ as entradas dessa frente foram reconstruídas a partir dos _commits_ e das mensa
       reviu o texto],
   ),
 )
-
+#pagebreak()
 == Análise crítica
 
 *O que correu bem.* Trabalhar por etapas, com um plano aprovado antes de qualquer alteração e um relatório no fim,

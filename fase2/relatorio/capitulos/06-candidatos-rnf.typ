@@ -111,7 +111,7 @@ de 5 repetições; o p95 é o valor abaixo do qual ficam 95 % das medições.
       filtros em 0,63 s) e não devem piorar. RNF43 e RNF58 da base de 2025/26],
   ),
 ) <tab-quant-e>
-
+#pagebreak()
 #figure(kind: table, caption: [Quantificação do CAND-2 (fiabilidade)],
   tabela(
     colunas: (1.2cm, 1fr, 1.4cm, 3.4cm, 3.4cm, 1fr),
