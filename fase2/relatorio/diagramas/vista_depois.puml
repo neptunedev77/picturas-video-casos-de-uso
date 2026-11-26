@@ -1,0 +1,54 @@
+@startuml vista_depois
+!include _estilo.iuml
+top to bottom direction
+title Depois (tag final): processamento em lote
+
+component "nginx + API Gateway" as gw
+component "projects (orquestrador)\n• legendas → fila pesada «tática: TAT-02»\n• ligação reutilizada; publicação persistente\n   e confirmada «tática: TAT-08»\n• watchdog: imagem 30 s, vídeo max(120 s, duração)\n   «tática: TAT-10»\n• consumidor da DLQ «tática: TAT-09»\n• idempotência «tática: TAT-11»" as projects #DCFCE7
+component "WS Gateway\n(Socket.IO)" as ws
+
+package "RabbitMQ · filas quorum · 5 entregas, depois DLQ «tática: TAT-08, TAT-09»" as rmq #FFFBEB {
+  queue "video_queue\n(sem legendas)" as video_q
+  queue "video_heavy_queue\n(com legendas)" as heavy_q #DCFCE7
+  queue "<tool>_queue\n(16 filas)" as tool_q
+  queue "project_queue" as project_q
+  queue "ws_queue" as ws_q
+  queue "picturas.dlq" as dlq #DCFCE7
+}
+
+package "Docker Compose · 4 CPUs e 3 GiB por réplica de vídeo «tática: TAT-03»\nworkers de imagem e vídeo: consumidor fiável (ack no fim · heartbeat · SIGTERM 8 s\n· resposta confirmada · erro com ids certos) «tática: TAT-07, TAT-10, TAT-12, TAT-13»" as hosts #F0FDF4 {
+  component "video_tool\n1–2 réplicas" as video #FDE7D3
+  component "video_heavy_tool\n0–2 réplicas\n«tática: TAT-02»" as heavy #FDE7D3
+  component "15 ferramentas\nde imagem" as img
+  component "marca d'água\n(serviço à parte,\nsem consumidor fiável)" as wm
+}
+
+component "autoscaler (anfitrião, ciclo 1 s)\nmáx. 3 réplicas de vídeo\nsobe: 5 s entre subidas\ndesce: 40 s sem trabalho\n«tática: TAT-01, TAT-03»" as autoscaler #DCFCE7
+
+gw --> projects : REST
+projects -[#C2410C,thickness=2]-> video_q
+projects -[#C2410C,thickness=2]-> heavy_q
+projects --> tool_q
+video_q -[#C2410C,thickness=2]-> video
+heavy_q -[#C2410C,thickness=2]-> heavy
+tool_q --> img
+tool_q --> wm
+video -[#C2410C,thickness=2]-> project_q
+heavy -[#C2410C,thickness=2]-> project_q
+heavy -[#C2410C,thickness=2]-> ws_q : progresso
+video -[#C2410C,thickness=2]-> ws_q
+img --> project_q
+project_q --> projects
+projects --> ws_q
+ws_q --> ws
+dlq -[#15803D]-> projects
+autoscaler .[#15803D].> rmq : lê as filas
+autoscaler -[#15803D,thickness=2]-> hosts : cria · SIGTERM\n+ remove
+
+legend right
+  |= Cor |= Significado |
+  | <color:#C2410C>━━▶</color> | caminho do vídeo |
+  | <color:#9AA0A6>━━▶</color> | caminho das imagens / padrão global |
+  | <back:#DCFCE7>      </back> <color:#15803D>━━▶</color> | novo ou alterado pelas táticas |
+endlegend
+@enduml
