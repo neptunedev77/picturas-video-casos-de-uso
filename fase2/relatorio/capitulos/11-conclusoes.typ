@@ -54,8 +54,8 @@ calendário do cenário, e não de um limite do padrão.
 == Trabalho futuro
 
 *O que ficou por fazer.*
-- O alvo do E-2 não foi atingido (8,1 s, dentro do mínimo aceitável). A alternativa que o resolve foi testada só uma
-  vez, porque a medição final já tinha sido feita; falta medi-la com 5 repetições, incluindo a memória.
+- O alvo do E-2 não foi atingido (8,1 s, dentro do mínimo aceitável). A alternativa que o resolve foi testada num
+  ensaio; falta medi-la com 5 repetições, incluindo o efeito na memória.
 - O alvo do tempo total da rajada (≤ 33 s) não foi atingido, e é muito difícil de atingir neste cenário (capítulo 10).
 - Ficaram por confirmar as hipóteses H-03, H-04 e H-05.
 - As falhas F1–F6 e a criação e remoção de réplicas foram medidas, mas não são testes automáticos. Transformá-las em

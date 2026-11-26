@@ -1,5 +1,6 @@
 #import "../template.typ": *
 
+#paisagem[
 = Trade-offs, Cenários de Qualidade e Prioridades
 
 #orientacao[
@@ -32,11 +33,10 @@
   mínimo: esses fixam-se após a medição inicial. A medida da resposta indica o que se mede, não o valor a atingir.
 ]
 
-#paisagem[
 #tab([Cenários de qualidade],
   tabela(
-    colunas: (1.2cm, 3.4cm, 2.6cm, 2.2cm, 2.2cm, 2.4cm, 2.2cm, 2.6cm, 3cm),
-    tamanho: 7.5pt,
+    colunas: (1.1cm, 3.6cm, 2.6cm, 2cm, 2.6cm, 2.3cm, 2.2cm, 2.8cm, 3.4cm),
+    tamanho: 7pt,
     [ID], [Fragilidade na base (EV-nn)], [Característica (ISO/IEC 25010)], [Fonte do estímulo], [Estímulo], [Artefacto], [Ambiente], [Resposta], [Medida da resposta],
     [QS-01], [Um único _worker_ de vídeo trata um vídeo de cada vez: um corte curto espera que a legendagem em curso
       termine (EV-06, EV-11, EV-22)],

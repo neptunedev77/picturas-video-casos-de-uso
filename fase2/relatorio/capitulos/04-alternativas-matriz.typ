@@ -114,6 +114,7 @@ a legendagem termine (EV-06).
     voltar a validar todos os fluxos, com risco de afetar funcionalidades que nada têm a ver com o vídeo.],
 )
 
+#paisagem[
 == Matriz de comparação de padrões
 
 #orientacao[
@@ -126,7 +127,6 @@ a legendagem termine (EV-06).
   acrescentar linhas para outros atributos relevantes.
 ]
 
-#paisagem[
 #tab([Matriz de comparação de padrões (escala: Alto / Médio / Baixo)],
   tabela(
     colunas: (3.6cm, 4cm, 4cm, 4cm, 4cm, 4cm),

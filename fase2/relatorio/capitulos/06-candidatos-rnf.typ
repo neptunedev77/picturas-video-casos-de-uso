@@ -150,10 +150,6 @@ usabilidade (erros que antes se perdiam passam a aparecer).
       [`fase2/bench/results/baseline/E3-replica-startup.txt` (EV-19)],
       [Acrescentar uma réplica com `docker compose up --scale video_tool=2` e medir quando a fila passa a ter 2
       consumidores; 3 medições],
-    [Primeira versão das falhas F1, F4 e F6, posta de parte porque provocava a falha depois de os trabalhos terminarem],
-      [`fase2/bench/results/baseline/_discarded-v1/`],
-      [Lição de método: o serviço passou a ser congelado antes de ser parado, para a falha apanhar sempre trabalho em
-      curso],
   ),
 )
 ]

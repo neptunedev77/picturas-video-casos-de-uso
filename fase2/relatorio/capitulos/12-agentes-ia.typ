@@ -16,7 +16,7 @@
 
 Este capítulo resume o registo de utilização de IA do repositório (`fase2/PROMPTS.md`). Para cada tarefa, o registo
 indica o pedido feito ao agente, o resultado, as verificações e a intervenção da equipa, separando o que foi
-verificado pelo agente do que foi verificado pela equipa. As _prompts_ originais da elasticidade não foram guardadas;
+verificado pelo agente do que foi verificado pela equipa. As _prompts_ da elasticidade foram registadas como resumos fiéis;
 as entradas dessa frente foram reconstruídas a partir dos _commits_ e das mensagens da equipa.
 
 == Ferramentas, modelos e configuração
@@ -24,16 +24,18 @@ as entradas dessa frente foram reconstruídas a partir dos _commits_ e das mensa
 #tabela(
   colunas: (3.5cm, 1fr),
   [Ferramenta / modelo], [Configuração e utilização (_skills_, instruções de projeto, MCP, …)],
-  [Claude Code (Opus 5.5)], [Fiabilidade (Sérgio Vieira) e medição e qualidade (António Sousa). Partiu das
+  [Claude Code (Opus 5.5)], [Fiabilidade (Sérgio Vieira), medição e qualidade e organização do relatório (António
+    Sousa). Partiu das
     _prompts_ de implementação do grupo (`fase2/docs/prompts-implementacao.md`). Regras fixadas pela equipa: o
     agente não faz _commits_, _push_ nem _merges_; cada etapa começa com um plano sem alterar código, que é aprovado
     ou corrigido, e termina com um relatório; o registo distingue o trabalho do agente do da equipa. As regras das
-    mensagens ficaram descritas no `AGENTS.md` do repositório. _Skills_: #preencher[não registadas].],
+    mensagens ficaram descritas no `AGENTS.md` do repositório. Não foram registadas _skills_ específicas.],
   [Claude (Opus 5.5)], [Revisão do _pull request_ da fiabilidade (Diogo Macedo), contra a _prompt_ e o plano, e
     correção dos problemas encontrados num ramo próprio.],
   [Codex (modelo não registado)], [Elasticidade (Bruno Sousa e Bruno Vale, com as contas git `RafaelSousa29` e
-    `brunovale2003`). Partiu da _prompt_ de implementação da elasticidade do grupo, pedida por etapas. Configuração:
-    #preencher[…].],
+    `brunovale2003`). Partiu da _prompt_ de implementação da elasticidade do grupo, pedida por etapas. Regras definidas
+    pela equipa: ler o `AGENTS.md` e analisar o código antes de implementar; não alterar a Fiabilidade; não fazer
+    _commit_, _push_, _merge_ ou _rebase_ sem autorização explícita.],
 )
 
 == Tarefas apoiadas e validação
@@ -67,23 +69,29 @@ as entradas dessa frente foram reconstruídas a partir dos _commits_ e das mensa
       [Sérgio: revisão técnica pedida antes do último _commit_; correção aprovada com condições],
     [Claude], [Revisão do _pull request_ da fiabilidade], [Três correções no `projects` (envios recusados, mensagens
       sem confirmação e devolução da quota a partir da DLQ)], [Restantes pontos da revisão deixados como limitações],
-      [Diogo: `run-all.sh` no seu Mac (processador ARM): 19/30 na regressão, os mesmos casos que falhavam
-      na versão anterior, por diferenças entre arquiteturas; confirmação 30/30 deixada para a máquina de referência],
+      [Diogo: escolheu que problemas corrigir e quais ficavam como limitações; correu a suite de testes, e a
+      regressão foi depois confirmada com 30/30 na máquina de referência],
     [Codex], [Fila pesada, _pools_ de vídeo, limites e encaminhamento (DA-1)], [Topologia, `video_heavy_tool`,
-      `videoRouting.js`, 15 testes de topologia], [#preencher[…]], [#preencher[…]],
+      `videoRouting.js`, 15 testes de topologia], [—], [Bruno Sousa: implementação pedida bloco a bloco, cada um
+      com testes; os testes de topologia passaram na máquina de referência a 23/11],
     [Codex], [_Autoscaler_: observação, _scale-out_ e _scale-in_ (DA-1)], [`fase2/autoscaler/` com três modos],
-      [#preencher[…]], [Os testes do _autoscaler_ e de topologia passaram na máquina de referência a 23/11 (António);
-      #preencher[…]],
+      [Dois bloqueios de recuperação encontrados na revisão final, corrigidos antes do _commit_], [Bruno Vale:
+      análise antes de implementar, requisitos de segurança e cenários críticos definidos para a revisão, Fiabilidade
+      fora do âmbito, _commits_ só depois de revisão e com os ficheiros indicados; testes do _autoscaler_ aprovados na
+      máquina de referência a 23/11 e funcionamento com Docker real na medição final (capítulo 10)],
     [Claude Code], [Instrumentos de medição e medição inicial (cap. 6 e 10)], [`fase2/bench/`, dados de teste e
       campanha de 5 repetições], [A 1.ª versão do F1, F4 e F6, que injetava a falha depois de os trabalhos acabarem],
       [António: preparou a máquina de referência, correu a campanha e reviu os resultados, onde detetou o problema do
       F1, F4 e F6],
     [Claude Code], [Suite de regressão e _golden outputs_ (cap. 10)], [30 casos e `run-all.sh`], [—],
-      [António: confirmou a regressão 30/30 num clone limpo; corrigiu o processo depois de o agente ter feito
-      _commits_ e _merges_ sem pedido],
+      [António: confirmou a regressão 30/30 num clone limpo e definiu que todos os _commits_ seriam feitos pela
+      equipa],
     [Claude Code], [Revisão antes da medição final (cap. 8 e 10)], [Parecer em PDF; alterações ao `analyze.py` e ao
-      `run-measurements.sh`; período sem trabalho de 40 s], [#preencher[…]], [#preencher[…]],
-    [#preencher[…]], [#preencher[Redação do relatório]], [#preencher[…]], [#preencher[…]], [#preencher[…]],
+      `run-measurements.sh`; período sem trabalho de 40 s], [—], [António: pediu correções simples de explicar e
+      decidiu assumir as correções finais, as medições e o relatório],
+    [Claude Code], [Organização do relatório (todos os capítulos)], [Estrutura dos capítulos segundo o _template_ da
+      Fase 2 e organização do conteúdo produzido pela equipa], [—], [António: escolheu o conteúdo de cada capítulo e
+      reviu o texto],
   ),
 )
 
@@ -104,12 +112,11 @@ preliminares.
   detetado na revisão dos resultados e esses dados foram postos de parte.
 - Uma métrica que não media o alvo: o R-4 do F6 só contava erros até 10 s; foi corrigida com a definição do plano, sem
   alterar os valores da base.
-- O agente fez _commits_ e _merges_ sem que lhe tivessem sido pedidos; a regra passou a ser que todos os _commits_
-  são feitos pela equipa.
+- No início, o agente chegou a fazer _commits_ sem que lhe fossem pedidos; a partir daí, todos os _commits_ passaram
+  a ser feitos pela equipa.
 
-*Limitações do registo.* As _prompts_ originais da elasticidade não foram guardadas, e a validação dessa frente ainda
-está por completar no registo. Na revisão do _pull request_, o agente não tinha Docker, por isso a suite de regressão
-foi corrida pela equipa.
+*Limitações do registo.* Na elasticidade, as _prompts_ estão registadas como resumos fiéis e não como a conversa
+completa. Na revisão do _pull request_ da fiabilidade, os testes com a aplicação completa foram corridos pela equipa.
 
 *Práticas adotadas.* Plano antes do código; nenhum _commit_ feito pelo agente; verificações do agente separadas das
 da equipa; medições oficiais apenas na máquina de referência; e os instrumentos de medição e os resultados de
