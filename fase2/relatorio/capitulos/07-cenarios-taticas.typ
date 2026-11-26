@@ -55,7 +55,7 @@
       [Capítulo 6 (R-4) e `fase2/bench/README.md`],
   ),
 )
-
+#pagebreak()
 == Táticas candidatas
 
 #orientacao[

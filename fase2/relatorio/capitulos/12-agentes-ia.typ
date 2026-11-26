@@ -97,12 +97,13 @@ as entradas dessa frente foram reconstruídas a partir dos _commits_ e das mensa
 #pagebreak()
 == Análise crítica
 
-*O que correu bem.* Trabalhar por etapas, com um plano aprovado antes de qualquer alteração e um relatório no fim,
+=== O que correu bem
+Trabalhar por etapas, com um plano aprovado antes de qualquer alteração e um relatório no fim,
 permitiu à equipa corrigir propostas antes de chegarem ao código. Na fiabilidade, cada etapa terminou com testes novos
 e com a suite de regressão a passar, e os resultados obtidos fora da máquina de referência ficaram registados como
 preliminares.
 
-*Onde a IA errou e como foi detetado.*
+=== Onde a IA errou e como foi detetado
 - Propostas que podiam perder mensagens ou trabalho: descartar mensagens cujo tratamento falhava, e uma ordem de
   migração do RabbitMQ que deixava trabalhos pendentes. Ambas foram detetadas na aprovação dos planos.
 - Defeitos no código gerado: um bloqueio do _worker_ quando o envio falhava (revisão guiada), uma situação de corrida
@@ -115,9 +116,11 @@ preliminares.
 - No início, o agente chegou a fazer _commits_ sem que lhe fossem pedidos; a partir daí, todos os _commits_ passaram
   a ser feitos pela equipa.
 
-*Limitações do registo.* Na elasticidade, as _prompts_ estão registadas como resumos fiéis e não como a conversa
+=== Limitações do registo
+Na elasticidade, as _prompts_ estão registadas como resumos fiéis e não como a conversa
 completa. Na revisão do _pull request_ da fiabilidade, os testes com a aplicação completa foram corridos pela equipa.
 
-*Práticas adotadas.* Plano antes do código; nenhum _commit_ feito pelo agente; verificações do agente separadas das
+=== Práticas adotadas
+Plano antes do código; verificações do agente separadas das
 da equipa; medições oficiais apenas na máquina de referência; e os instrumentos de medição e os resultados de
 referência da regressão mantidos sem alterações entre a base e a medição final, salvo as alterações documentadas.

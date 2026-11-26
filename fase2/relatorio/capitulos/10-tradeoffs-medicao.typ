@@ -124,7 +124,7 @@
   ),
 )
 
-*Análise dos resultados*
+=== Análise dos resultados
 
 A medição inicial foi feita a 17 de novembro, sobre o _commit_ `a2c0772`, e a final a 23 de novembro, sobre o código
 da _tag_ `final`, no mesmo ambiente, com os mesmos _scripts_ e 5 repetições por cenário. Na medição final o
@@ -132,7 +132,7 @@ _autoscaler_ esteve sempre ligado. Os dados estão em `fase2/bench/results/`. *N
 atingidos: a espera dos vídeos na rajada (E-2) ficou dentro do mínimo aceitável, e o tempo total da rajada, uma
 métrica secundária, não foi atingido.*
 
-*CAND-1 · Elasticidade.*
+*CAND-1 · Elasticidade*
 - *O que melhorou.* Um corte deixou de esperar pela legendagem: a espera p95 passou de 13,0 s para 1,7 s, o que
   confirma a H-01. Na rajada, surgiu uma réplica de legendagem em 10 s; a primeira réplica foi retirada 51 s depois
   de a fila esvaziar, e o _pool_ voltou ao estado inicial (sem réplicas de legendagem) cerca de 101 s depois. O
@@ -144,31 +144,31 @@ métrica secundária, não foi atingido.*
   _autoscaler_ reage em menos de um segundo, mas a réplica demora esse tempo a arrancar e a ligar-se à fila. Na
   rajada isto acontece duas vezes, e cada legendagem é ainda um pouco mais lenta por causa do limite de 4 CPUs. É
   também por isso que uma legendagem isolada passou de 16,5 s para 27,4 s.
-- *Alternativa testada.* Com uma réplica de legendagem sempre ligada, num ensaio de uma só repetição, a espera do S2
+- *Alternativa testada* Com uma réplica de legendagem sempre ligada, num ensaio de uma só repetição, a espera do S2
   desceu para 5,2 s e a legendagem isolada para 19,6 s, e o tempo total ficou em 40,0 s, como na base. Não a
   adotámos porque aumenta a memória sem carga e não foi medida com 5 repetições. O alvo do tempo total (≤ 33 s) é
   difícil de atingir neste cenário: a 2.ª legendagem só é pedida aos 15 s, o vídeo só chega à fila 7 a 8 s depois do
   pedido (já era assim na base) e cada legendagem demora cerca de 13 s. *H-05*: esses 7 a 8 s são gastos no
   `projects` antes de enviar o trabalho, por exemplo a copiar o original para a pasta partilhada (EV-04); confirma-se
   medindo cada passo do pedido de _Apply_.
-- *Memória.* A memória sem carga desceu de 3 258 MB para 2 030 MB, mas só parte desta descida se deve às nossas
+- *Memória* A memória sem carga desceu de 3 258 MB para 2 030 MB, mas só parte desta descida se deve às nossas
   mudanças. Na base, o único _worker_ de vídeo ficava com o modelo de legendagem em memória depois de legendar
   (787 MB); agora a réplica normal nunca legenda (16 MB) e a de legendagem é retirada quando não há trabalho. Os
   restantes cerca de 570 MB vêm de outros contentores cuja memória depende do trabalho que fizeram antes da medição. Mesmo
   sem essa parte, a memória sem carga (cerca de 2 570 MB) fica abaixo do alvo.
 
-*CAND-2 · Fiabilidade.*
-- *O que melhorou.* Os 60 trabalhos das falhas F1–F6 terminaram todos (antes, 25 ficavam pendurados), e os 40
+*CAND-2 · Fiabilidade*
+- *O que melhorou* Os 60 trabalhos das falhas F1–F6 terminaram todos (antes, 25 ficavam pendurados), e os 40
   trabalhos do F1–F4 terminaram com sucesso sem o utilizador repetir o pedido, o que confirma a H-02. As falhas que
   antes nunca recuperavam (F1, F3 e F4) recuperam agora em 4 a 5 s, e o F2 em 17,4 s. Os erros do F5 chegam todos ao
   utilizador em menos de 10 s e os do F6 dentro do prazo. Não houve resultados duplicados.
-- *O caso do F6.* Só metade dos trabalhos do F6 termina com sucesso, e é o comportamento esperado: as imagens paradas
+- *O caso do F6* Só metade dos trabalhos do F6 termina com sucesso, e é o comportamento esperado: as imagens paradas
   ultrapassam o prazo de 30 s e o utilizador é avisado, enquanto a legendagem termina, porque 60 s de paragem é menos
   do que o prazo do vídeo (120 s).
-- *Custo.* As corridas sem carga quase não mudaram (lote misto 2,29 → 2,40 s; 10 imagens 0,63 → 0,58 s; corte 0,79 →
+- *Custo* As corridas sem carga quase não mudaram (lote misto 2,29 → 2,40 s; 10 imagens 0,63 → 0,58 s; corte 0,79 →
   0,80 s), por isso o custo das confirmações é pequeno, como previsto na matriz de efeitos.
 
-*Ameaças à validade.*
+*Ameaças à validade*
 - Usámos uma só máquina e 5 repetições por cenário. As medianas são estáveis, mas com 5 valores o p95 é, na
   prática, o maior deles.
 - O R-3 compara com a corrida sem falha da mesma campanha. Na medição final, a legendagem de referência é mais lenta,
@@ -181,7 +181,7 @@ métrica secundária, não foi atingido.*
   aos dados da base, sem alterar nenhum valor anterior.
 - Dois ajustes foram feitos com base nos ensaios, antes da medição final: a configuração usada pelo _autoscaler_ e o
   limite de 4 CPUs (capítulo 8).
-
+#pagebreak()
 == Preservação funcional
 
 A preservação funcional verifica-se com o _script_ `fase2/tests/run-all.sh`, com a aplicação ligada. Este _script_

@@ -53,7 +53,7 @@ calendário do cenário, e não de um limite do padrão.
 
 == Trabalho futuro
 
-*O que ficou por fazer.*
+=== O que ficou por fazer
 - O alvo do E-2 não foi atingido (8,1 s, dentro do mínimo aceitável). A alternativa que o resolve foi testada num
   ensaio; falta medi-la com 5 repetições, incluindo o efeito na memória.
 - O alvo do tempo total da rajada (≤ 33 s) não foi atingido, e é muito difícil de atingir neste cenário (capítulo 10).
@@ -62,7 +62,7 @@ calendário do cenário, e não de um limite do padrão.
   testes ajudaria a proteger futuras alterações.
 - Usámos uma só máquina, e a memória sem carga depende do historial dos contentores (capítulo 10).
 
-*Ligação à fase seguinte.* As mudanças facilitam acrescentar funcionalidades de vídeo pesadas, como as que a equipa
+=== Ligação à fase seguinte As mudanças facilitam acrescentar funcionalidades de vídeo pesadas, como as que a equipa
 especificou na Fase 1 (remoção de silêncios, compressão, anonimização de rostos e matrículas, legendas automáticas e
 remoção de fundo). Um efeito pesado só precisa de ser encaminhado para a fila dos trabalhos pesados, onde já tem réplicas
 próprias, limites de recursos e entrega garantida, sem atrasar os cortes rápidos. E qualquer ferramenta nova que use a
