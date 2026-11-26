@@ -324,13 +324,6 @@ acordar com o António o cálculo do R-4 do F6.
 
 # Elasticidade (Bruno Sousa e Bruno Vale)
 
-**Fonte deste registo.** O registo inicial desta frente foi reconstruído pelo António (com apoio
-do Claude), antes de as prompts originais serem registadas no repositório, a partir dos
-commits do ramo `feat/elasticity-video`, das mensagens da equipa e do documento de validação
-`validacao_elasticidade_ubuntu_antonio.md`. O ponto de partida foi a prompt de implementação da
-Elasticidade do grupo (`docs/prompts-implementacao.md`, Prompt 2). Os números de testes citados
-são os do relatório do agente; os que foram confirmados pela equipa estão assinalados.
-
 Em 25/11, este registo foi complementado com resumos fiéis das prompts disponíveis na conversa
 com o Codex, incluindo o anexo da implementação do Bloco 6, as revisões dos Blocos 6 e 7 e os
 pedidos explícitos de commit e push. O complemento identifica as decisões do utilizador e os
