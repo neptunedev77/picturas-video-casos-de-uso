@@ -1,5 +1,6 @@
 #import "../template.typ": *
 
+#paisagem[
 = Trade-offs, Medição e Preservação Funcional
 
 #orientacao[
@@ -22,7 +23,6 @@
   gerir esse custo.
 ]
 
-#paisagem[
 #tab([Matriz de efeitos das decisões],
   tabela(
     colunas: (1.8cm, 2.6cm, 3.4cm, 2.4cm, 2.4cm, 3.6cm, 1fr),
@@ -179,7 +179,7 @@ métrica secundária, não foi atingido.*
 - Os _scripts_ de medição foram ajustados depois da medição inicial (novas métricas para as réplicas e o R-4 do F6
   com o prazo do _watchdog_). As alterações estão documentadas em `fase2/bench/README.md` e foram aplicadas também
   aos dados da base, sem alterar nenhum valor anterior.
-- Duas correções foram feitas depois de ensaios e antes da medição final: a da configuração do _autoscaler_ e o
+- Dois ajustes foram feitos com base nos ensaios, antes da medição final: a configuração usada pelo _autoscaler_ e o
   limite de 4 CPUs (capítulo 8).
 
 == Preservação funcional

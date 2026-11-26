@@ -37,9 +37,8 @@
     [Ambiente (SO, CPU, RAM, versões de Docker e Compose)], [Portátil com Ubuntu 26.04, Intel i7-13620H (16 _threads_),
       16 GB de RAM e SSD; Docker Engine 29.10 e Docker Compose 5.7. Durante as medições esteve ligado à corrente, em
       modo de desempenho e sem outras aplicações abertas.],
-    [Passos que exigiram ajuste], [O certificado do nginx estava excluído pelo `.gitignore` do nosso repositório e, sem
-      ele, o nginx não arranca; foi reposto a partir da base. A primeira construção demora, porque descarrega vários GB
-      de imagens e dependências de IA.],
+    [Passos que exigiram ajuste], [O certificado do nginx, necessário para o arranque, foi copiado da solução de base. A
+      primeira construção demora, porque descarrega vários GB de imagens e dependências de IA.],
   ),
 )
 
@@ -79,6 +78,7 @@ interface. No fim, o `projects` guarda o resultado e avisa o utilizador, que pod
   ),
 )
 
+#paisagem[
 == Vista da arquitetura global
 
 #orientacao[
@@ -90,7 +90,6 @@ interface. No fim, o `projects` guarda o resultado e avisa o utilizador, que pod
   consistente com o que foi observado na solução em execução, não apenas com a documentação.
 ]
 
-#paisagem[
   #figure(
     image("../images/arquitetura_global_carlito.svg", width: 100%),
     caption: [Vista da arquitetura global com o caminho do vídeo destacado (fonte: material de apoio da UC; verificada

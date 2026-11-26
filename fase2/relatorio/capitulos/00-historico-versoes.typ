@@ -14,6 +14,6 @@
 #tabela(
   colunas: (1.5cm, 2.3cm, 1fr, 3.5cm),
   [Versão], [Data], [Alterações], [Autores],
-  [v1.0], [2026-11-24], [Estrutura do relatório a partir do _template_ da Fase 2; capa e Introdução], [AS],
-  [v2.0], [2026-11-27], [#preencher[Versão entregue da Fase 2]], [#preencher[…]],
+  [v1.0], [2026-11-24], [Primeira versão do relatório], [AS],
+  [v2.0], [2026-11-27], [Versão entregue da Fase 2], [AS, BS, BV, DM, SV],
 )

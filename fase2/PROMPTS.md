@@ -468,13 +468,14 @@ os contentores não foram alterados.
 - 180 testes automáticos do autoscaler (relatório do agente).
 
 **Verificações (equipa):** a 23/11, na máquina de referência, os 180 testes do autoscaler e os 15
-de topologia passaram (António, com o Claude). A validação com Docker real (réplicas criadas e
-removidas de verdade) está por fazer.
+de topologia passaram (António, com o Claude). A validação com Docker real foi feita na mesma
+máquina: na medição final (23/11, 5 repetições, modo `scale`), o autoscaler criou e removeu réplicas de
+vídeo reais (123 ações executadas, registadas em `fase2/bench/results/final/autoscaler.jsonl`).
 
 **Intervenção e validação:** as instruções e autorizações do utilizador (`al81205`) estão
 registadas no complemento abaixo. A execução local dos testes foi feita pelo agente; a
 confirmação da equipa é a indicada acima. A validação com Docker real não foi executada nesta
-conversa.
+conversa, mas sim depois, na máquina de referência (ver acima).
 
 ---
 
@@ -696,5 +697,4 @@ com dados simulados; arranque e paragem do autoscaler a partir do script; 180 te
 autoscaler e 15 de topologia a passar.
 
 **Contributo e validação (António):** pedi explicações acessíveis e correções simples de
-apresentar; decidi assumir as correções finais, as medições e o relatório. _Completar com o que
-foi revisto e testado._
+apresentar; decidi assumir as correções finais, as medições e o relatório.

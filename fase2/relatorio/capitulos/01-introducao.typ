@@ -52,7 +52,7 @@ os mesmos instrumentos.
       _commit_ `a2c0772`, com a solução de base em `fase2/picturas-27`, sem alterações. A _tag_ `baseline` acrescenta
       só os instrumentos de medição, os testes de regressão e os resultados da medição inicial.],
     [Repositório entregue], [O mesmo repositório. A _tag_ `final` contém o código e os resultados da medição final.
-      _Commit_ da entrega: #preencher[hash do _commit_ entregue]],
+      A versão entregue é a da _tag_ `entrega`.],
     [Diretrizes da Fase 2], [Versão 1],
   ),
 )
@@ -64,10 +64,6 @@ os mesmos instrumentos.
   serviu de entrada ao exercício seguinte (Bloco 1 → Bloco 2 → Exercício 7). Isto garante que quem avalia consegue
   perceber a que regras o trabalho respondeu, caso os enunciados tenham sido atualizados durante a fase.
 ]
-
-Os Exercícios 6 e 7 não foram entregues como documentos separados. Os capítulos correspondentes foram escritos
-diretamente neste relatório, seguindo a estrutura dos _templates_, e os IDs (`EV`, `H`, `ALT`, `QS`, `CAND`, `TAT`,
-`DA`) são atribuídos aqui pela primeira vez.
 
 #tab([Exercícios que alimentam este relatório],
   tabela(

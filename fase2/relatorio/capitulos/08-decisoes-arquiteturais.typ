@@ -63,9 +63,9 @@ ao QS-02, e a DA-2 ao QS-03 e ao QS-04. Os valores indicados são os do código 
       - *4 CPUs por réplica*, em vez de 2: com 2 CPUs uma legendagem de 60 s demorava 28 s, com 4 demora 19 s e sem
         limite 17,5 s. Com 3 réplicas usam-se no máximo 12 das 16 _threads_ da máquina.
       - *40 s sem trabalho antes de retirar uma réplica*, em vez de 60 s, para cumprir o alvo do E-4 (≤ 60 s).
-      - *Correção feita antes da medição final:* o _autoscaler_ recusava agir porque não considerava um ficheiro de
-        configuração extra do Docker Compose (`docker-compose.override.yml`); passou a usar os mesmos ficheiros que o
-        Docker Compose.
+      - *Ajuste antes da medição final:* o _autoscaler_ passou a considerar também o ficheiro
+        `docker-compose.override.yml`, que o Docker Compose carrega automaticamente, para usar exatamente a mesma
+        configuração.
       - Testámos manter sempre uma réplica de legendagem ligada, numa só repetição: a espera do S2 desceu de 8,1 s
         para 5,2 s. Não foi adotado porque aumenta a memória sem carga e não foi medido com 5 repetições
         (capítulo 10).],
