@@ -144,6 +144,8 @@ seguem o mesmo estilo.
     continuam a passar pelo nginx e pelo API Gateway, mas foram omitidos para simplificar],
 )
 
+#pagebreak()
+
 #tab([Passos do pedido completo],
   tabela(
     colunas: (2cm, 3cm, 1fr, 1fr),
