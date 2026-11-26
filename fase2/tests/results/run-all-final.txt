@@ -1,0 +1,42 @@
+# run-all.sh on f14cdff (final), 2026-11-24T19:41:45+00:00
+== 1/3 projects tests
+ℹ tests 52
+ℹ pass 52
+ℹ fail 0
+== 2/3 video worker tests
+........................................................s............... [ 67%]
+...................................                                      [100%]
+106 passed, 1 skipped in 32.01s
+== 3/3 API regression (golden outputs)
+  img-binarization                   ok
+  img-border                         ok
+  img-brightness                     ok
+  img-contrast                       ok
+  img-cut                            ok
+  img-resize                         ok
+  img-rotate                         ok
+  img-saturation                     ok
+  img-watermark                      ok (metadata)
+  img-bg_remove_ai                   ok
+  img-cut_ai                         ok
+  img-upgrade_ai                     ok
+  img-obj_ai                         ok
+  img-people_ai                      ok
+  img-text_ai                        ok
+  img-expand_ai                      ok
+  img-pipeline-3-filters-3-images    ok
+  vid-trim                           ok
+  vid-speed                          ok
+  vid-filters                        ok
+  vid-geometry                       ok
+  vid-trim-speed-filter              ok
+  vid-subtitles                      ok
+  vid-extract_frames                 ok
+  mixed-image-and-video              ok
+  preview-image                      ok
+  upload-free-too-long               ok
+  upload-corrupted                   ok
+  upload-anonymous-video             ok
+  share-link-read                    ok
+30/30 passed
+ALL PASSED

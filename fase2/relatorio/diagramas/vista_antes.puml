@@ -1,0 +1,39 @@
+@startuml vista_antes
+!include _estilo.iuml
+top to bottom direction
+title Antes (commit a2c0772): processamento em lote
+
+component "nginx + API Gateway" as gw
+component "projects (orquestrador)\n• 1 ligação por mensagem; publicação\n   sem persistência nem confirmação\n• processos sem estado nem prazo\n• todos os vídeos na mesma fila" as projects #FFFFFF
+component "WS Gateway\n(Socket.IO)" as ws
+
+package "RabbitMQ · filas clássicas, sem DLQ nem limite de reentregas" as rmq #FFFBEB {
+  queue "video_queue\n(todos os vídeos)" as video_q
+  queue "<tool>_queue\n(16 filas)" as tool_q
+  queue "project_queue" as project_q
+  queue "ws_queue" as ws_q
+}
+
+package "Docker Compose · 1 contentor fixo por serviço, sem limites" as hosts {
+  component "video_tool (1 réplica)\nprefetch 1 · ack no fim\nheartbeat = 0 · sem SIGTERM" as video #FDE7D3
+  component "16 ferramentas de imagem\nauto-ack · erro com\nidentificadores trocados" as img
+}
+
+gw --> projects : REST
+projects -[#C2410C,thickness=2]-> video_q : 1 msg por vídeo
+projects --> tool_q : 1 msg por\n(imagem, ferramenta)
+video_q -[#C2410C,thickness=2]-> video
+tool_q --> img
+video -[#C2410C,thickness=2]-> project_q : resultado
+video -[#C2410C,thickness=2]-> ws_q : progresso
+img --> project_q
+project_q --> projects
+projects --> ws_q
+ws_q --> ws
+
+legend right
+  |= Cor |= Significado |
+  | <color:#C2410C>━━▶</color> | caminho do vídeo |
+  | <color:#9AA0A6>━━▶</color> | caminho das imagens / padrão global |
+endlegend
+@enduml
